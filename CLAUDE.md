@@ -28,7 +28,7 @@ This is added in Phase 3 of the architecture plan.
 
 ## Architecture plan
 
-`docs/claude-toolbox-architecture.md` — full 10-phase migration plan with structure decisions, scripts extraction table, and backlog additions.
+`docs/claude-toolbox-setup-and-migration-plan.md` — full 10-phase migration plan with structure decisions, scripts extraction table, and backlog additions.
 
 ## Working in this repo
 
