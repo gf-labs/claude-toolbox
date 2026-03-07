@@ -1,5 +1,5 @@
 ---
-description: Claude Code environment health check — settings, hooks, MCP, trees, toolbox
+description: Claude Code environment health check — settings, hooks, MCP, toolbox
 allowed-tools: Bash, Read, Glob, Grep
 ---
 
@@ -19,9 +19,6 @@ allowed-tools: Bash, Read, Glob, Grep
 
 **Global agents**:
 !ls ~/.claude/agents/ 2>/dev/null || echo "NONE"
-
-**Knowledge trees**:
-!for f in ~/.claude/knowledge-graphs/*.md; do [ -f "$f" ] && head -8 "$f" && echo "---"; done 2>/dev/null || echo "NONE"
 
 **Current repo**:
 !basename "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null || echo "(not a git repo)"
@@ -68,13 +65,12 @@ Read the project MCP config above (`.mcp.json`).
   - `[WARN]` if the `args` script path does not exist
 - `[PASSED]` if valid and all paths resolve
 
-### Check 5 — Knowledge tree health
-Read the knowledge tree headers above.
-- `[INFO]` if NONE — no trees yet; run `/ramp:up` to create one
-- For each tree found: report `topic`, `updated`, `level`, `xp` in a summary line
-- `[WARN]` if any tree's `updated` date is more than 30 days ago — stale tree
-- `[WARN]` if `version:` is not `3` — outdated format
-- `[PASSED]` otherwise with a one-line summary per tree
+### Check 5 — Toolbox environment
+Using the `Bash` tool, run the following checks:
+- `[WARN]` if `CLAUDE_TOOLBOX_ROOT` env var is not set: `printenv CLAUDE_TOOLBOX_ROOT`
+- `[WARN]` if `$CLAUDE_TOOLBOX_ROOT` does not point to a directory that exists
+- `[INFO]` if `~/.claude/docs/` does not exist — no reference docs dir
+- `[PASSED]` if `CLAUDE_TOOLBOX_ROOT` is set, the path exists, and docs dir is present
 
 ### Check 6 — Global command toolbox
 Read the global commands and agents lists above.

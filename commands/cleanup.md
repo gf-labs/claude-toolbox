@@ -126,191 +126,32 @@ Run each Bash command below now before proceeding. Store the output mentally —
 
 **Session inventory** (age, size, OLD/KEEP/ARTIFACT status):
 ```bash
-python3 -c "
-import json, os, time
-from pathlib import Path
-
-claude_dir = Path.home() / '.claude'
-projects_dir = claude_dir / 'projects'
-cutoff_days = 30
-cutoff = time.time() - cutoff_days * 86400
-
-ARTIFACT_TYPES = {'file-history-snapshot'}
-CONVERSATION_TYPES = {'user', 'assistant', 'progress', 'system', 'custom-title', 'last-prompt', 'queue-operation', 'summary'}
-
-def is_artifact_only(path):
-    try:
-        for line in path.read_text().splitlines():
-            obj = json.loads(line)
-            t = obj.get('type', '')
-            if t in CONVERSATION_TYPES:
-                return False
-            if t not in ARTIFACT_TYPES:
-                return False  # unknown type — treat as conversation to be safe
-        return True
-    except Exception:
-        return False
-
-if not projects_dir.exists():
-    print('NO PROJECTS DIR')
-else:
-    for proj in sorted(projects_dir.iterdir()):
-        if not proj.is_dir():
-            continue
-        for f in sorted(proj.iterdir()):
-            if not f.name.endswith('.jsonl'):
-                continue
-            try:
-                stat = f.stat()
-                age = (time.time() - stat.st_mtime) / 86400
-                custom_title = ''
-                try:
-                    for line in f.read_text(errors='replace').splitlines():
-                        obj2 = json.loads(line)
-                        if obj2.get('type') == 'custom-title':
-                            custom_title = obj2.get('customTitle', '')
-                            break
-                except Exception:
-                    pass
-                if is_artifact_only(f):
-                    status = 'ARTIFACT'
-                else:
-                    status = 'OLD' if stat.st_mtime < cutoff else 'KEEP'
-                label = f'  title={custom_title!r}' if custom_title else ''
-                print(f'{proj.name}  {f.stem}  {age:.0f}d  {stat.st_size // 1024}K  {status}{label}')
-            except Exception as e:
-                print(f'ERROR: {f} — {e}')
-"
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-sessions.py $ARGUMENTS
 ```
 
 **Session directories** (tool-results, subagents — OLD sessions only):
 ```bash
-python3 -c "
-import os, time
-from pathlib import Path
-
-projects_dir = Path.home() / '.claude' / 'projects'
-cutoff = time.time() - 30 * 86400
-
-for proj in sorted(projects_dir.iterdir()):
-    if not proj.is_dir():
-        continue
-    for entry in sorted(proj.iterdir()):
-        if not entry.is_dir() or entry.name == 'memory':
-            continue
-        jsonl = proj / (entry.name + '.jsonl')
-        if jsonl.exists() and jsonl.stat().st_mtime < cutoff:
-            size = sum(f.stat().st_size for f in entry.rglob('*') if f.is_file())
-            print(f'{proj.name}  {entry.name}/  {size // 1024}K  OLD-DIR')
-" 2>/dev/null || echo "none"
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-session-dirs.py $ARGUMENTS
 ```
 
 **File-history by session**:
 ```bash
-python3 -c "
-import os, time
-from pathlib import Path
-
-fh_dir = Path.home() / '.claude' / 'file-history'
-projects_dir = Path.home() / '.claude' / 'projects'
-cutoff = time.time() - 30 * 86400
-
-if not fh_dir.exists():
-    print('NONE')
-else:
-    old_sessions = set()
-    for proj in projects_dir.iterdir():
-        if not proj.is_dir():
-            continue
-        for f in proj.iterdir():
-            if f.name.endswith('.jsonl') and f.stat().st_mtime < cutoff:
-                old_sessions.add(f.stem)
-    for session_dir in sorted(fh_dir.iterdir()):
-        if not session_dir.is_dir():
-            continue
-        if session_dir.name in old_sessions:
-            size = sum(f.stat().st_size for f in session_dir.rglob('*') if f.is_file())
-            print(f'file-history/{session_dir.name}  {size // 1024}K  OLD')
-" 2>/dev/null || echo "none"
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-file-history.py $ARGUMENTS
 ```
 
 **Debug logs by session**:
 ```bash
-python3 -c "
-import os, time
-from pathlib import Path
-
-debug_dir = Path.home() / '.claude' / 'debug'
-projects_dir = Path.home() / '.claude' / 'projects'
-cutoff = time.time() - 30 * 86400
-
-if not debug_dir.exists():
-    print('NONE')
-else:
-    old_sessions = set()
-    for proj in projects_dir.iterdir():
-        if not proj.is_dir():
-            continue
-        for f in proj.iterdir():
-            if f.name.endswith('.jsonl') and f.stat().st_mtime < cutoff:
-                old_sessions.add(f.stem)
-    for f in sorted(debug_dir.iterdir()):
-        if f.stem in old_sessions:
-            print(f'debug/{f.name}  {f.stat().st_size // 1024}K  OLD')
-" 2>/dev/null || echo "none"
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-debug.py $ARGUMENTS
 ```
 
 **Memory health per project**:
 ```bash
-python3 -c "
-from pathlib import Path
-
-projects_dir = Path.home() / '.claude' / 'projects'
-for proj in sorted(projects_dir.iterdir()):
-    if not proj.is_dir():
-        continue
-    mem = proj / 'memory' / 'MEMORY.md'
-    if mem.exists():
-        lines = len(mem.read_text().splitlines())
-        status = 'THIN' if lines < 50 else 'OK'
-        print(f'{proj.name}  {lines} lines  {status}')
-    else:
-        print(f'{proj.name}  NO MEMORY.md  MISSING')
-"
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-memory.py
 ```
 
 **Plans inventory**:
 ```bash
-python3 -c "
-from pathlib import Path
-plans_dir = Path.home() / '.claude' / 'plans'
-if not plans_dir.exists() or not list(plans_dir.glob('*.md')):
-    print('NONE')
-else:
-    for f in sorted(plans_dir.glob('*.md')):
-        lines = len(f.read_text().splitlines())
-        title = ''
-        for line in f.read_text().splitlines():
-            if line.startswith('# '):
-                title = line[2:].strip()
-                break
-        print(f'{f.name}  {lines}L  {title[:60]}')
-" 2>/dev/null || echo "check failed"
-```
-
-**MEMORY.md size check** (truncation risk at 200 lines):
-```bash
-python3 -c "
-from pathlib import Path
-projects_dir = Path.home() / '.claude' / 'projects'
-for proj in sorted(projects_dir.iterdir()):
-    if not proj.is_dir(): continue
-    mem = proj / 'memory' / 'MEMORY.md'
-    if mem.exists():
-        lines = len(mem.read_text().splitlines())
-        warn = 'WARN:NEAR-LIMIT' if lines >= 150 else ('OK' if lines >= 30 else 'THIN')
-        print(f'{proj.name}  {lines}L  {warn}')
-" 2>/dev/null || echo "check failed"
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plans.py
 ```
 
 **Reference docs** (durable context artifacts):
@@ -325,61 +166,7 @@ du -sh ~/.claude/projects/ ~/.claude/file-history/ ~/.claude/debug/ 2>/dev/null
 
 **Plugin cache drift** (cached commands vs source repo):
 ```bash
-python3 -c "
-import json, os
-from pathlib import Path
-
-settings_path = Path.home() / '.claude' / 'settings.json'
-cache_base = Path.home() / '.claude' / 'plugins' / 'cache'
-
-try:
-    settings = json.loads(settings_path.read_text())
-except Exception:
-    print('SETTINGS_UNREADABLE')
-    exit()
-
-marketplaces = settings.get('extraKnownMarketplaces', {})
-enabled = settings.get('enabledPlugins', {})
-
-if not enabled:
-    print('NO_PLUGINS_ENABLED')
-    exit()
-
-for plugin_at_market in [k for k, v in enabled.items() if v]:
-    parts = plugin_at_market.split('@', 1)
-    if len(parts) != 2:
-        continue
-    plugin_name, market_name = parts
-    market_entry = marketplaces.get(market_name)
-    if not market_entry:
-        print(f'{plugin_at_market}: marketplace source path unknown')
-        continue
-    source_dir = market_entry.get('source', {}).get('path') if isinstance(market_entry, dict) else None
-    if not source_dir:
-        print(f'{plugin_at_market}: marketplace source path not resolvable')
-        continue
-    source_commands = set(
-        f.stem for f in (Path(source_dir) / 'commands').glob('*.md')
-    ) if (Path(source_dir) / 'commands').exists() else set()
-    cache_plugin = cache_base / market_name / plugin_name
-    cached_versions = sorted(cache_plugin.iterdir()) if cache_plugin.exists() else []
-    if not cached_versions:
-        print(f'{plugin_at_market}: NO CACHE FOUND')
-        continue
-    latest = cached_versions[-1]
-    cached_commands = set(
-        f.stem for f in (latest / 'commands').glob('*.md')
-    ) if (latest / 'commands').exists() else set()
-    stale = cached_commands - source_commands
-    missing = source_commands - cached_commands
-    if stale or missing:
-        print(f'{plugin_at_market} (cache: {latest.name}):')
-        for c in sorted(stale):   print(f'  STALE  {c} — in cache but not in source')
-        for c in sorted(missing): print(f'  MISSING {c} — in source but not in cache')
-        print(f'  Fix: /plugin marketplace add {source_dir} then /plugin install {plugin_at_market}')
-    else:
-        print(f'{plugin_at_market}: cache in sync ({len(cached_commands)} commands)')
-" 2>/dev/null || echo "check failed"
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plugin-drift.py
 ```
 
 ---

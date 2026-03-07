@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+"""Plugin cache drift — cached commands vs. source repo."""
+import json
+from pathlib import Path
+
+settings_path = Path.home() / '.claude' / 'settings.json'
+cache_base = Path.home() / '.claude' / 'plugins' / 'cache'
+
+try:
+    settings = json.loads(settings_path.read_text())
+except Exception:
+    print('SETTINGS_UNREADABLE')
+    raise SystemExit(1)
+
+marketplaces = settings.get('extraKnownMarketplaces', {})
+enabled = settings.get('enabledPlugins', {})
+
+if not enabled:
+    print('NO_PLUGINS_ENABLED')
+    raise SystemExit(0)
+
+for plugin_at_market in [k for k, v in enabled.items() if v]:
+    parts = plugin_at_market.split('@', 1)
+    if len(parts) != 2:
+        continue
+    plugin_name, market_name = parts
+    market_entry = marketplaces.get(market_name)
+    if not market_entry:
+        print(f'{plugin_at_market}: marketplace source path unknown')
+        continue
+    source_dir = market_entry.get('source', {}).get('path') if isinstance(market_entry, dict) else None
+    if not source_dir:
+        print(f'{plugin_at_market}: marketplace source path not resolvable')
+        continue
+    source_commands = set(
+        f.stem for f in (Path(source_dir) / 'commands').glob('*.md')
+    ) if (Path(source_dir) / 'commands').exists() else set()
+    cache_plugin = cache_base / market_name / plugin_name
+    cached_versions = sorted(cache_plugin.iterdir()) if cache_plugin.exists() else []
+    if not cached_versions:
+        print(f'{plugin_at_market}: NO CACHE FOUND')
+        continue
+    latest = cached_versions[-1]
+    cached_commands = set(
+        f.stem for f in (latest / 'commands').glob('*.md')
+    ) if (latest / 'commands').exists() else set()
+    stale = cached_commands - source_commands
+    missing = source_commands - cached_commands
+    if stale or missing:
+        print(f'{plugin_at_market} (cache: {latest.name}):')
+        for c in sorted(stale):
+            print(f'  STALE  {c} — in cache but not in source')
+        for c in sorted(missing):
+            print(f'  MISSING {c} — in source but not in cache')
+        print(f'  Fix: /plugin marketplace add {source_dir} then /plugin install {plugin_at_market}')
+    else:
+        print(f'{plugin_at_market}: cache in sync ({len(cached_commands)} commands)')
