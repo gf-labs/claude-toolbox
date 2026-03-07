@@ -4,6 +4,5 @@
   "description": "Personal Claude Code global toolbox — audit, cleanup, doctor, history, snapshot, status commands",
   "author": {"name": "Bernie Green"},
   "license": "MIT",
-  "keywords": ["productivity", "cleanup", "maintenance"],
-  "category": "productivity"
+  "keywords": ["productivity", "cleanup", "maintenance"]
 }
