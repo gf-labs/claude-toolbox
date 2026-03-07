@@ -28,7 +28,7 @@ model: claude-haiku-4-5-20251001
 !head -25 BACKLOG.md 2>/dev/null || echo "not found"
 
 **Knowledge tree**:
-!for f in ~/.claude/knowledge-trees/*.md; do [ -f "$f" ] && head -8 "$f" && echo "---"; done 2>/dev/null || echo "none"
+!for f in ~/.claude/knowledge-graphs/*.md; do [ -f "$f" ] && head -8 "$f" && echo "---"; done 2>/dev/null || echo "none"
 
 **Today**:
 !date +%Y-%m-%d
@@ -64,6 +64,6 @@ Render a concise project status snapshot using only the auto-collected context a
 
 If not a git repo: skip git sections, note "(not a git repo)" at the top.
 If no BACKLOG.md: omit the Backlog section entirely.
-If no knowledge tree: show "no tree — run /sup to create one".
+If no knowledge tree: show "none — run /ramp:up to create one".
 
 Keep it tight — every line earns its place.

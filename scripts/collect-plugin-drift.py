@@ -32,9 +32,22 @@ for plugin_at_market in [k for k, v in enabled.items() if v]:
     if not source_dir:
         print(f'{plugin_at_market}: marketplace source path not resolvable')
         continue
+    # Resolve per-plugin source directory from marketplace plugins list
+    plugin_source_dir = Path(source_dir)  # default: marketplace root (covers source "./")
+    marketplace_json = Path(source_dir) / '.claude-plugin' / 'marketplace.json'
+    if marketplace_json.exists():
+        try:
+            mdata = json.loads(marketplace_json.read_text())
+            for p in mdata.get('plugins', []):
+                if p.get('name') == plugin_name:
+                    rel = p.get('source', './')
+                    plugin_source_dir = (Path(source_dir) / rel).resolve()
+                    break
+        except Exception:
+            pass  # fall back to marketplace root
     source_commands = set(
-        f.stem for f in (Path(source_dir) / 'commands').glob('*.md')
-    ) if (Path(source_dir) / 'commands').exists() else set()
+        f.stem for f in (plugin_source_dir / 'commands').glob('*.md')
+    ) if (plugin_source_dir / 'commands').exists() else set()
     cache_plugin = cache_base / market_name / plugin_name
     cached_versions = sorted(cache_plugin.iterdir()) if cache_plugin.exists() else []
     if not cached_versions:
@@ -52,6 +65,6 @@ for plugin_at_market in [k for k, v in enabled.items() if v]:
             print(f'  STALE  {c} — in cache but not in source')
         for c in sorted(missing):
             print(f'  MISSING {c} — in source but not in cache')
-        print(f'  Fix: /plugin marketplace add {source_dir} then /plugin install {plugin_at_market}')
+        print(f'  Fix: /plugin marketplace add {plugin_source_dir} then /plugin install {plugin_at_market}')
     else:
         print(f'{plugin_at_market}: cache in sync ({len(cached_commands)} commands)')

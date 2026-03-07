@@ -104,4 +104,11 @@ List all issues first (CRITICAL before WARN), then PASSED/INFO at the bottom.
 End with this footer (always, regardless of findings):
 
 ---
-*To add project-specific checks: create `.claude/commands/doctor.md` with `@~/.claude/commands/doctor.md` at the top, then append your repo checks below.*
+*To add project-specific checks: create `.claude/commands/doctor.md` in your repo.
+Open it with:*
+
+```
+Run `/tools:doctor` first for environment health. Project-specific checks below:
+```
+
+*Then add your checks as additional numbered sections.*

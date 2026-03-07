@@ -1,35 +1,38 @@
-# claude-toolbox
+# CLAUDE.md
 
-Versioned personal Claude Code global toolbox — commands, agents, scripts, hooks, and docs.
+## What this is
 
-## Purpose
+claude-toolbox — versioned personal Claude Code commands, scripts, and agents. Delivered as the
+`tools` plugin (gfl-marketplace). Commands are namespaced `/tools:*`.
 
-This repo version-controls all global Claude Code tooling that previously lived unversioned in `~/.claude/`. It is separate from `ramp` (a portfolio product). Settings, keybindings, and CLAUDE.md remain in dotfiles.
+## How scripts are called
 
-## Plugin namespace: `tools`
+Commands call scripts via `!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/foo.py`. The env var
+`CLAUDE_TOOLBOX_ROOT` must be set in `~/.claude/settings.json`. It points to this repo's
+absolute path.
 
-Commands are delivered via the plugin system (gfl-marketplace) and accessible as `/tools:*`:
-- `/tools:audit`
-- `/tools:cleanup`
-- `/tools:doctor`
-- `/tools:history`
-- `/tools:snapshot`
-- `/tools:status`
+## How to add a new command
 
-## Env var requirement
+1. Create `commands/[name].md` with standard frontmatter
+2. If it needs a script: add `scripts/collect-[name].py` or `scripts/[name].py`
+3. Bump version in `.claude-plugin/plugin.json`
+4. Run `/plugin install tools@gfl-marketplace` in a new session
 
-Commands call scripts via `!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/foo.py`. This env var must be set in `~/.claude/settings.json`:
+## How to add a new agent
 
-```json
-"CLAUDE_TOOLBOX_ROOT": "/Users/you/Repos/claude-toolbox"
-```
+Create `agents/[name].md` with `name`, `description`, `tools`, `model`, and `color` frontmatter.
+Plugin delivers it automatically on next install.
 
-This is added in Phase 3 of the architecture plan.
+## Key files
 
-## Architecture plan
-
-`docs/claude-toolbox-setup-and-migration-plan.md` — full 10-phase migration plan with structure decisions, scripts extraction table, and backlog additions.
+| File | Role |
+|------|------|
+| `.claude-plugin/plugin.json` | Plugin manifest — bump version on every release |
+| `hooks/hooks.json` | Plugin-registered hooks (SessionStart, PostToolUse) |
+| `scripts/collect-*.py` | Data collection scripts called by commands |
+| `scripts/validate-env.py` | SessionStart hook — validates CLAUDE_TOOLBOX_ROOT |
+| `docs/claude-directory-reference.md` | Claude Code directory discovery reference |
 
 ## Working in this repo
 
-The `.claude/settings.json` grants `cp` permission (needed for Phase 4 file copying) and `gh` permission (for GitHub operations).
+`.claude/settings.json` grants `Bash(gh:*)` for GitHub operations.
