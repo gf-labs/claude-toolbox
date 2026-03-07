@@ -42,8 +42,8 @@ for proj in sorted(projects_dir.iterdir()):
                 if not line.strip(): continue
                 obj = json.loads(line)
                 t = obj.get('type', '')
-                if t == 'custom-title' and not custom_title:
-                    custom_title = obj.get('customTitle', '')
+                if t == 'custom-title':
+                    custom_title = obj.get('customTitle', '')  # always take latest
                 if t == 'last-prompt' and not last_prompt:
                     last_prompt = obj.get('lastPrompt', '')[:80]
                 if t == 'user' and not first_user:
