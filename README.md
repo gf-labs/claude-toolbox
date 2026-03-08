@@ -17,7 +17,7 @@ Personal Claude Code global toolbox — versioned commands, agents, scripts, hoo
 | `/tools:doctor` | Claude Code environment health check |
 | `/tools:history` | Cross-project Claude history |
 | `/tools:snapshot` | Capture current session context into project MEMORY.md |
-| `/tools:status` | Project status — git state, recent commits, BACKLOG, knowledge tree health |
+| `/tools:status` | Project status — git state, recent commits, BACKLOG, snapshot health, and recent Claude activity |
 
 ## Structure
 

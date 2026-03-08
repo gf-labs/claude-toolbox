@@ -7,16 +7,29 @@
 
 ## Backlog
 
+### Evaluate everything-claude-code for toolbox ideas
+- **Size:** S
+- Review https://github.com/affaan-m/everything-claude-code and identify patterns, commands, or utilities worth incorporating into this toolbox
+- Look for: prompt patterns, hook ideas, workflow automations, command designs not yet covered here
+
+### Auto-collected context blocks (`!cmd`) don't expand `settings.json` env vars
+- **Size:** S
+- Commands using `${CLAUDE_TOOLBOX_ROOT}` in `!` blocks receive raw templates instead of executed output — the `!` executor doesn't expand env vars defined in `settings.json["env"]`
+- Affects: `status`, `history`, `doctor`, `cleanup` (any command using `${CLAUDE_TOOLBOX_ROOT}` in context blocks)
+- `audit` works because it uses only plain shell commands with no env var references
+- Fix options: (a) use `$HOME/Repos/gfl/claude-toolbox` literals instead of the var, (b) wrap in a shell that sources the env, or (c) rely on `CLAUDE_TOOLBOX_ROOT` being set in the shell environment rather than settings.json
+- Workaround: LLM runs Bash tool calls manually — output is still correct but not hands-free
+
+### `collect-plugin-drift.py` blind to `--plugin-dir` plugins
+- **Size:** XS
+- Reads `enabledPlugins` from `settings.json` to find installed plugins; returns `NO_PLUGINS_ENABLED` when using `claude-dev` (which clears `enabledPlugins` and loads via `--plugin-dir` instead)
+- Fix: detect `--plugin-dir` sessions via an env var or flag, or skip drift check gracefully with an informational message instead of `NO_PLUGINS_ENABLED`
+
 ### backlog.md — add tasks to the backlog from within Claude
 - **Size:** S
 - `/backlog` with no args: adds the most recent task/session context to the backlog as a new item
 - `/backlog add this to backlog` with text: adds a user-defined item to the backlog
 - Writes to `BACKLOG.md` in the current project dir (or claude-toolbox if no project)
-
-### tools:status — focus on current project, not knowledge tree
-- **Size:** XS
-- Replace the knowledge tree section with current-project context: branch, MEMORY.md health, active plans
-- Knowledge tree info is low-value in status; save it for `ramp:tree`
 
 ### search-sessions.md — search session history without deleting
 - **Size:** S

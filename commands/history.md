@@ -1,5 +1,5 @@
 ---
-description: Cross-project Claude history — what did I work on recently?
+description: Recent Claude activity only — for full context with git state use /tools:status
 argument-hint: [--days N] [--project repo-name]
 allowed-tools: Bash
 model: claude-haiku-4-5-20251001

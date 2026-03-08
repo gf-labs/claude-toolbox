@@ -5,10 +5,22 @@ from pathlib import Path
 from datetime import datetime, timezone
 from collections import defaultdict
 
+sys.path.insert(0, str(Path(__file__).parent))
+from _scope import get_scope
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--days', type=int, default=7)
 parser.add_argument('--project', type=str, default=None)
 args, _ = parser.parse_known_args()
+
+# Auto-detect scope if --project not explicitly passed
+project_names = None  # multi-name filter (parent mode)
+if not args.project:
+    _mode, _scope_data, _scope_cwd = get_scope()
+    if _mode == 'single':
+        args.project = _scope_cwd.name
+    elif _mode == 'parent':
+        project_names = [c.name for _, c in _scope_data]
 
 project_filter = args.project.lower() if args.project else None
 
@@ -34,6 +46,8 @@ with open(history_file) as f:
             repo = project.split('/')[-1] if project else '(no repo)'
             if project_filter and project_filter not in repo.lower():
                 continue
+            if project_names and not any(name.lower() in repo.lower() for name in project_names):
+                continue
             entries.append({
                 'ts': ts,
                 'repo': repo,
@@ -55,7 +69,12 @@ for e in sorted(entries, key=lambda x: x['ts'], reverse=True):
     key = (e['repo'], e['date'])
     groups[key].append(e['display'])
 
-suffix = f' — {project_filter}' if project_filter else ''
+if project_filter:
+    suffix = f' — {project_filter}'
+elif project_names:
+    suffix = f' — {", ".join(project_names)}'
+else:
+    suffix = ''
 print(f'=== Last {args.days} days{suffix} ===')
 print(f'Total: {len(entries)} prompts across {len(set(k[0] for k in groups))} project(s)')
 print()

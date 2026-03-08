@@ -5,6 +5,9 @@ allowed-tools: Bash, Read, Glob, Grep
 
 ## Auto-collected context
 
+**Scope**:
+!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/_scope.py
+
 **Global settings**:
 !cat ~/.claude/settings.json 2>/dev/null || echo "NOT FOUND"
 
@@ -50,20 +53,36 @@ Extract every `command:` value from both settings files (global + project). For 
 To check if a path exists, use the `Bash` tool: `test -f /path/to/script && echo EXISTS || echo MISSING`
 
 ### Check 3 — Project settings validity
-Read the project settings JSON above (`.claude/settings.json`).
-- `[INFO]` if NOT FOUND — no project settings, global only (may be intentional)
-- `[CRITICAL]` if present but malformed JSON
-- `[WARN]` if present and has hooks but they reference missing scripts (covered by Check 2)
-- `[PASSED]` if valid JSON or not present
+Behavior depends on scope (from the Scope output above):
+
+- **Single mode**: Read `.claude/settings.json` in CWD (injected above).
+  - `[INFO]` if NOT FOUND — no project settings, global only (may be intentional)
+  - `[CRITICAL]` if present but malformed JSON
+  - `[WARN]` if present and has hooks but they reference missing scripts (covered by Check 2)
+  - `[PASSED]` if valid JSON or not present
+
+- **Parent mode**: For each child path listed in the scope output, check `[child]/.claude/settings.json`.
+  Use `Bash` to read each: `cat [child]/.claude/settings.json 2>/dev/null || echo NOT FOUND`
+  Show results as a summary table row per project (see Output format below).
+
+- **Global mode**: `[INFO]` — no project detected from CWD, skipping project-specific check 3.
 
 ### Check 4 — MCP config validity
-Read the project MCP config above (`.mcp.json`).
-- `[INFO]` if NOT FOUND — no MCP servers configured for this project
-- `[CRITICAL]` if present but malformed JSON
-- For each server in `mcpServers`: extract the `command` path (first element if array, or the command string). Check if it exists.
-  - `[CRITICAL]` if the MCP command binary/interpreter path does not exist
-  - `[WARN]` if the `args` script path does not exist
-- `[PASSED]` if valid and all paths resolve
+Behavior depends on scope (from the Scope output above):
+
+- **Single mode**: Read `.mcp.json` in CWD (injected above).
+  - `[INFO]` if NOT FOUND — no MCP servers configured for this project
+  - `[CRITICAL]` if present but malformed JSON
+  - For each server in `mcpServers`: extract the `command` path (first element if array, or the command string). Check if it exists.
+    - `[CRITICAL]` if the MCP command binary/interpreter path does not exist
+    - `[WARN]` if the `args` script path does not exist
+  - `[PASSED]` if valid and all paths resolve
+
+- **Parent mode**: For each child path, check `[child]/.mcp.json`.
+  Use `Bash` to read each: `cat [child]/.mcp.json 2>/dev/null || echo NOT FOUND`
+  Show results as a summary table row per project (see Output format below).
+
+- **Global mode**: `[INFO]` — no project detected from CWD, skipping project-specific check 4.
 
 ### Check 5 — Toolbox environment
 Using the `Bash` tool, run the following checks:
@@ -82,6 +101,7 @@ Read the global commands and agents lists above.
 
 ## Output format
 
+**Single or global mode:**
 ```
 ## Doctor — [date] — [repo name or "~"]
 
@@ -93,6 +113,25 @@ Read the global commands and agents lists above.
 
 [PASSED] Check N — Name — [one-line summary]
 [INFO] Check N — Name — [one-line note]
+```
+
+**Parent mode:**
+```
+## Doctor — [date] — [parent-path] ([N] projects)
+
+### Global checks
+[PASSED] Check 1 — Global settings valid
+[PASSED] Check 2 — Hook scripts exist
+[PASSED] Check 5 — Toolbox environment
+[INFO] Check 6 — Commands: N global commands
+
+### Project checks
+
+| Project | Settings | MCP | Status |
+|---------|----------|-----|--------|
+| claude-toolbox | valid | valid | PASSED |
+| ramp | WARN: no hooks | not found | WARN |
+| gfl-marketplace | not found | not found | INFO |
 ```
 
 List all issues first (CRITICAL before WARN), then PASSED/INFO at the bottom.

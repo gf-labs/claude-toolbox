@@ -21,8 +21,16 @@ When a positional pattern is provided (e.g. `/cleanup "delete-me"` or `/cleanup 
 
 ```bash
 python3 -c "
-import json, shutil
+import json, os, sys, shutil
 from pathlib import Path
+
+sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
+try:
+    from _scope import get_scope
+    _m, _d, _ = get_scope()
+    _allowed = {_d} if _m == 'single' else ({k for k, _ in _d} if _m == 'parent' else None)
+except Exception:
+    _allowed = None
 
 pattern = 'PATTERN_PLACEHOLDER'.lower()
 projects_dir = Path.home() / '.claude' / 'projects'
@@ -33,6 +41,7 @@ results = []
 
 for proj in sorted(projects_dir.iterdir()):
     if not proj.is_dir(): continue
+    if _allowed is not None and proj.name not in _allowed: continue
     for f in sorted(proj.glob('*.jsonl')):
         try:
             custom_title = ''
@@ -124,6 +133,11 @@ If `--dry-run` is in arguments: show the table and report "DRY RUN — no files 
 
 Run each Bash command below now before proceeding. Store the output mentally — it is the input for all phases.
 
+**Scope** (single project, parent roll-up, or global):
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/_scope.py
+```
+
 **Session inventory** (age, size, OLD/KEEP/ARTIFACT status):
 ```bash
 python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-sessions.py $ARGUMENTS
@@ -202,10 +216,31 @@ Before touching sessions, surface structural issues:
 
 ## Phase 1 — Scan report
 
+Use the scope output from Step 0 to label the report:
+- **Single mode** (`SINGLE [name] (key)`): label is the project name
+- **Parent mode** (`PARENT [path] — N projects: [...]`): label is the parent path and project count
+- **Global mode** (`GLOBAL`): label is "all projects"
+
+In **parent mode**, lead with a grouped summary table before the per-session details:
+
+```
+## Claude Cleanup — [date] — [parent-path] ([N] projects)
+
+### Projects summary
+
+| Project | Old sessions | Artifact files | Size |
+|---------|-------------|---------------|------|
+| claude-toolbox | 3 | 1 | 450K |
+| ramp | 1 | 0 | 120K |
+| gfl-marketplace | 0 | 0 | — |
+```
+
+In **single** or **global** mode, use the standard format below.
+
 Present a clean summary:
 
 ```
-## Claude Cleanup — [date]
+## Claude Cleanup — [date] — [scope label]
 
 ### Artifact-only files (safe to delete immediately — not real sessions)
 
