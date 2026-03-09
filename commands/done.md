@@ -35,14 +35,33 @@ for line in current.read_text(errors='replace').splitlines():
         first_slug = obj['slug']
 
 base = last_title or first_slug or current.stem[:8]
+sid = current.stem
 
 if 'delete-me' in base:
     print(f'Already marked for deletion: {base}')
 else:
     new_title = base + '-delete-me'
-    record = json.dumps({'type': 'custom-title', 'customTitle': new_title, 'sessionId': current.stem})
-    with open(current, 'a') as f:
-        f.write(record + '\n')
+    record = json.dumps({'type': 'custom-title', 'customTitle': new_title, 'sessionId': sid})
+    with open(current, 'a') as fh:
+        fh.write(record + '\n')
     print(f'Marked for deletion: {new_title}')
-    print('Run /cleanup delete-me to clean up.')
+
+# Clean up associated artifacts immediately
+import shutil
+cleaned = []
+fh_path = Path.home() / '.claude' / 'file-history' / sid
+dbg_path = Path.home() / '.claude' / 'debug' / (sid + '.txt')
+senv_path = Path.home() / '.claude' / 'session-env' / sid
+if fh_path.exists():
+    shutil.rmtree(fh_path)
+    cleaned.append('file-history')
+if dbg_path.exists():
+    dbg_path.unlink()
+    cleaned.append('debug')
+if senv_path.exists():
+    shutil.rmtree(senv_path)
+    cleaned.append('session-env')
+if cleaned:
+    print(f'Cleaned artifacts: {', '.join(cleaned)}')
+print('JSONL kept — run /cleanup delete-me to remove session history.')
 "

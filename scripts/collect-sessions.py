@@ -59,14 +59,18 @@ else:
                 custom_title = ''
                 try:
                     for line in f.read_text(errors='replace').splitlines():
-                        obj = json.loads(line)
-                        if obj.get('type') == 'custom-title':
-                            custom_title = obj.get('customTitle', '')
-                            break
+                        try:
+                            obj = json.loads(line)
+                            if obj.get('type') == 'custom-title':
+                                custom_title = obj.get('customTitle', '')  # take last
+                        except Exception:
+                            pass
                 except Exception:
                     pass
                 if is_artifact_only(f):
                     status = 'ARTIFACT'
+                elif 'delete-me' in custom_title.lower():
+                    status = 'DELETE-ME'
                 else:
                     status = 'OLD' if stat.st_mtime < cutoff else 'KEEP'
                 label = f'  title={custom_title!r}' if custom_title else ''

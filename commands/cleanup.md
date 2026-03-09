@@ -36,6 +36,7 @@ pattern = 'PATTERN_PLACEHOLDER'.lower()
 projects_dir = Path.home() / '.claude' / 'projects'
 fh_dir = Path.home() / '.claude' / 'file-history'
 debug_dir = Path.home() / '.claude' / 'debug'
+senv_dir = Path.home() / '.claude' / 'session-env'
 
 results = []
 
@@ -74,10 +75,12 @@ for proj in sorted(projects_dir.iterdir()):
                 fh_size = sum(ff.stat().st_size for ff in fh_path.rglob('*') if ff.is_file()) // 1024 if fh_path.exists() else 0
                 dbg_path = debug_dir / (sid + '.txt')
                 dbg_size = dbg_path.stat().st_size // 1024 if dbg_path.exists() else 0
+                senv_path = senv_dir / sid
+                senv_size = sum(ff.stat().st_size for ff in senv_path.rglob('*') if ff.is_file()) // 1024 if senv_path.exists() else 0
                 proj_dir = proj / sid
                 dir_size = sum(ff.stat().st_size for ff in proj_dir.rglob('*') if ff.is_file()) // 1024 if proj_dir.exists() else 0
-                total_k = size_k + fh_size + dbg_size + dir_size
-                print(f'MATCH|{proj.name}|{sid}|{size_k}K|{fh_size}K|{dbg_size}K|{dir_size}K|{total_k}K|{custom_title or first_user[:50]!r}')
+                total_k = size_k + fh_size + dbg_size + senv_size + dir_size
+                print(f'MATCH|{proj.name}|{sid}|{size_k}K|{fh_size}K|{dbg_size}K|{senv_size}K|{dir_size}K|{total_k}K|{custom_title or first_user[:50]!r}')
         except Exception as e:
             pass
 "
@@ -97,6 +100,7 @@ Show the user a single consolidated table — one row per file, grouped by sessi
 | 4794c719 | bug-report-test-delete-me | JSONL        | ~/.claude/projects/[proj]/[uuid].jsonl    | 358K |
 | 4794c719 |                           | file-history | ~/.claude/file-history/[uuid]/            | 26K  |
 | 4794c719 |                           | debug        | ~/.claude/debug/[uuid].txt               | 215K |
+| 4794c719 |                           | session-env  | ~/.claude/session-env/[uuid]/             | 0K   |
 | a5734a17 | bug-report-test-alt-...   | JSONL        | ~/.claude/projects/[proj]/[uuid].jsonl    | 10K  |
 | a5734a17 |                           | file-history | ~/.claude/file-history/[uuid]/            | 278K |
 | a5734a17 |                           | debug        | ~/.claude/debug/[uuid].txt               | 31K  |
@@ -118,10 +122,12 @@ If user replies `yes`:
 PROJ="$HOME/.claude/projects"
 FH="$HOME/.claude/file-history"
 DBG="$HOME/.claude/debug"
+SENV="$HOME/.claude/session-env"
 rm -f "$PROJ/[proj]/[session-id].jsonl"
 rm -rf "$PROJ/[proj]/[session-id]/"
 rm -rf "$FH/[session-id]/"
 rm -f "$DBG/[session-id].txt"
+rm -rf "$SENV/[session-id]/"
 ```
 Repeat for each matched session. Then report: "Deleted [N] session(s) · [size] freed."
 
@@ -168,6 +174,42 @@ python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-memory.py
 python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plans.py
 ```
 
+**Orphaned project keys** (source dir no longer exists on disk):
+```bash
+python3 -c "
+import sys, os
+sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
+from pathlib import Path
+from _scope import _reconstruct
+projects_dir = Path.home() / '.claude' / 'projects'
+found = []
+for d in sorted(projects_dir.iterdir()):
+    if not d.is_dir(): continue
+    if not list(_reconstruct(d.name, None)):
+        sessions = sum(1 for _ in d.glob('*.jsonl'))
+        size_k = sum(f.stat().st_size for f in d.rglob('*') if f.is_file()) // 1024
+        found.append(f'{d.name}\t{sessions} sessions\t{size_k}K')
+print('\n'.join(found) if found else 'NONE')
+"
+```
+
+**Session-env dirs** (per-session environment snapshots):
+```bash
+python3 -c "
+from pathlib import Path
+d = Path.home() / '.claude' / 'session-env'
+if not d.exists():
+    print('NONE')
+else:
+    empty = sum(1 for x in d.iterdir() if x.is_dir() and not any(x.iterdir()))
+    nonempty = [(x.name, sum(f.stat().st_size for f in x.rglob('*') if f.is_file())//1024)
+                for x in sorted(d.iterdir()) if x.is_dir() and any(x.iterdir())]
+    print(f'EMPTY_COUNT\t{empty}')
+    for name, size in nonempty:
+        print(f'NONEMPTY\t{name}\t{size}K')
+"
+```
+
 **Reference docs** (durable context artifacts):
 ```bash
 ls ~/.claude/docs/ 2>/dev/null || echo "NONE"
@@ -175,7 +217,7 @@ ls ~/.claude/docs/ 2>/dev/null || echo "NONE"
 
 **Disk usage**:
 ```bash
-du -sh ~/.claude/projects/ ~/.claude/file-history/ ~/.claude/debug/ 2>/dev/null
+du -sh ~/.claude/projects/ ~/.claude/file-history/ ~/.claude/debug/ ~/.claude/session-env/ 2>/dev/null
 ```
 
 **Plugin cache drift** (cached commands vs source repo):
@@ -207,6 +249,17 @@ Before touching sessions, surface structural issues:
 **MEMORY.md size:**
 - For any project showing `WARN:NEAR-LIMIT` (≥150 lines): say "⚠ [project] MEMORY.md is [N] lines — approaching 200-line truncation limit. Consider archiving older sessions to a topic file."
 - Truncation silently drops the bottom of the file on load — the most recently added content is cut off first.
+
+**Orphaned project keys:**
+- If the Orphaned project keys output from Step 0 is not `NONE`, list them with session counts and sizes
+- These are project dirs whose source repo was moved, renamed, or deleted — the key no longer maps to any real path on disk
+- Note any with sessions > 0 as requiring context extraction before deletion
+- Say: "Found [N] orphaned project key dir(s) — will be handled in Phase 3c."
+
+**Session-env:**
+- Report the empty count from the Session-env output
+- If empty count > 0: "Found [N] empty session-env dirs — will be auto-deleted in Phase 3a."
+- List any NONEMPTY dirs with their sizes
 
 **Reference docs:**
 - List what's in `~/.claude/docs/` if anything exists
@@ -251,13 +304,13 @@ Present a clean summary:
 Note: These are internal Claude Code artifacts (e.g. file-history snapshots) that appear
 as unnamed sessions in /resume but contain no conversation content. Always delete these.
 
-### Sessions to remove (>[N] days old)
+### Sessions to remove (>[N] days old or marked delete-me)
 
-| Project | Session | Age | Size |
-|---------|---------|-----|------|
-| ...     | ...     | ...d | ...K |
+| Project | Session | Age | Size | Reason |
+|---------|---------|-----|------|--------|
+| ...     | ...     | ...d | ...K | old / delete-me |
 
-Total: X sessions · Y MB (including session dirs, file-history, debug logs)
+Total: X sessions · Y MB (including session dirs, file-history, debug logs, session-env)
 
 ### Memory health
 | Project | MEMORY.md | Status |
@@ -311,18 +364,40 @@ If user says `skip` or project has adequate memory: proceed to Phase 3.
 
 ## Phase 3 — Delete
 
-**Step 3a — Auto-delete artifact-only files (no confirmation needed):**
+**Step 3a — Auto-delete artifact-only files and empty session-env dirs (no confirmation needed):**
 
-ARTIFACT-status files contain no conversation content and are always safe to remove. Delete them immediately without asking.
+Delete immediately without asking:
+1. ARTIFACT-status JSONL files (contain no conversation content)
+2. Empty session-env dirs (all 135 or however many reported in Step 0)
+3. session-env dirs belonging to ARTIFACT sessions
 
 Use full absolute paths — never relative paths starting with `-`, which `rm` interprets as flags:
 ```bash
 PROJ="$HOME/.claude/projects"
 rm -f "$PROJ/[proj]/[session-id].jsonl"  # repeat for each ARTIFACT entry
+rm -rf "$HOME/.claude/session-env/[session-id]/"  # session-env for each ARTIFACT
 ```
-Report: "Auto-deleted [N] artifact file(s): [filenames]"
 
-**Step 3b — Delete old sessions (requires confirmation):**
+Delete all empty session-env dirs in one pass:
+```bash
+python3 -c "
+import shutil
+from pathlib import Path
+d = Path.home() / '.claude' / 'session-env'
+deleted = 0
+for x in sorted(d.iterdir()):
+    if x.is_dir() and not any(x.iterdir()):
+        x.rmdir()
+        deleted += 1
+print(f'Deleted {deleted} empty session-env dirs')
+"
+```
+
+Report: "Auto-deleted [N] artifact file(s) · [M] empty session-env dirs"
+
+**Step 3b — Delete old and delete-me sessions (requires confirmation):**
+
+Include both `OLD` (age > threshold) and `DELETE-ME` (title contains "delete-me") sessions in the list below.
 
 Show exactly what will be removed, then ask for confirmation:
 
@@ -333,6 +408,7 @@ Show exactly what will be removed, then ask for confirmation:
 - ~/.claude/projects/[proj]/[session-id]/       ([size], tool-results + subagents)
 - ~/.claude/file-history/[session-id]/          ([size])
 - ~/.claude/debug/[session-id].txt              ([size])
+- ~/.claude/session-env/[session-id]/           ([size])
 ...
 
 Total: X files · Y MB
@@ -340,15 +416,22 @@ Total: X files · Y MB
 Proceed? Reply `yes` to delete, anything else to cancel.
 ```
 
+Omit any row where the file/dir doesn't exist for that session.
+
 **If user confirms `yes`:** Use Bash to delete each listed path:
 ```bash
-rm -f ~/.claude/projects/[proj]/[session-id].jsonl
-rm -rf ~/.claude/projects/[proj]/[session-id]/
-rm -rf ~/.claude/file-history/[session-id]/
-rm -f ~/.claude/debug/[session-id].txt
+PROJ="$HOME/.claude/projects"
+FH="$HOME/.claude/file-history"
+DBG="$HOME/.claude/debug"
+SENV="$HOME/.claude/session-env"
+rm -f "$PROJ/[proj]/[session-id].jsonl"
+rm -rf "$PROJ/[proj]/[session-id]/"
+rm -rf "$FH/[session-id]/"
+rm -f "$DBG/[session-id].txt"
+rm -rf "$SENV/[session-id]/"
 ```
 
-After deletion, run `du -sh ~/.claude/projects/ ~/.claude/file-history/ ~/.claude/debug/` and show the new totals.
+After deletion, run `du -sh ~/.claude/projects/ ~/.claude/file-history/ ~/.claude/debug/ ~/.claude/session-env/` and show the new totals.
 
 **Never delete:**
 - `~/.claude/history.jsonl`
@@ -358,6 +441,51 @@ After deletion, run `du -sh ~/.claude/projects/ ~/.claude/file-history/ ~/.claud
 - `~/.claude/projects/*/memory/session-log.md`
 - Any session newer than the threshold
 - The current active session (most recent `.jsonl` per project)
+
+---
+
+## Phase 3c — Delete orphaned project keys
+
+If the **Orphaned project keys** output from Step 0 showed any entries (not `NONE`), handle them here.
+
+These are project dirs whose source repository was moved, renamed, or deleted — the key no longer maps to any real path on disk. They accumulate over time as repos are reorganized.
+
+Show a summary table:
+```
+### Orphaned project key directories (source dir gone)
+
+| Directory | Sessions | Size |
+|-----------|----------|------|
+| -Users-berniegreen-Repos-old-project | 3 | 1200K |
+| ...                                  | ...| ...  |
+
+Total: N directories · X MB
+```
+
+Warn for any directory with sessions > 0: "⚠ [name] has [N] sessions — context will be lost. Run Phase 2 to extract first, or confirm deletion."
+
+Ask: "Delete all orphaned project key directories? Reply `yes` to delete, anything else to cancel."
+
+**If user confirms `yes`:**
+```bash
+python3 -c "
+import sys, os, shutil
+sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
+from pathlib import Path
+from _scope import _reconstruct
+projects_dir = Path.home() / '.claude' / 'projects'
+deleted = []
+for d in sorted(projects_dir.iterdir()):
+    if d.is_dir() and not list(_reconstruct(d.name, None)):
+        shutil.rmtree(d)
+        deleted.append(d.name)
+print('Deleted:', deleted)
+"
+```
+
+Report: "Deleted [N] orphaned project key directories."
+
+If `--dry-run`: show the table and report "DRY RUN — no directories deleted."
 
 ---
 

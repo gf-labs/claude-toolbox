@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Multi-repo git status collection — outputs tab-separated rows for parent/global mode."""
-import re, subprocess, sys, time
+import re, subprocess, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _scope import get_scope
+from _scope import get_scope, _reconstruct
 
 
 def _run(cmd):
@@ -31,80 +31,61 @@ def _snapshot_info(mem_file):
     if not mem_file.exists():
         return '—', '—'
     text = mem_file.read_text()
-    # Find all snapshot headers: ## Session snapshot — YYYY-MM-DD
     dates = re.findall(r'## Session snapshot — (\d{4}-\d{2}-\d{2})', text)
     last_date = dates[-1] if dates else '—'
-
-    # Count sessions in the project dir newer than last snapshot
     if last_date == '—':
         return '—', '—'
     proj_dir = mem_file.parent.parent  # ~/.claude/projects/[key]
     try:
         import datetime
         cutoff = datetime.datetime.strptime(last_date, '%Y-%m-%d').timestamp()
-        # Add one full day so same-day sessions count as snapshotted
         cutoff += 86400
-        newer = sum(
-            1 for f in proj_dir.glob('*.jsonl')
-            if f.stat().st_mtime > cutoff
-        )
+        newer = sum(1 for f in proj_dir.glob('*.jsonl') if f.stat().st_mtime > cutoff)
         return last_date, str(newer) if newer else '—'
     except Exception:
         return last_date, '—'
 
 
-mode, data, cwd = get_scope()
+def _session_count(proj_dir):
+    """Count .jsonl session files in a project directory."""
+    if not proj_dir.exists():
+        return '0'
+    count = sum(1 for _ in proj_dir.glob('*.jsonl'))
+    return str(count)
 
-projects_dir = Path.home() / '.claude' / 'projects'
 
-if mode == 'single':
-    cwd_key = str(cwd).replace('/', '-')
-    mem_file = projects_dir / cwd_key / 'memory' / 'MEMORY.md'
-    last_snap, sessions_since = _snapshot_info(mem_file)
-    print(f'SINGLE {cwd}')
-    print(f'LAST_SNAPSHOT\t{last_snap}\tSESSIONS_SINCE\t{sessions_since}')
-    sys.exit(0)
+def _local_branch_count(path):
+    """Count local git branches."""
+    out = _run(['git', '-C', str(path), 'branch'])
+    if not out:
+        return '—'
+    return str(len([l for l in out.splitlines() if l.strip()]))
 
-if mode == 'parent':
-    projects = [(c.name, c) for _, c in data]
-else:
-    # Global: iterate all known claude projects and reconstruct paths.
-    # Key format: str(path).replace('/', '-') → '-Users-berniegreen-...'
-    # Reverse is ambiguous for dirs with hyphens, so only include paths that exist.
-    projects = []
-    for proj_key in sorted(projects_dir.iterdir()):
-        if not proj_key.is_dir():
-            continue
-        reconstructed = Path('/' + proj_key.name[1:].replace('-', '/'))
-        if reconstructed.is_dir():
-            projects.append((reconstructed.name, reconstructed))
 
-print('PROJECT\tBRANCH\tCHANGES\tLAST_COMMIT\tMEMORY_LINES\tMEMORY_STATUS\tBACKLOG_ITEMS\tLAST_SNAPSHOT\tSESSIONS_SINCE\tLAST_SESSION_LOG\tLOG_ENTRIES')
-
-for name, path in projects:
-    branch = _run(['git', '-C', str(path), 'rev-parse', '--abbrev-ref', 'HEAD']) or '?'
-
-    status_out = _run(['git', '-C', str(path), 'status', '--short']) or ''
-    changes = len([l for l in status_out.splitlines() if l.strip()])
-    changes_str = str(changes) if changes else '—'
-
-    last_commit = _run(['git', '-C', str(path), 'log', '--oneline', '-1']) or '?'
-    last_hash = last_commit.split()[0] if last_commit.split() else '?'
-
-    cwd_key = str(path).replace('/', '-')
-    mem_file = projects_dir / cwd_key / 'memory' / 'MEMORY.md'
-    if mem_file.exists():
-        lines = len(mem_file.read_text().splitlines())
-        if lines >= 150:
-            mem_status = 'WARN'
-        elif lines >= 50:
-            mem_status = 'OK'
-        else:
-            mem_status = 'THIN'
-        mem_str = f'{lines}L'
+def _emit_row(name, path, group, projects_dir):
+    """Print one tab-separated project row."""
+    is_header = (group == 'header')
+    if is_header:
+        branch = '—'; branches = '—'; changes_str = '—'; last_hash = '—'
     else:
-        mem_status = 'MISSING'
-        mem_str = 'none'
+        branch = _run(['git', '-C', str(path), 'rev-parse', '--abbrev-ref', 'HEAD']) or '?'
+        branches = _local_branch_count(path)
+        status_out = _run(['git', '-C', str(path), 'status', '--short']) or ''
+        changes = len([l for l in status_out.splitlines() if l.strip()])
+        changes_str = str(changes) if changes else '—'
+        last_commit = _run(['git', '-C', str(path), 'log', '--oneline', '-1']) or '?'
+        last_hash = last_commit.split()[0] if last_commit.split() else '?'
+
+    proj_key = str(path).replace('/', '-')
+    proj_dir = projects_dir / proj_key
+    sessions = _session_count(proj_dir)
+    mem_file = proj_dir / 'memory' / 'MEMORY.md'
+    if mem_file.exists():
+        mem_lines = len(mem_file.read_text().splitlines())
+        mem_status = 'WARN' if mem_lines >= 150 else ('OK' if mem_lines >= 50 else 'THIN')
+        mem_str = f'{mem_lines}L'
+    else:
+        mem_status = 'MISSING'; mem_str = 'none'
 
     backlog_file = path / 'BACKLOG.md'
     backlog_count = '—'
@@ -117,6 +98,84 @@ for name, path in projects:
             pass
 
     last_snap, sessions_since = _snapshot_info(mem_file)
-    last_log, log_entries = _log_info(projects_dir / cwd_key)
+    last_log, log_entries = _log_info(proj_dir)
 
-    print(f'{name}\t{branch}\t{changes_str}\t{last_hash}\t{mem_str}\t{mem_status}\t{backlog_count}\t{last_snap}\t{sessions_since}\t{last_log}\t{log_entries}')
+    print(f'{group}\t{name}\t{branch}\t{branches}\t{sessions}\t{changes_str}\t{last_hash}\t{mem_str}\t{mem_status}\t{backlog_count}\t{last_snap}\t{sessions_since}\t{last_log}\t{log_entries}')
+
+
+mode, data, cwd = get_scope()
+projects_dir = Path.home() / '.claude' / 'projects'
+
+# --- Single mode ---
+if mode == 'single':
+    proj_key = str(cwd).replace('/', '-')
+    mem_file = projects_dir / proj_key / 'memory' / 'MEMORY.md'
+    last_snap, sessions_since = _snapshot_info(mem_file)
+    print(f'SINGLE {cwd}')
+    print(f'LAST_SNAPSHOT\t{last_snap}\tSESSIONS_SINCE\t{sessions_since}')
+    sys.exit(0)
+
+# --- Build active project list ---
+if mode == 'parent':
+    active = list(data)  # [(key, path), ...]
+else:
+    seen = set()
+    active = []
+    for proj_key_dir in sorted(projects_dir.iterdir()):
+        if not proj_key_dir.is_dir():
+            continue
+        for path in _reconstruct(proj_key_dir.name, None):
+            if path not in seen and path != Path.home():
+                seen.add(path)
+                active.append((proj_key_dir.name, path))
+
+# --- Group detection: find parent→children relationships within active list ---
+all_paths = {str(p) for _, p in active}
+groups = {}  # str(parent_path) → [(key, path)]
+top_level = []
+for key, path in active:
+    parent_str = next(
+        (ps for ps in all_paths if str(path).startswith(ps + '/') and ps != str(path)),
+        None
+    )
+    if parent_str:
+        groups.setdefault(parent_str, []).append((key, path))
+    else:
+        top_level.append((key, path))
+
+# --- Stale detection (always global — not scoped) ---
+active_keys = {key for key, _ in active}
+all_proj_keys = [p.name for p in sorted(projects_dir.iterdir()) if p.is_dir()]
+with_dash = {k for k in all_proj_keys if k.startswith('-')}
+stale_entries = []
+for key in all_proj_keys:
+    if key in active_keys:
+        continue  # skip active projects
+    if not key.startswith('-') and ('-' + key) in with_dash:
+        stale_entries.append((key, 'duplicate (no leading dash)'))
+        continue
+    candidates = list(_reconstruct(key, None))
+    if not candidates:
+        stale_entries.append((key, 'no dir on disk'))
+        continue
+    if candidates[0] == Path.home():
+        stale_entries.append((key, 'home dir — unscoped sessions'))
+
+# --- Output ---
+print('GROUP\tPROJECT\tBRANCH\tLOCAL_BRANCHES\tSESSIONS\tCHANGES\tLAST_COMMIT\tMEMORY_LINES\tMEMORY_STATUS\tBACKLOG_ITEMS\tLAST_SNAPSHOT\tSESSIONS_SINCE\tLAST_SESSION_LOG\tLOG_ENTRIES')
+
+for key, path in top_level:
+    has_children = str(path) in groups
+    group_tag = 'header' if has_children else ''
+    _emit_row(path.name, path, group_tag, projects_dir)
+    for child_key, child_path in groups.get(str(path), []):
+        _emit_row(child_path.name, child_path, path.name, projects_dir)
+
+if stale_entries:
+    print('')
+    print('# STALE_KEYS')
+    print('KEY\tSESSIONS\tNOTE')
+    for key, note in stale_entries:
+        proj_dir = projects_dir / key
+        sessions = _session_count(proj_dir)
+        print(f'{key}\t{sessions}\t{note}')
