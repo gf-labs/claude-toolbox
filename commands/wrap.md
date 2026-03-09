@@ -49,7 +49,9 @@ Wait for reply, then proceed to Step 1 regardless of answer.
 
 ## Step 1 — Session log
 
-Run the summarize flow using the session activity collected above:
+If you already ran `/tools:pin` this session and the session log is saved, reply `done` to skip to Step 2.
+
+Otherwise, run the summarize flow using the session activity collected above:
 
 1. Read FILES_TOUCHED, CROSS_PROJECT_FILES, BASH_COMMANDS, git log, and git diff stat
 2. Draft a structured session-log entry:

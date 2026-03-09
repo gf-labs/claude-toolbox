@@ -12,15 +12,14 @@ Personal Claude Code global toolbox — versioned commands, agents, scripts, hoo
 
 | Command | Description |
 |---------|-------------|
-| `/tools:audit`    | Repo audit — universal checks for any codebase |
-| `/tools:brief`    | Start-of-session orientation — branch, backlog, snapshot health, plans |
-| `/tools:cleanup`  | Clean up old Claude session artifacts — extract context, then delete |
-| `/tools:done`     | Mark current session for deletion (appends `-delete-me` to title) |
-| `/tools:env`      | Claude Code environment health check — settings, hooks, MCP, toolbox |
-| `/tools:snapshot` | Capture stable patterns into MEMORY.md; prompts for session-log update |
-| `/tools:status`   | Project status — git state, BACKLOG, snapshot and session-log health, recent activity |
-| `/tools:summarize`| Summarize the current session and append to session-log.md |
-| `/tools:wrap`     | End-of-session housekeeping — session log, git check, plan cleanup, backlog review, done marker |
+| `/tools:audit`  | Repo audit — universal checks for any codebase |
+| `/tools:brief`  | Start-of-session orientation — branch, backlog, snapshot health, plans |
+| `/tools:cleanup`| Clean up old Claude session artifacts — extract context, then delete |
+| `/tools:done`   | Mark current session for deletion |
+| `/tools:env`    | Claude Code environment health check — settings, hooks, MCP, toolbox |
+| `/tools:pin`    | Break checkpoint — status display, session log, optional MEMORY.md update |
+| `/tools:status` | Project status — git state, BACKLOG, snapshot and session-log health, recent activity |
+| `/tools:wrap`   | End-of-session housekeeping — git check, plan cleanup, backlog review, done marker |
 
 ## Session lifecycle
 
@@ -30,22 +29,22 @@ Personal Claude Code global toolbox — versioned commands, agents, scripts, hoo
 
 [during session]
   work...
+  /tools:pin          — break checkpoint: status + session log + optional MEMORY.md update
 
 [end of session]
   /ramp:wrap          — knowledge graph harvest (if ramp installed)
   /tools:wrap         — full close-out ritual:
-    Step 1: session log   → appends entry to session-log.md (via summarize flow)
+    Step 0: ramp check
+    Step 1: session log   → skip if /tools:pin already run
     Step 2: git check     → surface uncommitted changes + unpushed commits
-    Step 3: plan cleanup  → list plans, offer to delete completed ones
+    Step 3: plan cleanup  → list plans, offer to mark done
     Step 4: backlog       → mark completed items done
     Step 5: memory health → warn if MEMORY.md approaching 200-line limit
     Step 6: done?         → optionally mark session for deletion
 
 [on demand]
-  /tools:summarize    — session log only (without full wrap ritual)
-  /tools:snapshot     — update MEMORY.md with stable patterns (also migrates old snapshot entries to session-log.md)
+  /tools:status       — read-only project health at any point in the session
   /tools:done         — mark session for deletion without running wrap
-  /tools:status       — project health at any point in the session
 
 [periodic]
   /tools:cleanup      — delete old sessions, extract context to session-log.md + MEMORY.md
