@@ -2,5 +2,5 @@ __pycache__/
 *.pyc
 .env
 .DS_Store
-.claude/knowledge-graphs/local/
+.claude/knowledge-graphs/
 *.log
