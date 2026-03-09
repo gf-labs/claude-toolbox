@@ -41,9 +41,10 @@ Do not skip steps unless the user says `skip`.
 
 ## Step 0 — Ramp check
 
-Ask: "Did you run `/ramp:wrap` first? Reply `yes` or `skip` (skip if ramp is not installed)."
-
-Wait for reply, then proceed to Step 1 regardless of answer.
+Check the current session's conversation history:
+- If `/ramp:wrap` was run as the previous (or a recent) user message: proceed silently to Step 1.
+- If `/ramp:wrap` has NOT been run this session: run it now automatically before continuing. Say: "Running `/ramp:wrap` first…" then invoke the ramp:wrap flow.
+- If ramp is not installed (no `/ramp:wrap` command available): skip silently and proceed to Step 1.
 
 ---
 
