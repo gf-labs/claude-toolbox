@@ -149,7 +149,7 @@ Run the summarize flow using session activity, git log, and git diff stat collec
 
 1. Draft a structured entry:
    ```
-   ## [date]
+   ## [date] · [first 8 chars of SESSION id from collect-summarize.py]
    **Files changed:** [comma-separated relative paths, or "none"]
    **Git:** [N commit(s) — "message of most recent"] or "none"
    - [key action or decision — 3–8 bullets]
@@ -161,7 +161,7 @@ Run the summarize flow using session activity, git log, and git diff stat collec
    - If exists: append with Edit tool (match last chars of existing content, append `\n\n` + entry)
 4. Cross-project: for each path in CROSS_PROJECT_FILES, append an attributed entry to that project's session-log.md (infer owning project from the absolute path prefix):
    ```
-   ## [date] [← source-repo]
+   ## [date] · [8-char session id] [← source-repo]
    **Cross-project work from [source-repo] session:**
    - [specific files/actions in this project]
    ```
