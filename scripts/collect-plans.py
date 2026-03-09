@@ -30,11 +30,23 @@ else:
                     plan_map[current] = created[created.rfind('(') + 1:-1]
 
     for f in sorted(plans_dir.glob('*.md')):
-        lines = len(f.read_text().splitlines())
+        text = f.read_text()
+        file_lines = text.splitlines()
+        line_count = len(file_lines)
         title = ''
-        for line in f.read_text().splitlines():
-            if line.startswith('# '):
+        first_bullet = ''
+        past_frontmatter = False
+        for line in file_lines:
+            if line.strip() == '---':
+                past_frontmatter = not past_frontmatter
+                continue
+            if not title and line.startswith('# '):
                 title = line[2:].strip()
+            if title and not first_bullet and line.startswith('- '):
+                first_bullet = line[2:].strip()[:80]
+            if title and first_bullet:
                 break
         project = plan_map.get(f.name, '?')
-        print(f'{f.name}  {lines}L  {title[:50]}  [{project}]')
+        print(f'{f.name}  {line_count}L  [{project}]  {title[:50]}')
+        if first_bullet:
+            print(f'  → {first_bullet}')
