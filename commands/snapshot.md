@@ -148,6 +148,19 @@ Use the PATH shown in auto-collected context (or derived from user's project sel
 
 Confirm: "Saved to `[path]`."
 
+**Step 4 — Session log**
+
+A snapshot captures stable patterns; the session log captures what happened.
+If you haven't run `/tools:summarize` yet this session, do it now before moving on.
+
+Ask: "Session log up to date? Reply `done` (already captured) or `summarize` (run now)."
+
+If `summarize`: run the full summarize flow inline —
+1. Read session activity from `collect-summarize.py` output (run it now via Bash)
+2. Draft and show the session-log entry (same format as /tools:summarize)
+3. Ask: "Save to session-log.md? Reply `yes` or edit inline."
+4. On confirm: append to session-log.md (create with header if missing)
+
 ---
 
 ## Constraints

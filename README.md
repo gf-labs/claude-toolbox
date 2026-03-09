@@ -12,21 +12,21 @@ Personal Claude Code global toolbox — versioned commands, agents, scripts, hoo
 
 | Command | Description |
 |---------|-------------|
-| `/tools:audit` | Repo audit — universal checks for any codebase |
-| `/tools:cleanup` | Clean up old Claude session artifacts — extract context, then delete |
-| `/tools:doctor` | Claude Code environment health check |
-| `/tools:done` | Mark current session for deletion (appends `-delete-me` to title) |
-| `/tools:history` | Cross-project Claude activity — recent sessions and prompts |
-| `/tools:snapshot` | Capture stable patterns and decisions into project MEMORY.md |
-| `/tools:status` | Project status — git state, recent commits, BACKLOG, snapshot and session-log health |
-| `/tools:summarize` | Summarize the current session and append to session-log.md |
-| `/tools:wrap` | End-of-session housekeeping — session log, git check, plan cleanup, backlog review, done marker |
+| `/tools:audit`    | Repo audit — universal checks for any codebase |
+| `/tools:brief`    | Start-of-session orientation — branch, backlog, snapshot health, plans |
+| `/tools:cleanup`  | Clean up old Claude session artifacts — extract context, then delete |
+| `/tools:done`     | Mark current session for deletion (appends `-delete-me` to title) |
+| `/tools:env`      | Claude Code environment health check — settings, hooks, MCP, toolbox |
+| `/tools:snapshot` | Capture stable patterns into MEMORY.md; prompts for session-log update |
+| `/tools:status`   | Project status — git state, BACKLOG, snapshot and session-log health, recent activity |
+| `/tools:summarize`| Summarize the current session and append to session-log.md |
+| `/tools:wrap`     | End-of-session housekeeping — session log, git check, plan cleanup, backlog review, done marker |
 
 ## Session lifecycle
 
 ```
 [start of session]
-  /tools:brief        — orient: branch, in-progress, last snapshot, plans (planned)
+  /tools:brief        — orient: branch, in-progress, last snapshot, plans
 
 [during session]
   work...

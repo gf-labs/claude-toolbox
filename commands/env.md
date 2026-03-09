@@ -103,7 +103,7 @@ Read the global commands and agents lists above.
 
 **Single or global mode:**
 ```
-## Doctor — [date] — [repo name or "~"]
+## Env — [date] — [repo name or "~"]
 
 ### [N] issue(s) found
 
@@ -117,7 +117,7 @@ Read the global commands and agents lists above.
 
 **Parent mode:**
 ```
-## Doctor — [date] — [parent-path] ([N] projects)
+## Env — [date] — [parent-path] ([N] projects)
 
 ### Global checks
 [PASSED] Check 1 — Global settings valid
@@ -143,11 +143,11 @@ List all issues first (CRITICAL before WARN), then PASSED/INFO at the bottom.
 End with this footer (always, regardless of findings):
 
 ---
-*To add project-specific checks: create `.claude/commands/doctor.md` in your repo.
+*To add project-specific checks: create `.claude/commands/env.md` in your repo.
 Open it with:*
 
 ```
-Run `/tools:doctor` first for environment health. Project-specific checks below:
+Run `/tools:env` first for environment health. Project-specific checks below:
 ```
 
 *Then add your checks as additional numbered sections.*
