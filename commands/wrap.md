@@ -106,19 +106,21 @@ Otherwise, for each plan assess its relevance using the filename, title, and thi
 - **Stale** — already has `-delete-me` in the name, or title suggests completed/abandoned work
 - **Active** — appears in-progress or unrelated to this session
 
-Present the assessment:
+Present the assessment and your recommendation:
 ```
 Plans — [N] found:
 
   keen-painting-pebble-delete-me.md  [stale — already marked]
   claude-toolbox-buildout.md         [active — keep]
-  my-plan.md                         [this session — mark done?]
+  my-plan.md                         [this session → recommend: mark done]
 ```
 
-Ask: "Any plans to mark done or stale? Reply with filename(s) to mark as `-delete-me`, or `skip`.
-(Already-marked plans will be cleaned up by `/cleanup delete-me`.)"
+If any plans are flagged "this session" or appear stale/completed but not yet marked:
+Say: "Recommend marking done: [filename(s)]. Confirm? Reply `yes`, modify the list, or `skip`."
 
-On confirmation, rename each named file:
+If all unmarked plans are active: say "Plans: [N] active, [N] already marked for cleanup ✓" and move on.
+
+On confirmation, rename each recommended file:
 ```bash
 mv ~/.claude/plans/[name].md ~/.claude/plans/[name]-delete-me.md
 ```
