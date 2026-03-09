@@ -100,14 +100,31 @@ Read the **Plans** output above.
 
 If NONE: say "Plans: none ✓" and move on.
 
-Otherwise list each plan with its line count and title. Ask:
-"Any completed plans to delete? Reply with filename(s) (e.g. `my-plan.md`) or `skip`."
+Otherwise, for each plan assess its relevance using the filename, title, and this session's FILES_TOUCHED:
 
-On confirmation, delete each named file:
-```bash
-rm ~/.claude/plans/[filename]
+- **This session** — plan was the focus of work done today (matches session activity)
+- **Stale** — already has `-delete-me` in the name, or title suggests completed/abandoned work
+- **Active** — appears in-progress or unrelated to this session
+
+Present the assessment:
 ```
-Report: "Deleted [N] plan(s): [filenames]"
+Plans — [N] found:
+
+  keen-painting-pebble-delete-me.md  [stale — already marked]
+  claude-toolbox-buildout.md         [active — keep]
+  my-plan.md                         [this session — mark done?]
+```
+
+Ask: "Any plans to mark done or stale? Reply with filename(s) to mark as `-delete-me`, or `skip`.
+(Already-marked plans will be cleaned up by `/cleanup delete-me`.)"
+
+On confirmation, rename each named file:
+```bash
+mv ~/.claude/plans/[name].md ~/.claude/plans/[name]-delete-me.md
+```
+Report: "Marked [N] plan(s) for deletion: [filenames]"
+
+Never use `rm` — always rename with `-delete-me` suffix. Already-marked plans need no action.
 
 ---
 
