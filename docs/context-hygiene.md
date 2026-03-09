@@ -18,7 +18,8 @@ Run `/cleanup` to act on most of this automatically.
 
 | Store | Location | Loaded automatically? | You control it? |
 |-------|----------|-----------------------|-----------------|
-| MEMORY.md | `~/.claude/projects/[key]/memory/MEMORY.md` | Yes (auto-memory) | Yes — `/snapshot`, `/cleanup` |
+| MEMORY.md | `~/.claude/projects/[key]/memory/MEMORY.md` | Yes (auto-memory, 200-line limit) | Yes — `/tools:snapshot`, `/tools:cleanup` |
+| session-log.md | `~/.claude/projects/[key]/memory/session-log.md` | No | Yes — written by `/tools:summarize`, `/tools:wrap`, `/tools:cleanup` |
 | CLAUDE.md | `[repo]/CLAUDE.md` or `~/.claude/CLAUDE.md` | Yes (every session) | Yes — edit directly |
 | Plans | `~/.claude/plans/[name].md` | No (read on demand) | Yes — delete when done |
 | Reference docs | `~/.claude/docs/[topic].md` | No (reference on demand) | Yes |
@@ -42,10 +43,9 @@ Run `/cleanup` to act on most of this automatically.
 |------------|-------------|
 | How this project works (stable, permanent) | `CLAUDE.md` |
 | Project motivation, founding context, JDs | `CLAUDE.md` `## Background` section or `~/.claude/docs/` |
-| Current phase, blockers, in-progress state | `MEMORY.md` |
-| Debugging insights and lessons learned | `MEMORY.md` |
+| Stable patterns, preferences, architectural decisions | `MEMORY.md` (via `/tools:snapshot`) |
+| Session history — what was done and when | `session-log.md` (via `/tools:wrap` or `/tools:summarize`) |
 | In-flight design for a specific feature | Plan file (delete when done) |
-| Architectural decisions that should outlive a session | `MEMORY.md` or `docs/decisions/` |
 | Reference material you might re-inject | `~/.claude/docs/[topic].md` (global) or `docs/context/[name].md` (repo) |
 | Your demonstrated Claude Code skills | Knowledge graph (`~/.claude/knowledge-graphs/`) |
 | Raw session transcript | `.jsonl` file — scratch paper, delete freely |
@@ -83,13 +83,15 @@ When a tangential issue comes up mid-session:
 
 | Frequency | Action |
 |-----------|--------|
-| End of each working session | `/snapshot` — distill what matters into MEMORY.md |
-| End of a feature/topic | Delete completed plan files |
-| When MEMORY.md hits ~150 lines | Archive older sections; move to topic files |
-| Weekly (or when returning to a project) | `/cleanup` — sessions, plans, size checks |
-| When a project is dormant | Extract key decisions, delete all sessions |
+| End of each working session | `/tools:wrap` — session log + git check + plan cleanup + backlog + done marker |
+| On-demand (session log only) | `/tools:summarize` — append entry to session-log.md without full wrap ritual |
+| When stable patterns emerge | `/tools:snapshot` — distill architectural decisions and preferences into MEMORY.md |
+| End of a feature/topic | Delete completed plan files (via `/tools:wrap` Step 3 or manually) |
+| When MEMORY.md hits ~150 lines | `/tools:snapshot` migration — move old snapshot entries to session-log.md; archive verbose sections to topic files |
+| Weekly (or when returning to a project) | `/tools:cleanup` — delete old sessions, extract context, surface memory warnings |
+| When a project is dormant | Extract key decisions to MEMORY.md, delete all sessions via `/tools:cleanup` |
 
-Run `/cleanup` to handle sessions, plans review, memory size warnings, and plugin cache drift in one pass.
+Run `/tools:cleanup` to handle sessions, plans review, memory size warnings, and plugin cache drift in one pass.
 
 ---
 
