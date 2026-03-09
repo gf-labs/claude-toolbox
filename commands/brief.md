@@ -106,17 +106,20 @@ Render as follows:
 2. **Top-level and child rows**: table with columns:
    Project | Branch | Sessions | Changes | Memory | Backlog | Snapshot | Log
 
-3. **Stale section** (lines after `# STALE_KEYS` marker):
-   `**Stale keys** (N): key1 (note, N sessions) ...`
+3. **Orphaned keys** (lines after `# ORPHANED_KEYS` marker):
+   `**Orphaned** (N): key1 (note, N sessions) ...` — no dir on disk, safe to delete with /cleanup
 
-4. **Plans block** — use Plans + Plan map data:
+4. **Unscoped keys** (lines after `# UNSCOPED_KEYS` marker):
+   `**Unscoped** (N sessions): N sessions with no project scope — run /done inside those sessions or /cleanup delete-me`
+
+5. **Plans block** — use Plans + Plan map data:
    ```
    Plans:
      plan1.md [project] — Title
        → first bullet
    ```
 
-5. **Last active block** — find the project with the most recent ENTRIES: block in Session log output.
+6. **Last active block** — find the project with the most recent ENTRIES: block in Session log output.
    Show its entries:
    ```
    Last active: [project] ([date, N days ago])
@@ -125,7 +128,7 @@ Render as follows:
      ...
    ```
 
-6. **Ramp line**: show the ramp due-nodes line from auto-collected context.
+7. **Ramp line**: show the ramp due-nodes line from auto-collected context.
 
 **Elapsed time**: apply `(today)` / `(yesterday)` / `(N days ago)` to all dates in parent mode too.
 

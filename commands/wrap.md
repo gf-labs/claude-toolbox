@@ -85,6 +85,16 @@ python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-summarize.py | python3 ${CLAUDE_T
 ```
 This is silent if there are no cross-project references. If it prints "Updated .project-map", note it.
 
+Then auto-name the session if it has no existing custom-title:
+- Derive a short name from: the most recent git commit subject (strip "feat:", "fix:", "chore:"
+  prefixes and trailing "(vX.Y.Z)"), or from FILES_TOUCHED if no commits (use primary dir/file)
+- Format: kebab-case, max 5 words, no dates, no generic words like "session" or "work"
+- Examples: `plan-map-refactor`, `brief-enhancements`, `dotfiles-plugin-fix`
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/name-session.py "[derived-name]"
+```
+(Skips silently if already named.)
+
 ---
 
 ## Step 2 — Git check

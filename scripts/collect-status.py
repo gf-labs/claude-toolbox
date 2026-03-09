@@ -147,19 +147,20 @@ for key, path in active:
 active_keys = {key for key, _ in active}
 all_proj_keys = [p.name for p in sorted(projects_dir.iterdir()) if p.is_dir()]
 with_dash = {k for k in all_proj_keys if k.startswith('-')}
-stale_entries = []
+orphaned_entries = []   # no dir on disk, or duplicate key
+unscoped_entries = []   # dir exists but it's the home dir
 for key in all_proj_keys:
     if key in active_keys:
-        continue  # skip active projects
+        continue
     if not key.startswith('-') and ('-' + key) in with_dash:
-        stale_entries.append((key, 'duplicate (no leading dash)'))
+        orphaned_entries.append((key, 'duplicate (no leading dash)'))
         continue
     candidates = list(_reconstruct(key, None))
     if not candidates:
-        stale_entries.append((key, 'no dir on disk'))
+        orphaned_entries.append((key, 'no dir on disk'))
         continue
     if candidates[0] == Path.home():
-        stale_entries.append((key, 'home dir — unscoped sessions'))
+        unscoped_entries.append((key, 'home dir — unscoped sessions'))
 
 # --- Output ---
 print('GROUP\tPROJECT\tBRANCH\tLOCAL_BRANCHES\tSESSIONS\tCHANGES\tLAST_COMMIT\tMEMORY_LINES\tMEMORY_STATUS\tBACKLOG_ITEMS\tLAST_SNAPSHOT\tSESSIONS_SINCE\tLAST_SESSION_LOG\tLOG_ENTRIES')
@@ -171,11 +172,20 @@ for key, path in top_level:
     for child_key, child_path in groups.get(str(path), []):
         _emit_row(child_path.name, child_path, path.name, projects_dir)
 
-if stale_entries:
+if orphaned_entries:
     print('')
-    print('# STALE_KEYS')
+    print('# ORPHANED_KEYS')
     print('KEY\tSESSIONS\tNOTE')
-    for key, note in stale_entries:
+    for key, note in orphaned_entries:
+        proj_dir = projects_dir / key
+        sessions = _session_count(proj_dir)
+        print(f'{key}\t{sessions}\t{note}')
+
+if unscoped_entries:
+    print('')
+    print('# UNSCOPED_KEYS')
+    print('KEY\tSESSIONS\tNOTE')
+    for key, note in unscoped_entries:
         proj_dir = projects_dir / key
         sessions = _session_count(proj_dir)
         print(f'{key}\t{sessions}\t{note}')

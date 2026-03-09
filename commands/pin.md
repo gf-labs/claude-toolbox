@@ -171,6 +171,16 @@ Constraints:
 - Do NOT write to MEMORY.md — session history belongs in session-log.md only
 - If FILES_TOUCHED is "none": note "No file changes detected" in the entry body
 
+After saving the session log, auto-name the session if it has no existing custom-title:
+- Derive a short name from: the most recent git commit subject (strip "feat:", "fix:", "chore:"
+  prefixes and trailing "(vX.Y.Z)"), or from FILES_TOUCHED if no commits (primary dir/file)
+- Format: kebab-case, max 5 words, no dates, no generic words like "session" or "work"
+- Examples: `plan-map-refactor`, `brief-enhancements`, `dotfiles-plugin-fix`
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/name-session.py "[derived-name]"
+```
+(Skips silently if already named.)
+
 ---
 
 ## Step 3 — Stable patterns (optional)
