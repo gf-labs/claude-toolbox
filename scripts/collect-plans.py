@@ -1,11 +1,34 @@
 #!/usr/bin/env python3
-"""Plans inventory."""
+"""Plans inventory with project association (reads ## Plans section of .project-map)."""
 from pathlib import Path
 
 plans_dir = Path.home() / '.claude' / 'plans'
+
 if not plans_dir.exists() or not list(plans_dir.glob('*.md')):
     print('NONE')
 else:
+    # Load project map from ## Plans section (read-only — no scanning)
+    plan_map = {}
+    cache = plans_dir / '.project-map'
+    if cache.exists():
+        in_plans = False
+        current = None
+        for line in cache.read_text().splitlines():
+            if line.strip() == '## Plans':
+                in_plans = True
+                continue
+            if in_plans and line.startswith('## ') and line.strip() != '## Plans':
+                break
+            if not in_plans:
+                continue
+            if line.startswith('### '):
+                current = line[4:].strip()
+            elif current and line.startswith('- Created: '):
+                created = line[11:].strip()
+                # Extract project name from "date · sid (project-name)"
+                if '(' in created and created.endswith(')'):
+                    plan_map[current] = created[created.rfind('(') + 1:-1]
+
     for f in sorted(plans_dir.glob('*.md')):
         lines = len(f.read_text().splitlines())
         title = ''
@@ -13,4 +36,5 @@ else:
             if line.startswith('# '):
                 title = line[2:].strip()
                 break
-        print(f'{f.name}  {lines}L  {title[:60]}')
+        project = plan_map.get(f.name, '?')
+        print(f'{f.name}  {lines}L  {title[:50]}  [{project}]')

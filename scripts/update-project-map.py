@@ -8,7 +8,7 @@ The project map tracks:
   - first_session: oldest JSONL for each project key (when it first appeared in Claude)
   - Referenced by: sessions from other projects that touched this project's files
 """
-import json, re, subprocess, sys
+import json, re, subprocess, sys  # noqa: F401 re used in write_projects_section
 from datetime import date, datetime
 from pathlib import Path
 
@@ -41,17 +41,25 @@ def find_project_for_path(abs_path_str: str) -> tuple[str, str] | None:
     return None, None
 
 
-def parse_map() -> dict:
-    """Parse .project-map → {key: {name, first_session, refs: [str]}}"""
+def parse_projects_section() -> dict:
+    """Parse ## Projects section → {key: {name, first_session, refs: [str]}}"""
     if not MAP_FILE.exists():
         return {}
-    text = MAP_FILE.read_text()
+    lines = MAP_FILE.read_text().splitlines()
     projects = {}
     current = None
     in_refs = False
-    for line in text.splitlines():
-        if line.startswith('## ') and ' · ' in line:
-            parts = line[3:].split(' · ', 1)
+    in_projects = False
+    for line in lines:
+        if line.strip() == '## Projects':
+            in_projects = True
+            continue
+        if in_projects and line.startswith('## ') and line.strip() != '## Projects':
+            break  # next section
+        if not in_projects:
+            continue
+        if line.startswith('### ') and ' · ' in line:
+            parts = line[4:].split(' · ', 1)
             current = parts[1].strip()
             projects[current] = {'name': parts[0].strip(), 'first_session': '', 'refs': []}
             in_refs = False
@@ -70,22 +78,56 @@ def parse_map() -> dict:
     return projects
 
 
-def write_map(projects: dict):
+def write_projects_section(projects: dict):
+    """Rewrite ## Projects section; preserve ## Plans section and file header."""
     today = date.today().isoformat()
-    lines = ['# .project-map', f'# Updated: {today}', '']
+
+    # Read existing file, strip Projects section and old Projects-updated header
+    existing_lines = MAP_FILE.read_text().splitlines() if MAP_FILE.exists() else []
+    kept = []
+    in_projects = False
+    for line in existing_lines:
+        if line.strip() == '## Projects':
+            in_projects = True
+            continue
+        if in_projects and line.startswith('## '):
+            in_projects = False
+        if in_projects:
+            continue
+        if line.startswith('# Projects-updated: '):
+            continue
+        kept.append(line)
+
+    # Insert Projects-updated header after leading # comment lines (not ## sections)
+    insert_at = 0
+    for i, l in enumerate(kept):
+        if re.match(r'^#[^#]', l) or l == '#':
+            insert_at = i + 1
+        elif l.strip():
+            break
+    kept.insert(insert_at, f'# Projects-updated: {today}')
+
+    # Strip trailing blanks
+    while kept and not kept[-1].strip():
+        kept.pop()
+
+    # Build Projects section
+    proj_lines = ['', '## Projects', '']
     for key in sorted(projects, key=lambda k: projects[k]['name'].lower()):
         info = projects[key]
-        lines.append(f"## {info['name']} · {key}")
-        lines.append(f"- First session: {info['first_session']}")
+        proj_lines.append(f"### {info['name']} · {key}")
+        proj_lines.append(f"- First session: {info['first_session']}")
         refs = info.get('refs', [])
         if refs:
-            lines.append('- Referenced by:')
+            proj_lines.append('- Referenced by:')
             for r in refs:
-                lines.append(f'  - {r}')
+                proj_lines.append(f'  - {r}')
         else:
-            lines.append('- Referenced by: none')
-        lines.append('')
-    MAP_FILE.write_text('\n'.join(lines))
+            proj_lines.append('- Referenced by: none')
+        proj_lines.append('')
+
+    MAP_FILE.parent.mkdir(parents=True, exist_ok=True)
+    MAP_FILE.write_text('\n'.join(kept + proj_lines).strip() + '\n')
 
 
 # --- Run collect-summarize if needed ---
@@ -148,7 +190,7 @@ if not targets:
     sys.exit(0)
 
 # Load, update, write
-projects = parse_map()
+projects = parse_projects_section()
 today = date.today().isoformat()
 
 # Ensure source project is tracked
@@ -174,5 +216,5 @@ for tkey, tinfo in targets.items():
     if ref not in projects[tkey]['refs']:
         projects[tkey]['refs'].append(ref)
 
-write_map(projects)
+write_projects_section(projects)
 print(f'Updated .project-map — referenced {len(targets)} project(s): {", ".join(t["name"] for t in targets.values())}')

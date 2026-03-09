@@ -4,6 +4,43 @@ import os
 from pathlib import Path
 
 
+def _reconstruct(key, cwd_str=None):
+    """Yield all existing dirs that could match this project key.
+
+    Project keys encode paths as '-'-joined components, but directory names
+    may also contain hyphens, making naive replacement ambiguous. This function
+    backtracks: at each '-', it tries treating it as a path separator OR as a
+    literal hyphen in the current directory name.
+
+    Pruning: when trying a path separator, we only recurse if the path built
+    so far is an existing directory — this eliminates bad branches early.
+
+    cwd_str: if given, only yield paths that are descendants of this dir.
+             If None, yield any existing directory (global mode).
+    """
+    parts = key.lstrip('-').split('-')
+
+    def build(idx, path_parts):
+        if idx == len(parts):
+            p = Path('/' + '/'.join(path_parts))
+            if not p.is_dir():
+                return
+            p_str = str(p)
+            if cwd_str is None or (p_str != cwd_str and p_str.startswith(cwd_str + '/')):
+                yield p
+            return
+        part = parts[idx]
+        # Option A: new path component — prune if current path doesn't exist
+        current = Path('/' + '/'.join(path_parts))
+        if current.is_dir():
+            yield from build(idx + 1, path_parts + [part])
+        # Option B: extend current component with hyphen (always try)
+        if path_parts:
+            yield from build(idx + 1, path_parts[:-1] + [path_parts[-1] + '-' + part])
+
+    yield from build(1, [parts[0]])
+
+
 def get_scope(cwd=None):
     """
     Returns one of:
@@ -18,22 +55,23 @@ def get_scope(cwd=None):
     if not projects_dir.exists():
         return ('global', None, None)
 
+    # Find all known projects that are descendants of cwd (any depth)
+    seen = set()
+    descendants = []
+    cwd_str = str(cwd)
+    for proj_dir in sorted(projects_dir.iterdir()):
+        if not proj_dir.is_dir():
+            continue
+        for reconstructed in _reconstruct(proj_dir.name, cwd_str):
+            if reconstructed not in seen:
+                seen.add(reconstructed)
+                descendants.append((proj_dir.name, reconstructed))
+
+    if descendants:
+        return ('parent', descendants, cwd)
+
     if (projects_dir / cwd_key).exists():
         return ('single', cwd_key, cwd)
-
-    children = []
-    try:
-        for child in sorted(cwd.iterdir()):
-            if not child.is_dir():
-                continue
-            child_key = str(child).replace('/', '-')
-            if (projects_dir / child_key).exists():
-                children.append((child_key, child))
-    except PermissionError:
-        pass
-
-    if children:
-        return ('parent', children, cwd)
 
     return ('global', None, None)
 

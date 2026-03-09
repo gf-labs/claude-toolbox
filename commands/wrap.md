@@ -81,7 +81,7 @@ Constraints:
 
 After saving the session log, update the project map:
 ```bash
-python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/update-project-map.py
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-summarize.py | python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/update-project-map.py
 ```
 This is silent if there are no cross-project references. If it prints "Updated .project-map", note it.
 

@@ -18,6 +18,9 @@ model: claude-haiku-4-5-20251001
 **Plans**:
 !python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plans.py
 
+**Plan map** (project associations):
+!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plan-map.py
+
 **Branch**:
 !git branch -vv 2>/dev/null | grep '^\*' || echo "not a git repo"
 
@@ -55,7 +58,30 @@ MEMORY.md: [NL OK / THIN / WARN / MISSING]
 
 **Parent/global mode:**
 
-Same roll-up table as `status` but without the history section — just Branch, Changes, MEMORY.md, Backlog, Snapshot, Log columns. Source: `collect-status.py`.
+The Status data includes GROUP, PROJECT, BRANCH, LOCAL_BRANCHES, SESSIONS, CHANGES, LAST_COMMIT,
+MEMORY_LINES, MEMORY_STATUS, BACKLOG_ITEMS, LAST_SNAPSHOT, SESSIONS_SINCE, LAST_SESSION_LOG, LOG_ENTRIES.
+
+Render as follows:
+
+1. **Group header rows** (GROUP=header): render as a bold section label with memory/session summary:
+   `**gfl/** — 5 sessions, snapshot 2026-03-08`
+   Then list child rows (GROUP=gfl) indented beneath it.
+
+2. **Top-level rows** (GROUP=""): render in a flat table with columns:
+   Project | Branch (Nbranches) | Sessions | Changes | Memory | Backlog | Snapshot | Log
+
+3. **Child rows** (GROUP=parent_name): render indented under their parent group header,
+   same columns as top-level.
+
+4. **Stale section** (lines after `# STALE_KEYS` marker): render as:
+   `**Stale keys** (N): key1 (note, N sessions), key2 (note) ...`
+   These are project keys with no matching dir, duplicates, or the home-dir pseudo-project.
+
+5. **Plans line** — combine Plans and Plan map data:
+   `Plans: plan1.md (project, NL), plan2.md (project, NL) ...` or "none"
+
+In parent/global mode, ignore the Branch and Changes auto-collected fields at the bottom
+(they reflect the cwd which has no git repo).
 
 ---
 
