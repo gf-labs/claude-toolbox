@@ -82,8 +82,10 @@ Constraints:
 After saving the session log, update the project map:
 ```bash
 python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-summarize.py | python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/update-project-map.py
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plan-map.py > /dev/null
 ```
-This is silent if there are no cross-project references. If it prints "Updated .project-map", note it.
+First command is silent if no cross-project references; prints "Updated .project-map" if it found any.
+Second command refreshes the `## Plans` section so any plans created this session are tracked.
 
 Then auto-name the session if it has no existing custom-title:
 - Derive a short name from: the most recent git commit subject (strip "feat:", "fix:", "chore:"
