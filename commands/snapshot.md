@@ -8,6 +8,35 @@ allowed-tools: Bash, Read, Write, Edit
 **Scope**:
 !python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/_scope.py
 
+**Migration check** (detects dated snapshot entries in MEMORY.md):
+!python3 -c "
+import re, os, sys
+sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT','') + '/scripts')
+from _scope import get_scope
+from pathlib import Path
+mode, data, cwd = get_scope()
+if mode == 'global' or cwd is None:
+    try:
+        import subprocess
+        git_root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], stderr=subprocess.DEVNULL, text=True).strip()
+        key = git_root.replace('/', '-')
+    except Exception:
+        print('MIGRATION: none')
+        sys.exit(0)
+elif mode == 'single':
+    key = data
+else:
+    key = str(cwd).replace('/', '-')
+projects_dir = Path.home() / '.claude' / 'projects'
+mem = projects_dir / key / 'memory' / 'MEMORY.md'
+if not mem.exists():
+    print('MIGRATION: none')
+else:
+    n = len(re.findall(r'^## Session snapshot —', mem.read_text(), re.MULTILINE))
+    print(f'MIGRATION: {n} snapshot section(s) found' if n else 'MIGRATION: none')
+    if n: print('MIGRATION_NEEDED: yes')
+" 2>/dev/null || echo "MIGRATION: none"
+
 **Project MEMORY.md**:
 !python3 -c "
 import os, sys
@@ -50,6 +79,22 @@ You are capturing the current session's key context into MEMORY.md so it persist
 
 ---
 
+## Migration (runs once if MIGRATION_NEEDED)
+
+If MIGRATION_NEEDED is "yes":
+
+Say: "MEMORY.md has [N] dated snapshot section(s) — these should move to session-log.md (unlimited history file). Migrate now? Reply `yes` or `skip`."
+
+If yes:
+1. Read MEMORY.md
+2. Extract all `## Session snapshot — YYYY-MM-DD` blocks (each ends at the next `##` or EOF)
+3. Convert each to session-log format: `## YYYY-MM-DD (migrated)\n[bullets]\n`
+4. Append to session-log.md (create with `# [Repo] Session Log\n\n` header if missing)
+5. Remove snapshot blocks from MEMORY.md (preserve all other content)
+6. Report: "Migrated [N] snapshot(s) to session-log.md · MEMORY.md now [M] lines."
+
+---
+
 ## Scope handling
 
 Read the **Scope** output above and act accordingly:
@@ -71,11 +116,13 @@ Read the **Scope** output above and act accordingly:
 Look back at what was discussed and done in this conversation. Identify:
 - Key decisions made (architectural, design, workflow)
 - Problems solved and how
-- Patterns established or discovered
+- Stable patterns, preferences, and conventions established
+- Key architectural decisions that will affect future sessions
 - Important file paths, commands, or configurations touched
 - Anything a future session would need to know to continue effectively
 
 Discard: ephemeral details, task mechanics, things already well-captured in existing MEMORY.md content.
+Discard: session narrative (what was done today — that goes to session-log.md), git commit details, and event sequences.
 
 **Step 2 — Draft the snapshot**
 

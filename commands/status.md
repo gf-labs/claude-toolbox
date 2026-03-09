@@ -13,6 +13,9 @@ model: claude-haiku-4-5-20251001
 **Multi-project status** (parent/global mode only):
 !python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-status.py
 
+**Session log status**:
+!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-session-log.py
+
 **Repo**:
 !basename "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null || echo "(not a git repo)"
 
@@ -78,6 +81,7 @@ In single mode, read the LAST_SNAPSHOT and SESSIONS_SINCE lines from collect-sta
 [Up Next: first item only, or "(nothing)"]
 
 **Last snapshot:** [date from LAST_SNAPSHOT] [+(N) if SESSIONS_SINCE is not "—"] or "—"
+**Last session log:** [date from LAST_SESSION_LOG] ([LOG_ENTRIES] entries) or "—"
 
 ---
 
@@ -97,11 +101,11 @@ If no history in range: `No Claude activity in the last [N] days.`
 ```
 ## Status — [parent-path or "all projects"] — [N] projects — [date]
 
-| Project | Branch | Changes | Last Commit | MEMORY.md | Backlog | Snapshot |
-|---------|--------|---------|-------------|-----------|---------|----------|
-| claude-toolbox | main | 2 | fa702a8 | 87L OK | 5 items | 2026-03-01 (+2) |
-| ramp | main | — | a1b2c3d | 45L THIN | 2 items | 2026-02-20 |
-| gfl-marketplace | main | — | 19fe86a | none | — | — |
+| Project | Branch | Changes | Last Commit | MEMORY.md | Backlog | Snapshot | Log |
+|---------|--------|---------|-------------|-----------|---------|----------|-----|
+| claude-toolbox | main | 2 | fa702a8 | 87L OK | 5 items | 2026-03-01 (+2) | 2026-03-08 |
+| ramp | main | — | a1b2c3d | 45L THIN | 2 items | 2026-02-20 | — |
+| gfl-marketplace | main | — | 19fe86a | none | — | — | — |
 
 ---
 
@@ -117,5 +121,8 @@ Format collect-status.py tab-separated output into the table. Map columns:
 - MEMORY.md: combine MEMORY_LINES + MEMORY_STATUS (e.g. "87L OK", "none")
 - Backlog: append "items" if count, else "—"
 - Snapshot: show LAST_SNAPSHOT date; if SESSIONS_SINCE is not "—", append "(+N)" to flag unsaved sessions
+- Log: show LAST_SESSION_LOG date from collect-session-log.py output, or "—"
+
+If LAST_SESSION_LOG from collect-session-log.py is "—": show `Last session log: —`
 
 Keep it tight — every line earns its place.

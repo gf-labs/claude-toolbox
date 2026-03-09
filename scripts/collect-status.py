@@ -14,6 +14,18 @@ def _run(cmd):
         return None
 
 
+def _log_info(proj_dir):
+    """Return (last_log_date, entry_count) from session-log.md."""
+    log_file = proj_dir / 'memory' / 'session-log.md'
+    if not log_file.exists():
+        return '—', '—'
+    text = log_file.read_text()
+    dates = re.findall(r'^## (\d{4}-\d{2}-\d{2})', text, re.MULTILINE)
+    if not dates:
+        return '—', '—'
+    return dates[-1], str(len(dates))
+
+
 def _snapshot_info(mem_file):
     """Return (last_snapshot_date, sessions_since) from MEMORY.md."""
     if not mem_file.exists():
@@ -67,7 +79,7 @@ else:
         if reconstructed.is_dir():
             projects.append((reconstructed.name, reconstructed))
 
-print('PROJECT\tBRANCH\tCHANGES\tLAST_COMMIT\tMEMORY_LINES\tMEMORY_STATUS\tBACKLOG_ITEMS\tLAST_SNAPSHOT\tSESSIONS_SINCE')
+print('PROJECT\tBRANCH\tCHANGES\tLAST_COMMIT\tMEMORY_LINES\tMEMORY_STATUS\tBACKLOG_ITEMS\tLAST_SNAPSHOT\tSESSIONS_SINCE\tLAST_SESSION_LOG\tLOG_ENTRIES')
 
 for name, path in projects:
     branch = _run(['git', '-C', str(path), 'rev-parse', '--abbrev-ref', 'HEAD']) or '?'
@@ -105,5 +117,6 @@ for name, path in projects:
             pass
 
     last_snap, sessions_since = _snapshot_info(mem_file)
+    last_log, log_entries = _log_info(projects_dir / cwd_key)
 
-    print(f'{name}\t{branch}\t{changes_str}\t{last_hash}\t{mem_str}\t{mem_status}\t{backlog_count}\t{last_snap}\t{sessions_since}')
+    print(f'{name}\t{branch}\t{changes_str}\t{last_hash}\t{mem_str}\t{mem_status}\t{backlog_count}\t{last_snap}\t{sessions_since}\t{last_log}\t{log_entries}')

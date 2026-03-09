@@ -281,12 +281,29 @@ If user says `extract [project]`:
 1. Use the Read tool to read the old session `.jsonl` files for that project at `~/.claude/projects/[project-dir]/[session-id].jsonl`
 2. From the JSONL, extract only the `display` fields (user prompts) — these are the lightest representation of what was discussed
 3. Identify: key decisions made, architectural patterns established, bugs fixed, recurring patterns
-4. Append a dated section to `~/.claude/projects/[project-dir]/memory/MEMORY.md` (create it if missing):
-   ```
-   ## Extracted from old sessions — [date]
-   [concise bullet points of key context]
-   ```
-5. Confirm: "Extracted [N] key items from [session-count] sessions into MEMORY.md."
+
+Then write to **two separate targets**:
+
+**Session summaries → session-log.md:**
+For each old session (chronological order), append a dated entry:
+```
+## [session-date] (extracted from [session-id])
+**Files changed:** [if detectable, else "unknown"]
+- [key action or topic from session]
+---
+```
+Create `session-log.md` with `# [Repo] Session Log\n\n` header if missing.
+
+**Stable patterns only → MEMORY.md:**
+Append a single dated section with distilled patterns (no event sequences, no narrative):
+```
+## Memory update — [date] (extracted)
+- [stable pattern or decision]
+- [stable pattern or decision]
+```
+Create MEMORY.md with `# [Repo] Memory\n\n` header if missing.
+
+5. Confirm: "Extracted [N] session(s) to session-log.md · [M] stable patterns to MEMORY.md."
 
 If user says `skip` or project has adequate memory: proceed to Phase 3.
 
@@ -338,6 +355,7 @@ After deletion, run `du -sh ~/.claude/projects/ ~/.claude/file-history/ ~/.claud
 - `~/.claude.json` or `~/.claude/settings.json`
 - `~/.claude/CLAUDE.md`
 - `~/.claude/projects/*/memory/MEMORY.md`
+- `~/.claude/projects/*/memory/session-log.md`
 - Any session newer than the threshold
 - The current active session (most recent `.jsonl` per project)
 
