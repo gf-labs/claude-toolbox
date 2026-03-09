@@ -80,6 +80,12 @@ for line in current.read_text(errors='replace').splitlines():
             fp = inp.get('file_path', '')
             if fp:
                 fp_path = Path(fp)
+                # Skip ~/.claude/ paths — Claude internal ops, not sibling project work
+                try:
+                    fp_path.relative_to(Path.home() / '.claude')
+                    continue
+                except ValueError:
+                    pass
                 try:
                     rel = str(fp_path.relative_to(cwd))
                     if rel not in seen_files:

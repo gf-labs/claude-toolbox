@@ -1,6 +1,6 @@
 {
   "name": "tools",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "Personal Claude Code global toolbox — audit, brief, cleanup, done, env, pin, status, wrap commands with session log",
   "author": {"name": "Bernie Green"},
   "license": "MIT",
