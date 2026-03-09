@@ -97,6 +97,36 @@ Read the global commands and agents lists above.
 - `[INFO]` if `~/.claude/agents/` does not exist — no global agents defined
 - No pass/fail — informational inventory only
 
+### Check 7 — Plugin cache vs active plugins
+Using the `Bash` tool, run:
+```bash
+python3 -c "
+import json
+from pathlib import Path
+cache_dir = Path.home() / '.claude' / 'plugins' / 'cache'
+settings_file = Path.home() / '.claude' / 'settings.json'
+installed_file = Path.home() / '.claude' / 'plugins' / 'installed_plugins.json'
+
+cache_size = sum(f.stat().st_size for f in cache_dir.rglob('*') if f.is_file()) // (1024*1024) if cache_dir.exists() else 0
+cache_dirs = [d.name for d in cache_dir.iterdir() if d.is_dir()] if cache_dir.exists() else []
+
+settings = json.loads(settings_file.read_text()) if settings_file.exists() else {}
+enabled = settings.get('enabledPlugins', {})
+
+installed = {}
+if installed_file.exists():
+    installed = json.loads(installed_file.read_text()).get('plugins', {})
+
+print(f'CACHE_SIZE_MB={cache_size}')
+print(f'CACHE_DIRS={cache_dirs}')
+print(f'ENABLED_PLUGINS={list(enabled.keys())}')
+print(f'INSTALLED_PLUGINS={list(installed.keys())}')
+"
+```
+- `[WARN]` if cache is non-empty AND both `enabledPlugins` and `installed_plugins` are empty — orphaned cache, safe to delete
+- `[INFO]` if cache is non-empty and plugins are active — cache is in use, report size
+- `[PASSED]` if cache is empty or plugins are active and cache matches
+
 ---
 
 ## Output format

@@ -220,6 +220,25 @@ ls ~/.claude/docs/ 2>/dev/null || echo "NONE"
 du -sh ~/.claude/projects/ ~/.claude/file-history/ ~/.claude/debug/ ~/.claude/session-env/ 2>/dev/null
 ```
 
+**Plugin cache** (marketplace cache vs active plugins):
+```bash
+python3 -c "
+import json
+from pathlib import Path
+cache_dir = Path.home() / '.claude' / 'plugins' / 'cache'
+settings = json.loads((Path.home() / '.claude' / 'settings.json').read_text())
+installed_file = Path.home() / '.claude' / 'plugins' / 'installed_plugins.json'
+installed = json.loads(installed_file.read_text()).get('plugins', {}) if installed_file.exists() else {}
+enabled = settings.get('enabledPlugins', {})
+cache_size = sum(f.stat().st_size for f in cache_dir.rglob('*') if f.is_file()) // (1024*1024) if cache_dir.exists() else 0
+cache_dirs = [d.name for d in cache_dir.iterdir() if d.is_dir()] if cache_dir.exists() else []
+print(f'CACHE_MB={cache_size}')
+print(f'CACHE_DIRS={cache_dirs}')
+print(f'ENABLED={list(enabled.keys())}')
+print(f'INSTALLED={list(installed.keys())}')
+"
+```
+
 **Plugin cache drift** (cached commands vs source repo):
 ```bash
 python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plugin-drift.py
@@ -486,6 +505,53 @@ print('Deleted:', deleted)
 Report: "Deleted [N] orphaned project key directories."
 
 If `--dry-run`: show the table and report "DRY RUN — no directories deleted."
+
+---
+
+## Phase 3d — Plugin cache cleanup (auto, no confirmation)
+
+Check if the plugin cache is orphaned:
+```bash
+python3 -c "
+import json
+from pathlib import Path
+cache_dir = Path.home() / '.claude' / 'plugins' / 'cache'
+settings = json.loads((Path.home() / '.claude' / 'settings.json').read_text())
+installed_file = Path.home() / '.claude' / 'plugins' / 'installed_plugins.json'
+installed = json.loads(installed_file.read_text()).get('plugins', {}) if installed_file.exists() else {}
+enabled = settings.get('enabledPlugins', {})
+cache_size = sum(f.stat().st_size for f in cache_dir.rglob('*') if f.is_file()) // (1024*1024) if cache_dir.exists() else 0
+cache_dirs = [d.name for d in cache_dir.iterdir() if d.is_dir()] if cache_dir.exists() else []
+print(f'CACHE_MB={cache_size}')
+print(f'CACHE_DIRS={cache_dirs}')
+print(f'ENABLED={list(enabled.keys())}')
+print(f'INSTALLED={list(installed.keys())}')
+"
+```
+
+**Orphaned** = cache is non-empty AND both `enabledPlugins` and `installed_plugins` are empty.
+
+If orphaned: delete automatically (cache is fully reconstructable via `/plugin install`):
+```bash
+python3 -c "
+import shutil
+from pathlib import Path
+cache_dir = Path.home() / '.claude' / 'plugins' / 'cache'
+deleted = []
+for d in sorted(cache_dir.iterdir()):
+    if d.is_dir():
+        size_mb = sum(f.stat().st_size for f in d.rglob('*') if f.is_file()) // (1024*1024)
+        shutil.rmtree(d)
+        deleted.append(f'{d.name} ({size_mb}MB)')
+print('Deleted:', deleted)
+"
+```
+
+Report: "Auto-deleted orphaned plugin cache: [names] · [total]MB freed."
+
+If not orphaned (plugins active or cache empty): skip silently.
+
+If `--dry-run`: report "DRY RUN — orphaned plugin cache would be deleted: [N]MB."
 
 ---
 
