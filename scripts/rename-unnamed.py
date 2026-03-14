@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
-"""Auto-rename unnamed sessions in scope from commit subjects or first user messages.
+"""Rename unnamed sessions in scope from commit subjects or first user messages.
 
 Usage:
-  python3 rename-unnamed.py [--skip SESSION_ID_PREFIX]
+  python3 rename-unnamed.py [options]
 
---skip: skip the session with this ID prefix (default: skip most recent by mtime per project)
+Options:
+  --skip ID       skip session with this ID prefix (default: most recent per project)
+  --pattern TEXT  only process sessions whose title or first message matches TEXT
+  --force         include sessions that already have a custom-title
+  --dry-run       print proposals without writing; outputs PROPOSAL lines instead of RENAMED
 
-Outputs: "RENAMED: id8 → name" per session renamed, or "NONE" if nothing to rename.
+Output (normal):  "RENAMED: id8 → name"  or  "NONE"
+Output (dry-run): "PROPOSAL: /path/to/file|id8|current_title|proposed_name"  or  "NONE"
 """
 import json
 import re
@@ -19,10 +24,8 @@ from _scope import get_scope
 
 def _extract_context(path: Path):
     """Return (last_commit_subject, first_user_msg) using head+tail reads."""
-    text = path.read_text(errors='replace')
-    lines = text.splitlines()
+    lines = path.read_text(errors='replace').splitlines()
 
-    # First user message — near the start
     first_user = ''
     for line in lines[:40]:
         if not line.strip():
@@ -44,7 +47,6 @@ def _extract_context(path: Path):
         except Exception:
             pass
 
-    # Last commit subject — scan end of file in reverse
     commit = ''
     for line in reversed(lines[-600:]):
         if not line.strip():
@@ -83,18 +85,14 @@ def _slug(text: str) -> str:
 
 def _derive_name(commit: str, first_user: str) -> str:
     if commit:
-        # Strip "[main abc1234] " prefix
         m = re.match(r'^\[(?:main|master)[^\]]*\]\s*', commit)
         source = commit[m.end():] if m else commit
-        # Strip conventional commit prefix: feat: fix(scope): chore!:
         source = re.sub(r'^(feat|fix|chore|docs|refactor|test|style|perf|ci|build)[!]?(\([^)]+\))?:\s*', '', source)
-        # Strip trailing version e.g. (v0.4.3)
         source = re.sub(r'\s*\(v[\d.]+\)\s*$', '', source).strip()
         name = _slug(source)
         if name:
             return name
     if first_user:
-        # Strip leading /command invocations
         source = re.sub(r'^/\S+\s*', '', first_user).strip()
         return _slug(source)
     return ''
@@ -102,11 +100,20 @@ def _derive_name(commit: str, first_user: str) -> str:
 
 # --- Parse args ---
 args = sys.argv[1:]
-skip_prefix = None
-if '--skip' in args:
-    idx = args.index('--skip')
-    if idx + 1 < len(args):
-        skip_prefix = args[idx + 1]
+
+def _flag(name):
+    return name in args
+
+def _opt(name):
+    if name in args:
+        idx = args.index(name)
+        return args[idx + 1] if idx + 1 < len(args) else None
+    return None
+
+skip_prefix = _opt('--skip')
+pattern = (_opt('--pattern') or '').lower()
+force = _flag('--force')
+dry_run = _flag('--dry-run')
 
 # --- Resolve scope ---
 mode, data, cwd = get_scope()
@@ -119,7 +126,7 @@ elif mode == 'parent':
 else:
     proj_dirs = sorted(d for d in projects_dir.iterdir() if d.is_dir())
 
-renamed = []
+results = []
 
 for proj_dir in proj_dirs:
     if not proj_dir.exists():
@@ -128,33 +135,34 @@ for proj_dir in proj_dirs:
     if not jsonls:
         continue
 
-    # Determine what to skip
     if skip_prefix:
         skip_stems = {f.stem for f in jsonls if f.stem.startswith(skip_prefix)}
     else:
-        skip_stems = {jsonls[-1].stem}  # most recent = current session
+        skip_stems = {jsonls[-1].stem}
 
     for f in jsonls:
         if f.stem in skip_stems:
             continue
         try:
-            # Check existing title in a single pass, also grab context
-            has_title = False
+            current_title = ''
             for line in f.read_text(errors='replace').splitlines():
                 if not line.strip():
                     continue
                 try:
                     obj = json.loads(line)
                     if obj.get('type') == 'custom-title' and obj.get('customTitle'):
-                        has_title = True
-                        break
+                        current_title = obj['customTitle']
                 except Exception:
                     pass
 
-            if has_title:
+            if current_title and not force:
                 continue
 
             commit, first_user = _extract_context(f)
+
+            if pattern and pattern not in (current_title + ' ' + first_user).lower():
+                continue
+
             if not commit and not first_user:
                 continue
 
@@ -162,17 +170,20 @@ for proj_dir in proj_dirs:
             if not name:
                 continue
 
-            sid = f.stem
-            record = json.dumps({'type': 'custom-title', 'customTitle': name, 'sessionId': sid})
-            with open(f, 'a') as fh:
-                fh.write(record + '\n')
-            renamed.append(f'{sid[:8]} → {name}')
+            results.append((f, f.stem[:8], current_title, name))
 
         except Exception:
             pass
 
-if renamed:
-    for r in renamed:
-        print(f'RENAMED: {r}')
-else:
+if not results:
     print('NONE')
+    sys.exit(0)
+
+for f, sid8, current_title, name in results:
+    if dry_run:
+        print(f'PROPOSAL: {f}|{sid8}|{current_title}|{name}')
+    else:
+        record = json.dumps({'type': 'custom-title', 'customTitle': name, 'sessionId': f.stem})
+        with open(f, 'a') as fh:
+            fh.write(record + '\n')
+        print(f'RENAMED: {sid8} → {name}')

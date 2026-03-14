@@ -126,7 +126,7 @@ MEMORY.md: [NL OK / THIN / WARN / MISSING]
 
 Ramp: [N] nodes due  |  [Level]  |  [XP] XP
 Toolbox: CLAUDE_TOOLBOX_ROOT [set / NOT SET] · plugins: [in sync / N stale / N missing / unavailable]
-Auto-renamed: [N session(s): id→name, id→name] (omit line entirely if NONE)
+Renamed: [id→name, id→name] (omit line entirely if NONE)
 
 ---
 

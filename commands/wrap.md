@@ -102,7 +102,7 @@ Then rename any other unnamed sessions in scope, passing the current session ID 
 ```bash
 python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/rename-unnamed.py --skip [SESSION_id_from_collect-summarize]
 ```
-If output contains RENAMED lines, note them: `Also renamed: id→name, id→name`
+If output contains RENAMED lines, note them: `Renamed: id→name, id→name`
 
 ---
 
