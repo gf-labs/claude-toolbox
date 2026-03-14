@@ -16,13 +16,9 @@
   - https://github.com/shanraisshan/claude-code-best-practice
 - Look for: prompt patterns, hook ideas, workflow automations, command designs not yet covered here
 
-### Auto-collected context blocks (`!cmd`) don't expand `settings.json` env vars
-- **Size:** S
-- Commands using `${CLAUDE_TOOLBOX_ROOT}` in `!` blocks receive raw templates instead of executed output — the `!` executor doesn't expand env vars defined in `settings.json["env"]`
-- Affects: `cleanup` (and any future command using `${CLAUDE_TOOLBOX_ROOT}` in `!` context blocks); `status` and `audit` retired, reducing scope
-- `doctor` project health checks use plain shell commands and are unaffected
-- Fix options: (a) use `$HOME/Repos/gfl/claude-toolbox` literals instead of the var, (b) wrap in a shell that sources the env, or (c) rely on `CLAUDE_TOOLBOX_ROOT` being set in the shell environment rather than settings.json
-- Workaround: LLM runs Bash tool calls manually — output is still correct but not hands-free
+### Commit `CLAUDE_TOOLBOX_ROOT` export to dotfiles
+- **Size:** XS
+- `shellenv/exports` was updated with `export CLAUDE_TOOLBOX_ROOT="$HOME/Repos/gfl/claude-toolbox"` to fix `!cmd` context injection in brief/pin/wrap — needs to be committed in the dotfiles repo
 
 
 
