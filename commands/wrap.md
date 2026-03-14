@@ -98,6 +98,12 @@ python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/name-session.py "[derived-name]"
 ```
 (Skips silently if already named.)
 
+Then rename any other unnamed sessions in scope, passing the current session ID to skip it:
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/rename-unnamed.py --skip [SESSION_id_from_collect-summarize]
+```
+If output contains RENAMED lines, note them: `Also renamed: id→name, id→name`
+
 ---
 
 ## Step 2 — Git check

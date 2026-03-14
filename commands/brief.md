@@ -74,6 +74,9 @@ else:
 **Plugin drift**:
 !python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plugin-drift.py 2>/dev/null || echo "unavailable"
 
+**Auto-rename unnamed sessions**:
+!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/rename-unnamed.py
+
 **Today**:
 !date +%Y-%m-%d
 
@@ -123,6 +126,7 @@ MEMORY.md: [NL OK / THIN / WARN / MISSING]
 
 Ramp: [N] nodes due  |  [Level]  |  [XP] XP
 Toolbox: CLAUDE_TOOLBOX_ROOT [set / NOT SET] · plugins: [in sync / N stale / N missing / unavailable]
+Auto-renamed: [N session(s): id→name, id→name] (omit line entirely if NONE)
 
 ---
 

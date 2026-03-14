@@ -184,6 +184,12 @@ python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/name-session.py "[derived-name]"
 ```
 (Skips silently if already named.)
 
+Then rename any other unnamed sessions in scope, passing the current session ID to skip it:
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/rename-unnamed.py --skip [SESSION_id_from_collect-summarize]
+```
+If output contains RENAMED lines, append a compact note to your response: `Also renamed: id→name, id→name`
+
 After the session log is saved and named, tell the user:
 > Context saved. Run `/compact` to compress the window.
 
