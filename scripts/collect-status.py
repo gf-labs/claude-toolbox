@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Multi-repo git status collection — outputs tab-separated rows for parent/global mode."""
-import re, subprocess, sys
+import re
+import subprocess
+import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -59,19 +61,22 @@ def _local_branch_count(path):
     out = _run(['git', '-C', str(path), 'branch'])
     if not out:
         return '—'
-    return str(len([l for l in out.splitlines() if l.strip()]))
+    return str(len([ln for ln in out.splitlines() if ln.strip()]))
 
 
 def _emit_row(name, path, group, projects_dir):
     """Print one tab-separated project row."""
     is_header = (group == 'header')
     if is_header:
-        branch = '—'; branches = '—'; changes_str = '—'; last_hash = '—'
+        branch = '—'
+        branches = '—'
+        changes_str = '—'
+        last_hash = '—'
     else:
         branch = _run(['git', '-C', str(path), 'rev-parse', '--abbrev-ref', 'HEAD']) or '?'
         branches = _local_branch_count(path)
         status_out = _run(['git', '-C', str(path), 'status', '--short']) or ''
-        changes = len([l for l in status_out.splitlines() if l.strip()])
+        changes = len([ln for ln in status_out.splitlines() if ln.strip()])
         changes_str = str(changes) if changes else '—'
         last_commit = _run(['git', '-C', str(path), 'log', '--oneline', '-1']) or '?'
         last_hash = last_commit.split()[0] if last_commit.split() else '?'
@@ -85,14 +90,15 @@ def _emit_row(name, path, group, projects_dir):
         mem_status = 'WARN' if mem_lines >= 150 else ('OK' if mem_lines >= 50 else 'THIN')
         mem_str = f'{mem_lines}L'
     else:
-        mem_status = 'MISSING'; mem_str = 'none'
+        mem_status = 'MISSING'
+        mem_str = 'none'
 
     backlog_file = path / 'BACKLOG.md'
     backlog_count = '—'
     if backlog_file.exists():
         try:
             bl_lines = backlog_file.read_text().splitlines()[:50]
-            items = [l for l in bl_lines if l.strip() and not l.startswith('#')]
+            items = [ln for ln in bl_lines if ln.strip() and not ln.startswith('#')]
             backlog_count = str(len(items)) if items else '—'
         except Exception:
             pass

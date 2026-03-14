@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Session log metadata and recent entries per project."""
-import re, sys
+import re
+import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))

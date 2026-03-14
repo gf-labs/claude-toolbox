@@ -19,6 +19,15 @@
             "command": "python3 $CLAUDE_TOOLBOX_ROOT/scripts/collect-plan-map.py > /dev/null"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_TOOLBOX_ROOT/scripts/lint-py.py"
+          }
+        ]
       }
     ]
   }

@@ -23,16 +23,6 @@
 - Workaround: LLM runs Bash tool calls manually — output is still correct but not hands-free
 
 
-### pyproject.toml + ruff for script linting
-- **Size:** S
-- Add `pyproject.toml` with `[tool.ruff]` + wire into toolbox audit
-- Prerequisite for lightweight PostToolUse lint hook
-
-### Lightweight PostToolUse lint hook
-- **Size:** M
-- Hook runs `ruff check` + `py_compile` on any `.py` touched by Edit/Write
-- Depends on pyproject.toml + ruff item above; add after hooks.json is wired
-
 ### Standalone gfl-marketplace repo with URL sources
 - **Size:** S
 - Repo already exists at `~/Repos/_archive/gfl-marketplace`
@@ -44,11 +34,6 @@
 - Update `settings.json` `extraKnownMarketplaces.gfl-marketplace.source.path` to point at the archive repo
 - Remove `ramp/toolbox` symlink + revert marketplace.json in ramp
 - Enables clean distribution: each plugin repo is independent
-
-### Expand audit rules + underlying dependencies
-- **Size:** M
-- Add checks: `pyproject.toml` present, lint rules defined, `BACKLOG.md` exists, design-docs referenced
-- Define explicit dependency graph between audit checks (e.g., Check 10 depends on lint rules)
 
 ### Global commands — base + project extension pattern
 - **Size:** M

@@ -4,7 +4,8 @@
 Usage: python3 name-session.py "short-name-here" [--force]
 Skips silently if session already has a custom-title (unless --force).
 """
-import json, sys
+import json
+import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))

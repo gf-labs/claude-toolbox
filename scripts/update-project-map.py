@@ -8,7 +8,9 @@ The project map tracks:
   - first_session: oldest JSONL for each project key (when it first appeared in Claude)
   - Referenced by: sessions from other projects that touched this project's files
 """
-import json, re, subprocess, sys  # noqa: F401 re used in write_projects_section
+import re
+import subprocess
+import sys  # noqa: F401 re used in write_projects_section
 from datetime import date, datetime
 from pathlib import Path
 
@@ -100,10 +102,10 @@ def write_projects_section(projects: dict):
 
     # Insert Projects-updated header after leading # comment lines (not ## sections)
     insert_at = 0
-    for i, l in enumerate(kept):
-        if re.match(r'^#[^#]', l) or l == '#':
+    for i, line in enumerate(kept):
+        if re.match(r'^#[^#]', line) or line == '#':
             insert_at = i + 1
-        elif l.strip():
+        elif line.strip():
             break
     kept.insert(insert_at, f'# Projects-updated: {today}')
 

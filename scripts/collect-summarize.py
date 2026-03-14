@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Parse current session JSONL to extract files touched and bash commands."""
-import json, os, sys
+import json
+import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -33,7 +34,7 @@ proj_dir = projects_dir / cwd_key
 
 jsonl_files = list(proj_dir.glob('*.jsonl'))
 if not jsonl_files:
-    print(f'SESSION: unknown')
+    print('SESSION: unknown')
     print(f'PROJECT_KEY: {cwd_key}')
     print(f'PROJECT_DIR: {cwd}')
     print()

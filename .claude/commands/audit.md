@@ -57,6 +57,15 @@ Read the hooks.json output above.
 - `[WARN]` if hooks.json is `{"hooks": {}}` or otherwise has no wired hooks
 - `[PASSED]` if at least one hook event has entries
 
+### T6 — pyproject.toml with lint rules
+Check if `pyproject.toml` exists in the repo root.
+Use Bash: `test -f pyproject.toml && echo EXISTS || echo MISSING`
+If it exists, check for a `[tool.ruff.lint]` section with `select`:
+Use Bash: `grep -c 'select' pyproject.toml 2>/dev/null || echo 0`
+- `[WARN]` if `pyproject.toml` is missing
+- `[WARN]` if present but has no `[tool.ruff.lint]` section or no `select` key
+- `[PASSED]` if `pyproject.toml` exists with lint rules configured
+
 ### T5 — plugin.json completeness
 Read the plugin.json output above. Check for presence of all required fields:
 `name`, `version`, `description`, `author`, `license`, `keywords`, `category`

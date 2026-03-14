@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Cross-project history — recent prompts grouped by repo and date."""
-import argparse, json, sys, time
+import argparse
+import json
+import sys
+import time
 from pathlib import Path
 from datetime import datetime, timezone
 from collections import defaultdict

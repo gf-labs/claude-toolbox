@@ -8,7 +8,9 @@ For each plan in ~/.claude/plans/*.md, tracks:
 
 Output (stdout): plan.md\tproject-display   (TSV for brief)
 """
-import json, re, sys
+import json
+import re
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -86,10 +88,10 @@ def _write_plans_section(plans: dict, scanned_ts: str):
 
     # Insert Plans-scanned header after other leading # comment lines
     insert_at = 0
-    for i, l in enumerate(kept):
-        if re.match(r'^#[^#]', l) or l == '#':
+    for i, line in enumerate(kept):
+        if re.match(r'^#[^#]', line) or line == '#':
             insert_at = i + 1
-        elif l.strip():
+        elif line.strip():
             break
     kept.insert(insert_at, f'# Plans-scanned: {scanned_ts}')
 

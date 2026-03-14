@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Session inventory — age, size, OLD/KEEP/ARTIFACT status."""
-import argparse, json, sys, time
+import argparse
+import json
+import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
