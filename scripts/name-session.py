@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
-"""Write a custom-title record to the current session JSONL.
+"""Write a custom-title record to a session JSONL.
 
-Usage: python3 name-session.py "short-name-here" [--force]
+Usage:
+  python3 name-session.py "short-name-here" [--force]
+  python3 name-session.py "short-name-here" --path /path/to/session.jsonl [--force]
+
+Without --path: targets the current (most recent) session in scope.
+With --path: targets the specified JSONL file directly.
 Skips silently if session already has a custom-title (unless --force).
 """
 import json
@@ -13,33 +18,51 @@ from _scope import get_scope
 
 args = sys.argv[1:]
 force = '--force' in args
-name_args = [a for a in args if not a.startswith('--')]
+
+# Extract --path value
+explicit_path = None
+if '--path' in args:
+    idx = args.index('--path')
+    if idx + 1 < len(args):
+        explicit_path = args[idx + 1]
+    else:
+        print('ERROR: --path requires a value')
+        sys.exit(1)
+
+name_args = [a for a in args if not a.startswith('--') and a != explicit_path]
 
 if not name_args:
-    print('Usage: name-session.py "name" [--force]')
+    print('Usage: name-session.py "name" [--path /path/to/session.jsonl] [--force]')
     sys.exit(1)
 
 name = name_args[0].strip()
 
-mode, data, cwd = get_scope()
-projects_dir = Path.home() / '.claude' / 'projects'
-
-if mode == 'single':
-    cwd_key = data
-elif cwd:
-    cwd_key = str(cwd).replace('/', '-')
+if explicit_path:
+    current = Path(explicit_path)
+    if not current.exists():
+        print(f'ERROR: {explicit_path} not found')
+        sys.exit(1)
+    sid = current.stem
 else:
-    print('ERROR: cannot determine project key')
-    sys.exit(1)
+    mode, data, cwd = get_scope()
+    projects_dir = Path.home() / '.claude' / 'projects'
 
-proj_dir = projects_dir / cwd_key
-jsonls = list(proj_dir.glob('*.jsonl'))
-if not jsonls:
-    print('ERROR: no session JSONL found')
-    sys.exit(1)
+    if mode == 'single':
+        cwd_key = data
+    elif cwd:
+        cwd_key = str(cwd).replace('/', '-')
+    else:
+        print('ERROR: cannot determine project key')
+        sys.exit(1)
 
-current = max(jsonls, key=lambda f: f.stat().st_mtime)
-sid = current.stem
+    proj_dir = projects_dir / cwd_key
+    jsonls = list(proj_dir.glob('*.jsonl'))
+    if not jsonls:
+        print('ERROR: no session JSONL found')
+        sys.exit(1)
+
+    current = max(jsonls, key=lambda f: f.stat().st_mtime)
+    sid = current.stem
 
 # Check for existing title
 existing = ''
