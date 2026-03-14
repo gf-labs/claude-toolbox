@@ -22,10 +22,10 @@
 
 
 
-### Re-evaluate `brief` model after status merge
+### Upgrade `brief` model to Sonnet if parent-mode quality degrades
 - **Size:** XS
-- `brief` was Haiku when it was a lightweight orient command; it now absorbs all of `status` (recent commits, activity history, toolbox health) — may warrant Sonnet for correctness on the richer output
-- Decision point: run brief a few times and check if Haiku handles the expanded format well; upgrade to Sonnet if output quality suffers
+- Evaluated 2026-03-14: keeping Haiku — task is template rendering (no reasoning), well-specified format; Haiku handles it well
+- Watch for: parent mode with full multi-repo table after `!cmd` fix takes effect (dotfiles commit pending); if output is malformed or missing sections, upgrade `model:` in commands/brief.md to `claude-sonnet-4-6`
 
 ### mcp/server.py — toolbox MCP server
 - **Size:** M
