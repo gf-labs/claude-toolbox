@@ -9,9 +9,11 @@
 
 ## Backlog
 
-### Evaluate everything-claude-code for toolbox ideas
+### Evaluate community Claude Code resources for toolbox ideas
 - **Size:** S
-- Review https://github.com/affaan-m/everything-claude-code and identify patterns, commands, or utilities worth incorporating into this toolbox
+- Review the following and identify patterns, commands, or utilities worth incorporating:
+  - https://github.com/affaan-m/everything-claude-code
+  - https://github.com/shanraisshan/claude-code-best-practice
 - Look for: prompt patterns, hook ideas, workflow automations, command designs not yet covered here
 
 ### Auto-collected context blocks (`!cmd`) don't expand `settings.json` env vars
@@ -23,17 +25,6 @@
 - Workaround: LLM runs Bash tool calls manually — output is still correct but not hands-free
 
 
-### Standalone gfl-marketplace repo with URL sources
-- **Size:** S
-- Repo already exists at `~/Repos/_archive/gfl-marketplace`
-- Remaining work: switch to URL sources pointing at standalone repos (no symlinks required):
-  ```json
-  { "name": "ramp",  "source": { "source": "url", "url": "https://github.com/gf-labs/ramp.git" } },
-  { "name": "tools", "source": { "source": "url", "url": "https://github.com/gf-labs/claude-toolbox.git" } }
-  ```
-- Update `settings.json` `extraKnownMarketplaces.gfl-marketplace.source.path` to point at the archive repo
-- Remove `ramp/toolbox` symlink + revert marketplace.json in ramp
-- Enables clean distribution: each plugin repo is independent
 
 ### Re-evaluate `brief` model after status merge
 - **Size:** XS
@@ -43,3 +34,4 @@
 ### mcp/server.py — toolbox MCP server
 - **Size:** M
 - Currently a stub. Potential: expose session search + cleanup ops as MCP tools
+- **On ice** — needs a concrete use case before building; low priority until one emerges
