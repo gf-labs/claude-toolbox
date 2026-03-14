@@ -16,7 +16,7 @@ marketplaces = settings.get('extraKnownMarketplaces', {})
 enabled = settings.get('enabledPlugins', {})
 
 if not enabled:
-    print('NO_PLUGINS_ENABLED')
+    print('NO_PLUGINS_ENABLED (hint: --plugin-dir sessions clear enabledPlugins)')
     raise SystemExit(0)
 
 for plugin_at_market in [k for k, v in enabled.items() if v]:

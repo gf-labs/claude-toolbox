@@ -2,6 +2,7 @@
 description: Clean up old Claude session artifacts — extract context, then delete
 argument-hint: [pattern] [--days N] [--dry-run]
 allowed-tools: Bash, Read, Write, Edit
+model: claude-sonnet-4-6
 ---
 
 ## Arguments

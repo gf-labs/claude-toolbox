@@ -1,6 +1,7 @@
 ---
 description: End-of-session housekeeping — snapshot, git check, plan cleanup, backlog review, done marker
 allowed-tools: Bash, Read, Write, Edit
+model: claude-sonnet-4-6
 ---
 
 ## Auto-collected context
