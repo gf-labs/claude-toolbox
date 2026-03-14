@@ -19,8 +19,8 @@
 ### Auto-collected context blocks (`!cmd`) don't expand `settings.json` env vars
 - **Size:** S
 - Commands using `${CLAUDE_TOOLBOX_ROOT}` in `!` blocks receive raw templates instead of executed output — the `!` executor doesn't expand env vars defined in `settings.json["env"]`
-- Affects: `cleanup` (and any future command using `${CLAUDE_TOOLBOX_ROOT}` in `!` context blocks); `status` retired, reducing scope
-- `audit` works because it uses only plain shell commands with no env var references
+- Affects: `cleanup` (and any future command using `${CLAUDE_TOOLBOX_ROOT}` in `!` context blocks); `status` and `audit` retired, reducing scope
+- `doctor` project health checks use plain shell commands and are unaffected
 - Fix options: (a) use `$HOME/Repos/gfl/claude-toolbox` literals instead of the var, (b) wrap in a shell that sources the env, or (c) rely on `CLAUDE_TOOLBOX_ROOT` being set in the shell environment rather than settings.json
 - Workaround: LLM runs Bash tool calls manually — output is still correct but not hands-free
 
