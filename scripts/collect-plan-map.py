@@ -113,6 +113,28 @@ def _write_plans_section(plans: dict, scanned_ts: str):
     MAP_FILE.write_text('\n'.join(kept + plan_lines).strip() + '\n')
 
 
+def _load_renames() -> dict:
+    """Return {old_name: current_name} from ~/.claude/plans/.renames, resolving chains."""
+    renames_file = PLANS_DIR / '.renames'
+    if not renames_file.exists():
+        return {}
+    raw = {}
+    for line in renames_file.read_text().splitlines():
+        parts = line.strip().split('\t', 1)
+        if len(parts) == 2 and parts[0] and parts[1]:
+            raw[parts[0]] = parts[1]
+    # Resolve chains: a→b, b→c becomes a→c
+    resolved = {}
+    for old in raw:
+        cur = old
+        seen = {cur}
+        while cur in raw and raw[cur] not in seen:
+            cur = raw[cur]
+            seen.add(cur)
+        resolved[old] = cur
+    return resolved
+
+
 def _scan() -> tuple[dict, float]:
     """Scan all project JSONLs for plan file references.
 
@@ -122,6 +144,7 @@ def _scan() -> tuple[dict, float]:
     plan_names = {f.name for f in PLANS_DIR.glob('*.md')} if PLANS_DIR.exists() else set()
     refs_by_plan: dict[str, list] = {n: [] for n in plan_names}
     newest_mtime = 0.0
+    renames = _load_renames()  # {old_name: current_name}
 
     for proj_dir in PROJECTS_DIR.iterdir():
         if not proj_dir.is_dir():
@@ -159,7 +182,7 @@ def _scan() -> tuple[dict, float]:
                     try:
                         p = Path(fp)
                         p.relative_to(PLANS_DIR)
-                        pname = p.name
+                        pname = renames.get(p.name, p.name)  # resolve rename if applicable
                         if pname.endswith('.md') and pname in refs_by_plan:
                             refs_by_plan[pname].append((mtime, session_id, project_key))
                     except ValueError:
@@ -195,17 +218,18 @@ def _refs_to_plan_info(refs_by_plan: dict) -> dict:
 
 
 # --- Cache freshness check ---
+# Key on newest plan file mtime (not JSONL mtime) so PostToolUse hook doesn't
+# trigger a full scan on every Write to non-plan files.
 scanned_ts, _ = _read_header_and_section()
 needs_scan = True
 if scanned_ts:
     try:
         cached_epoch = datetime.fromisoformat(scanned_ts).timestamp()
-        newest = max(
-            (f.stat().st_mtime for d in PROJECTS_DIR.iterdir() if d.is_dir()
-             for f in d.glob('*.jsonl')),
+        newest_plan = max(
+            (f.stat().st_mtime for f in PLANS_DIR.glob('*.md')),
             default=0.0
-        )
-        needs_scan = newest > cached_epoch
+        ) if PLANS_DIR.exists() else 0.0
+        needs_scan = newest_plan > cached_epoch
     except Exception:
         needs_scan = True
 
@@ -221,7 +245,11 @@ if needs_scan:
         if name not in merged and name in existing:
             merged[name] = existing[name]
 
-    ts = datetime.fromtimestamp(newest_mtime).isoformat(timespec='seconds') if newest_mtime else ''
+    newest_plan_mtime = max(
+        (f.stat().st_mtime for f in PLANS_DIR.glob('*.md')),
+        default=0.0
+    ) if PLANS_DIR.exists() else 0.0
+    ts = datetime.fromtimestamp(newest_plan_mtime).isoformat(timespec='seconds') if newest_plan_mtime else ''
     _write_plans_section(merged, ts)
     plan_info = merged
 else:

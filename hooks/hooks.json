@@ -1,1 +1,25 @@
-{"hooks": {}}
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_TOOLBOX_ROOT/scripts/validate-env.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_TOOLBOX_ROOT/scripts/collect-plan-map.py > /dev/null"
+          }
+        ]
+      }
+    ]
+  }
+}
