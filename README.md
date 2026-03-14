@@ -12,24 +12,25 @@ Personal Claude Code global toolbox — versioned commands, agents, scripts, hoo
 
 | Command | Description |
 |---------|-------------|
-| `/tools:audit`  | Repo audit — universal checks for any codebase |
-| `/tools:brief`  | Start-of-session orientation — branch, backlog, snapshot health, plans |
-| `/tools:cleanup`| Clean up old Claude session artifacts — extract context, then delete |
-| `/tools:done`   | Mark current session for deletion |
-| `/tools:env`    | Claude Code environment health check — settings, hooks, MCP, toolbox |
-| `/tools:pin`    | Break checkpoint — status display, session log, optional MEMORY.md update |
-| `/tools:status` | Project status — git state, BACKLOG, snapshot and session-log health, recent activity |
-| `/tools:wrap`   | End-of-session housekeeping — git check, plan cleanup, backlog review, done marker |
+| `/tools:audit`          | Repo audit — universal checks for any codebase |
+| `/tools:backlog`        | Add an item to BACKLOG.md from within Claude |
+| `/tools:brief`          | Start-of-session orientation — branch, backlog, snapshot health, plans, recent activity |
+| `/tools:cleanup`        | Clean up old Claude session artifacts — extract context, then delete |
+| `/tools:env`            | Claude Code environment health check — settings, hooks, MCP, toolbox |
+| `/tools:pin`            | Break checkpoint — status display, session log, optional MEMORY.md update |
+| `/tools:search-sessions`| Search session history by keyword |
+| `/tools:wrap`           | End-of-session housekeeping — git check, plan cleanup, backlog review, done marker |
 
 ## Session lifecycle
 
 ```
 [start of session]
-  /tools:brief        — orient: branch, in-progress, last snapshot, plans
+  /tools:brief        — orient: branch, in-progress, last snapshot, plans, recent activity
 
 [during session]
   work...
   /tools:pin          — break checkpoint: status + session log + optional MEMORY.md update
+  /tools:backlog      — add a new item to BACKLOG.md mid-session
 
 [end of session]
   /ramp:wrap          — knowledge graph harvest (if ramp installed)
@@ -42,12 +43,9 @@ Personal Claude Code global toolbox — versioned commands, agents, scripts, hoo
     Step 5: memory health → warn if MEMORY.md approaching 200-line limit
     Step 6: done?         → optionally mark session for deletion
 
-[on demand]
-  /tools:status       — read-only project health at any point in the session
-  /tools:done         — mark session for deletion without running wrap
-
 [periodic]
-  /tools:cleanup      — delete old sessions, extract context to session-log.md + MEMORY.md
+  /tools:cleanup           — delete old sessions, extract context to session-log.md + MEMORY.md
+  /tools:search-sessions   — search session history by keyword
 ```
 
 ### Storage
@@ -72,6 +70,22 @@ claude-toolbox/
 └── docs/        # architecture plan and references
 ```
 
-## Private
+## Install
 
-This is a personal toolbox repo — not intended for general use.
+1. Add `CLAUDE_TOOLBOX_ROOT` to your `~/.claude/settings.json`:
+   ```json
+   { "env": { "CLAUDE_TOOLBOX_ROOT": "/path/to/claude-toolbox" } }
+   ```
+2. Add this repo as a marketplace source and install:
+   ```
+   /plugin install tools@gfl-marketplace
+   ```
+3. Restart the session — commands are available as `/tools:*`.
+
+## Extending
+
+**New command**: create `commands/[name].md` with frontmatter (`description`, `allowed-tools`, optional `model`). Bump version in `.claude-plugin/plugin.json`, then reinstall.
+
+**New script**: add `scripts/[name].py` (stdlib only — no third-party deps). Reference it from a command via `python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/[name].py`.
+
+**New agent**: create `agents/[name].md` with frontmatter (`name`, `description`, `tools`, `model`, `color`). Bump version and reinstall.

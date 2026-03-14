@@ -1,6 +1,7 @@
 ---
 description: Break checkpoint — status display, session log, optional MEMORY.md update
 allowed-tools: Bash, Read, Write, Edit
+model: claude-sonnet-4-6
 ---
 
 ## Auto-collected context
@@ -147,6 +148,8 @@ No questions — display and proceed immediately to Step 2.
 
 Run the summarize flow using session activity, git log, and git diff stat collected above:
 
+**Before drafting:** check **session-log.md** for any prior entry whose header contains the first 8 chars of SESSION (from collect-summarize.py). If a matching entry exists, this is a repeat pin in the same session — draft only the *new* activity since that entry (cross-reference its bullets to avoid duplication), and suffix the header with ` (2)`, ` (3)`, etc.
+
 1. Draft a structured entry:
    ```
    ## [date] · [first 8 chars of SESSION id from collect-summarize.py]
@@ -180,6 +183,9 @@ After saving the session log, auto-name the session if it has no existing custom
 python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/name-session.py "[derived-name]"
 ```
 (Skips silently if already named.)
+
+After the session log is saved and named, tell the user:
+> Context saved. Run `/compact` to compress the window.
 
 ---
 
