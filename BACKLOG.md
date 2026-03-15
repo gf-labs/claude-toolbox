@@ -11,10 +11,68 @@
 
 ### Evaluate community Claude Code resources for toolbox ideas
 - **Size:** S
-- Review the following and identify patterns, commands, or utilities worth incorporating:
-  - https://github.com/affaan-m/everything-claude-code
-  - https://github.com/shanraisshan/claude-code-best-practice
-- Look for: prompt patterns, hook ideas, workflow automations, command designs not yet covered here
+- **Done 2026-03-14** — reviewed both repos; findings applied and backlogged below
+- Applied: `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80`, `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1` (settings.json); `isolation: worktree` on plan + review agents
+
+### `/aside` command — mid-task side question
+- **Size:** XS
+- **Disposition:** New command — no existing command covers mid-task side questions
+- Pure Markdown command, no scripts needed
+- Freeze task state, answer in fixed format (`ASIDE: [question]\n\n[answer]\n\n— Back to task: [description]`), resume automatically; read-only during aside
+- Edge cases: question reveals a problem → flag before resuming; question is a redirect → ask before switching
+- Source: `commands/aside.md` — affaan-m/everything-claude-code
+
+### `spinnerTipsOverride` with `excludeDefault: true`
+- **Size:** XS
+- Add to `~/.claude/settings.json`: `"spinnerTipsOverride": {"excludeDefault": true, "tips": [...]}`
+- Replaces Anthropic's default loading tips with custom ones
+- Source: `best-practice/claude-settings.md` — shanraisshan/claude-code-best-practice
+
+### Suggest-compact hook — tool-call counter
+- **Size:** S
+- **Redundant** — covered by the "Context checkpoint" rule in `~/.claude/CLAUDE.md` + `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80`; hooks add overhead for a problem already solved
+- PreToolUse hook on Edit/Write; maintains per-session tool-call counter in `/tmp/claude-tool-count-<sessionId>`
+- At threshold (default 50, configurable via `CLAUDE_COMPACT_THRESHOLD` env var) emits compact suggestion to stderr; repeats every 25 calls
+- Source: `scripts/hooks/suggest-compact.js` — affaan-m/everything-claude-code
+
+### Cost tracker hook — per-session cost log
+- **Size:** S
+- Stop hook (async); reads `usage.input_tokens`/`usage.output_tokens` from hook stdin JSON
+- Looks up blended per-million rates by model; appends JSONL row to `~/.claude/metrics/costs.jsonl`
+- Fields: `timestamp`, `session_id`, `model`, `input_tokens`, `output_tokens`, `estimated_cost_usd`
+- Source: `scripts/hooks/cost-tracker.js` — affaan-m/everything-claude-code
+
+### `/checkpoint` command — named in-session checkpoints
+- **Size:** S
+- **Disposition:** New command — too consequential to fold into `pin` (executes `git stash`/commit; explicit invocation required)
+- Creates named checkpoints via `git stash`/commit + log entry to `.claude/checkpoints.log` (`date | name | git SHA`)
+- Subcommands: `verify` (compare current state vs checkpoint: files changed, test delta), `list` (all checkpoints relative to HEAD)
+- Source: `commands/checkpoint.md` — affaan-m/everything-claude-code
+
+### PreCompact compaction log hook
+- **Size:** S
+- **Redundant** — `/tools:pin` is run before compacting (per the context checkpoint rule), so session log already captures the boundary; a separate compaction log adds little
+- PreCompact hook; appends timestamped event to `~/.claude/sessions/compaction-log.txt`
+- Also annotates the active session file with `[Compaction occurred at HH:MM]` so context loss is visible in session history
+- Source: `scripts/hooks/pre-compact.js` — affaan-m/everything-claude-code
+
+### Codemaps — token-lean architecture docs
+- **Size:** M
+- **Disposition:** Integrate into `/doctor` as check P9 (not a standalone command)
+  - Detect: if `docs/CODEMAPS/` exists, check freshness headers; flag files older than 90 days as `[WARN]`
+  - Fix: when user says `fix P9`, run the generation flow inline
+- Generates/updates `docs/CODEMAPS/`: `architecture.md`, `backend.md`, `frontend.md`, `data.md`, `dependencies.md`
+- Each file has a freshness header: `<!-- Generated: DATE | Files scanned: N | Token estimate: ~N -->`
+- If diff >30% from previous version, shows diff and asks approval before overwriting
+- Target: keep each codemap under 1000 tokens for efficient context loading
+- Source: `commands/update-codemaps.md` — affaan-m/everything-claude-code
+
+### Hook profile system — `TOOLBOX_HOOK_PROFILE` env var
+- **Size:** M
+- Wrap hook scripts with a profile-aware dispatcher; each hook declaration specifies which profiles it applies to (`minimal`, `standard`, `strict`)
+- `TOOLBOX_DISABLED_HOOKS=comma,separated,ids` for individual hook suppression
+- Useful for disabling linting/plan-map hooks in dev sessions without editing settings.json
+- Source: `scripts/lib/hook-flags.js` — affaan-m/everything-claude-code
 
 ### Commit `CLAUDE_TOOLBOX_ROOT` export to dotfiles
 - **Size:** XS
@@ -26,6 +84,17 @@
 - **Size:** XS
 - Evaluated 2026-03-14: keeping Haiku — task is template rendering (no reasoning), well-specified format; Haiku handles it well
 - Watch for: parent mode with full multi-repo table after `!cmd` fix takes effect (dotfiles commit pending); if output is malformed or missing sections, upgrade `model:` in commands/brief.md to `claude-sonnet-4-6`
+
+### Git workflow commands/agents
+- **Size:** M
+- Add a suite of git-focused commands and agents to the toolbox:
+  - `/tools:commit` — stage, summarize diff, draft conventional commit message, confirm, commit; handles pre-commit hook failures gracefully
+  - `/tools:pr` — review unpushed commits, draft PR title + body (summary + test plan), call `gh pr create`; checks for open draft PRs first
+  - `commit` agent — subagent called by `/tools:commit`; read-only diff analyzer that returns a structured commit message suggestion
+  - `pr` agent — subagent called by `/tools:pr`; reads commits + diff, returns PR title + body in structured format
+  - `/tools:stash` — named stash management: list, create with description, pop by name, diff stash vs HEAD
+  - `/tools:log` — formatted git log viewer: filter by author, date range, path; highlight commits touching a file; link to GitHub if remote is GitHub
+- **Design principle:** commands are thin interactive wrappers; agents handle the read + draft work; user always confirms before write actions
 
 ### mcp/server.py — toolbox MCP server
 - **Size:** M
