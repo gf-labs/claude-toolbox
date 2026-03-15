@@ -79,14 +79,21 @@ Claude context — not just the current project.
 | `list_plans` | List all active plans with project attribution |
 | `get_session_log` | Read session log entries for a project |
 
+Setup (one-time):
+
+```bash
+python3 -m venv <path-to-claude-toolbox>/mcp_server/.venv
+<path-to-claude-toolbox>/mcp_server/.venv/bin/pip install mcp
+```
+
 Add to `.mcp.json` to enable:
 
 ```json
 {
   "mcpServers": {
     "claude-toolbox": {
-      "command": "python3",
-      "args": ["<path-to-claude-toolbox>/mcp/server.py"]
+      "command": "<path-to-claude-toolbox>/mcp_server/.venv/bin/python3",
+      "args": ["<path-to-claude-toolbox>/mcp_server/server.py"]
     }
   }
 }
@@ -100,7 +107,7 @@ claude-toolbox/
 ├── agents/      # subagents (e.g., explore)
 ├── scripts/     # Python scripts called by commands
 ├── hooks/       # hooks.json for plugin-registered hooks
-├── mcp/         # MCP server (search_sessions, list_plans, get_session_log)
+├── mcp_server/  # MCP server (search_sessions, list_plans, get_session_log)
 └── docs/        # architecture plan and references
 ```
 

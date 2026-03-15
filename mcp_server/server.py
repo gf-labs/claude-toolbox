@@ -6,14 +6,15 @@ Exposes session data from ~/.claude/ as queryable tools — usable from any
 Claude context, not just the current project session.
 
 Quick setup:
-  pip install mcp
+  python3 -m venv mcp_server/.venv
+  mcp_server/.venv/bin/pip install mcp
 
 Configure in .mcp.json (project-local) or ~/.claude/.mcp.json (global):
   {
     "mcpServers": {
       "claude-toolbox": {
-        "command": "python3",
-        "args": ["/absolute/path/to/claude-toolbox/mcp/server.py"]
+        "command": "/absolute/path/to/claude-toolbox/mcp_server/.venv/bin/python3",
+        "args": ["/absolute/path/to/claude-toolbox/mcp_server/server.py"]
       }
     }
   }
