@@ -1,6 +1,6 @@
 [project]
 name = "claude-toolbox"
-version = "0.4.10"
+version = "0.4.11"
 description = "Session lifecycle management for Claude Code"
 requires-python = ">=3.11"
 
