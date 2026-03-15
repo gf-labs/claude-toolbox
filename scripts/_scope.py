@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Scope detection: single claude-project, parent roll-up, or global."""
 import os
+from collections.abc import Iterator
 from pathlib import Path
 
 
-def _reconstruct(key, cwd_str=None):
+def _reconstruct(key: str, cwd_str: str | None = None) -> Iterator[Path]:
     """Yield all existing dirs that could match this project key.
 
     Project keys encode paths as '-'-joined components, but directory names
@@ -41,7 +42,7 @@ def _reconstruct(key, cwd_str=None):
     yield from build(1, [parts[0]])
 
 
-def get_scope(cwd=None):
+def get_scope(cwd: str | None = None) -> tuple[str, str | list[tuple[str, Path]], Path | None]:
     """
     Returns one of:
       ('single', project_key: str, cwd: Path)
