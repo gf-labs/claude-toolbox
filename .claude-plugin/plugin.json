@@ -1,6 +1,6 @@
 {
   "name": "tools",
-  "version": "0.4.16",
+  "version": "0.4.17",
   "description": "Session lifecycle management for Claude Code — orientation, checkpointing, archival, and health checks. Built by Bernie Green / Greenfield Labs.",
   "author": {"name": "Bernie Green"},
   "license": "MIT",

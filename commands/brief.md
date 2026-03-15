@@ -177,7 +177,7 @@ Phase: [phase name from collect-phase.py] ([source file]) (omit entirely if NOT_
 MEMORY.md: [NL OK / THIN / WARN / MISSING]
   [first 8–10 lines of content if present, indented]
 
-Ramp: [N] nodes due  |  [Level]  |  [XP] XP
+Ramp: [N] nodes due  |  [Level]  |  [XP] XP  (run /tools:status for full detail)
 Toolbox: CLAUDE_TOOLBOX_ROOT [set / NOT SET] · plugins: [in sync / N stale / N missing / unavailable]
 Renamed: [id→name, id→name] (omit line entirely if NONE)
 
