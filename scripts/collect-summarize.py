@@ -81,12 +81,24 @@ for line in current.read_text(errors='replace').splitlines():
             fp = inp.get('file_path', '')
             if fp:
                 fp_path = Path(fp)
-                # Skip ~/.claude/ paths — Claude internal ops, not sibling project work
-                try:
-                    fp_path.relative_to(Path.home() / '.claude')
+                # Skip Claude internal dirs — but allow ~/.claude/projects/*/memory/* writes
+                # (MEMORY.md, session-log.md) so they appear in CROSS_PROJECT_FILES correctly.
+                _claude = Path.home() / '.claude'
+                _skip_prefixes = (
+                    _claude / 'file-history',
+                    _claude / 'debug',
+                    _claude / 'session-env',
+                    _claude / 'plugins',
+                )
+                _is_session_jsonl = (
+                    fp_path.suffix == '.jsonl'
+                    and fp_path.is_relative_to(_claude / 'projects')
+                )
+                _is_internal = _is_session_jsonl or any(
+                    fp_path.is_relative_to(p) for p in _skip_prefixes
+                )
+                if _is_internal:
                     continue
-                except ValueError:
-                    pass
                 try:
                     rel = str(fp_path.relative_to(cwd))
                     if rel not in seen_files:
