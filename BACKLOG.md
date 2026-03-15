@@ -37,10 +37,7 @@
 
 ### Cost tracker hook — per-session cost log
 - **Size:** S
-- Stop hook (async); reads `usage.input_tokens`/`usage.output_tokens` from hook stdin JSON
-- Looks up blended per-million rates by model; appends JSONL row to `~/.claude/metrics/costs.jsonl`
-- Fields: `timestamp`, `session_id`, `model`, `input_tokens`, `output_tokens`, `estimated_cost_usd`
-- Source: `scripts/hooks/cost-tracker.js` — affaan-m/everything-claude-code
+- **Removed** — no hook event exposes token usage; `/cost` command and Anthropic dashboard already cover this
 
 ### `/checkpoint` command — named in-session checkpoints
 - **Size:** S
@@ -100,3 +97,8 @@
 - **Size:** M
 - Currently a stub. Potential: expose session search + cleanup ops as MCP tools
 - **On ice** — needs a concrete use case before building; low priority until one emerges
+
+### Improve readability of lifecycle command output
+- **Size:** S
+- Plan previews in `/tools:brief` and `/tools:pin` show the first bullet of each plan file, which is often a code snippet or fragment that reads poorly out of context (e.g. `` `idle_prompt` — Claude is waiting for user input ``)
+- Consider: show plan title only, extract a `purpose:` line from plan frontmatter, or pick the first prose bullet (skip code-heavy lines)
