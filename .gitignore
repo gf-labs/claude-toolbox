@@ -1,6 +1,9 @@
 __pycache__/
 *.pyc
+venv/
+.venv/
 .env
 .DS_Store
 .claude/knowledge-graphs/
+.claude/worktrees/
 *.log
