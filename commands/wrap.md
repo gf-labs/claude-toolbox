@@ -4,31 +4,33 @@ allowed-tools: Bash, Read, Write, Edit
 model: claude-sonnet-4-6
 ---
 
-## Auto-collected context
+## Collect context
+
+Run each command below now before proceeding. Store results mentally.
 
 **Scope**:
-!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/_scope.py
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/_scope.py
+```
 
 **Session activity**:
-!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-summarize.py
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-summarize.py
+```
 
-**Git diff stat** (files changed):
-!git diff HEAD --stat 2>/dev/null || echo "none"
-
-**Git state**:
-!git status --short 2>/dev/null || echo "clean"
-
-**Unpushed commits**:
-!git log @{u}.. --oneline 2>/dev/null || echo "none (or no remote)"
+**Git state, diff, unpushed commits, backlog, date**:
+```bash
+echo "GIT_DIFF_STAT:" && (git diff HEAD --stat 2>/dev/null || echo "none")
+echo "GIT_STATE:" && (git status --short 2>/dev/null || echo "clean")
+echo "UNPUSHED:" && (git log @{u}.. --oneline 2>/dev/null || echo "none (or no remote)")
+echo "BACKLOG:" && (head -10 BACKLOG.md 2>/dev/null || echo "not found")
+echo "DATE:" && date +%Y-%m-%d
+```
 
 **Plans**:
-!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plans.py
-
-**Backlog (In Progress + Up Next)**:
-!head -10 BACKLOG.md 2>/dev/null || echo "not found"
-
-**Today**:
-!date +%Y-%m-%d
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plans.py
+```
 
 ---
 
@@ -62,7 +64,9 @@ Otherwise, run the summarize flow using the session activity collected above:
    **Files changed:** [comma-separated relative paths, or "none"]
    **Git:** [N commit(s) — "message of most recent"] or "none"
    - [key action or decision — 3–8 bullets]
-   **Open threads:** [item] (omit if none)
+   **What didn't work:** [failed approach — "tried X, failed because Y"] (omit if none)
+   **Resume:** [exact next step to take when picking this up] (omit if nothing in flight)
+   **Open threads:** [blocker or deferred item] (omit if none)
    ```
 3. Show the draft. Ask: "Save to session-log.md? Reply `yes` or edit inline."
 4. On confirm: append to `~/.claude/projects/[key]/memory/session-log.md`

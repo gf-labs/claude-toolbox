@@ -4,31 +4,41 @@ allowed-tools: Bash, Read, Glob, Grep, Edit
 model: claude-sonnet-4-6
 ---
 
-## Auto-collected context
+## Collect context
 
-**Today's date**: !`date +%Y-%m-%d`
+Run each command below now before proceeding. Store results mentally.
 
-**Repo**: !`basename "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null || echo "(not a git repo)"`
+**Today's date, repo, CLAUDE.md**:
+```bash
+echo "DATE:" && date +%Y-%m-%d
+echo "REPO:" && (basename "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null || echo "(not a git repo)")
+echo "CLAUDE_MD:" && (test -f CLAUDE.md && echo "present" || echo "MISSING")
+```
 
-**CLAUDE.md**: !`test -f CLAUDE.md && echo "present" || echo "MISSING"`
-
-**Commands**:
-!ls commands/*.md 2>/dev/null || echo "none"
-
-**Scripts**:
-!ls scripts/*.py 2>/dev/null || echo "none"
+**Commands and scripts**:
+```bash
+echo "COMMANDS:" && (ls commands/*.md 2>/dev/null || echo "none")
+echo "SCRIPTS:" && (ls scripts/*.py 2>/dev/null || echo "none")
+```
 
 **hooks.json**:
-!cat hooks/hooks.json 2>/dev/null || echo "NOT FOUND"
+```bash
+cat hooks/hooks.json 2>/dev/null || echo "NOT FOUND"
+```
 
 **plugin.json**:
-!cat .claude-plugin/plugin.json 2>/dev/null || echo "NOT FOUND"
+```bash
+cat .claude-plugin/plugin.json 2>/dev/null || echo "NOT FOUND"
+```
 
 **pyproject.toml**:
-!test -f pyproject.toml && echo "EXISTS" || echo "MISSING"
+```bash
+test -f pyproject.toml && echo "EXISTS" || echo "MISSING"
+```
 
 **JSON validity**:
-!`python3 -c "
+```bash
+python3 -c "
 import json, glob
 files = []
 for pattern in ['*.json', '.claude/*.json', '.claude-plugin/*.json', 'hooks/*.json']:
@@ -43,10 +53,12 @@ else:
             print('OK: ' + f)
         except Exception as e:
             print('ERROR: ' + f + ': ' + str(e))
-" 2>/dev/null || echo "python3 not available"`
+" 2>/dev/null || echo "python3 not available"
+```
 
 **Python syntax**:
-!`python3 -c "
+```bash
+python3 -c "
 import py_compile
 from pathlib import Path
 files = [str(f) for f in Path('.').rglob('*.py')
@@ -60,9 +72,13 @@ else:
             print('OK: ' + f)
         except py_compile.PyCompileError as e:
             print('ERROR: ' + f + ': ' + str(e))
-" 2>/dev/null || echo "python3 not available"`
+" 2>/dev/null || echo "python3 not available"
+```
 
-**.gitignore**: !`cat .gitignore 2>/dev/null || echo "not found"`
+**.gitignore**:
+```bash
+cat .gitignore 2>/dev/null || echo "not found"
+```
 
 ---
 

@@ -4,40 +4,52 @@ allowed-tools: Bash, Read, Write, Edit
 model: claude-sonnet-4-6
 ---
 
-## Auto-collected context
+## Collect context
+
+Run each command below now before proceeding. Store results mentally.
 
 **Scope**:
-!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/_scope.py
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/_scope.py
+```
 
 **Status**:
-!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-status.py
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-status.py
+```
 
 **Session log status**:
-!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-session-log.py
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-session-log.py
+```
 
-**Branch**:
-!git branch -vv 2>/dev/null | grep '^\*' || echo "not a git repo"
-
-**Changes**:
-!git status --short 2>/dev/null || echo "clean"
-
-**BACKLOG.md (first 25 lines)**:
-!head -25 BACKLOG.md 2>/dev/null || echo "not found"
+**Branch, changes, backlog, date**:
+```bash
+echo "BRANCH:" && (git branch -vv 2>/dev/null | grep '^\*' || echo "not a git repo")
+echo "CHANGES:" && (git status --short 2>/dev/null || echo "clean")
+echo "BACKLOG:" && (head -25 BACKLOG.md 2>/dev/null || echo "not found")
+echo "DATE:" && date +%Y-%m-%d
+```
 
 **Plans**:
-!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plans.py
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plans.py
+```
 
 **Session activity**:
-!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-summarize.py
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-summarize.py
+```
 
-**Git log**:
-!git log --oneline -10 2>/dev/null || echo "none"
-
-**Git diff stat**:
-!git diff HEAD --stat 2>/dev/null || echo "none"
+**Git log and diff**:
+```bash
+echo "GIT_LOG:" && (git log --oneline -10 2>/dev/null || echo "none")
+echo "GIT_DIFF_STAT:" && (git diff HEAD --stat 2>/dev/null || echo "none")
+```
 
 **session-log.md**:
-!python3 -c "
+```bash
+python3 -c "
 import os, sys
 sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
 from _scope import get_scope
@@ -57,10 +69,12 @@ else:
 log = projects_dir / key / 'memory' / 'session-log.md'
 print(f'PATH: {log}')
 print(log.read_text() if log.exists() else 'MISSING — will be created on first save')
-" 2>/dev/null || echo "Could not determine project"
+"
+```
 
 **Migration check**:
-!python3 -c "
+```bash
+python3 -c "
 import re, os, sys
 sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT','') + '/scripts')
 from _scope import get_scope
@@ -86,10 +100,12 @@ else:
     n = len(re.findall(r'^## Session snapshot —', mem.read_text(), re.MULTILINE))
     print(f'MIGRATION: {n} snapshot section(s) found' if n else 'MIGRATION: none')
     if n: print('MIGRATION_NEEDED: yes')
-" 2>/dev/null || echo "MIGRATION: none"
+"
+```
 
 **Project MEMORY.md**:
-!python3 -c "
+```bash
+python3 -c "
 import os, sys
 sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
 from _scope import get_scope
@@ -109,10 +125,8 @@ else:
     mem = projects_dir / key / 'memory' / 'MEMORY.md'
     print(f'PATH: {mem}')
     print(mem.read_text() if mem.exists() else 'MISSING — will be created')
-" 2>/dev/null || echo "Could not determine project"
-
-**Today**:
-!date +%Y-%m-%d
+"
+```
 
 ---
 
@@ -156,7 +170,9 @@ Run the summarize flow using session activity, git log, and git diff stat collec
    **Files changed:** [comma-separated relative paths, or "none"]
    **Git:** [N commit(s) — "message of most recent"] or "none"
    - [key action or decision — 3–8 bullets]
-   **Open threads:** [item] (omit section entirely if none)
+   **What didn't work:** [failed approach — "tried X, failed because Y"] (omit if none)
+   **Resume:** [exact next step to take when picking this up] (omit if nothing in flight)
+   **Open threads:** [blocker or deferred item] (omit section entirely if none)
    ```
 2. Show the draft. Ask: "Save to session-log.md? Reply `yes` or edit inline."
 3. On confirm: append to the PATH shown in **session-log.md** context above.
@@ -205,22 +221,20 @@ If MIGRATION_NEEDED is "yes": run the migration flow first —
 5. Remove snapshot blocks from MEMORY.md (preserve all other content)
 6. Report: "Migrated [N] snapshot(s) to session-log.md · MEMORY.md now [M] lines."
 
-Then ask: "Also capture stable patterns in MEMORY.md? Reply `yes` or `skip`."
-
-If `yes`:
+Then automatically capture stable patterns in MEMORY.md (no prompt needed):
 1. Look back at this conversation. Identify durable facts: key decisions, stable patterns, important file paths, conventions, architectural choices — anything a future session needs. Discard session narrative (that belongs in session-log), git commit details, and ephemeral mechanics.
 2. Draft a concise dated section (5–15 bullets):
    ```
-   ## Session snapshot — [date]
+   ## Session snapshot — [date] · [first 8 chars of SESSION id]
 
    - [key insight or decision]
    - [key insight or decision]
    ...
    ```
-3. Show the draft. Ask: "Add this to MEMORY.md? Reply `yes` or tell me what to change."
-4. On confirm: append to MEMORY.md using the PATH shown in **Project MEMORY.md** context above.
+3. Show the draft to the user for awareness, then immediately append to MEMORY.md using the PATH shown in **Project MEMORY.md** context above — no confirmation needed.
    - If MISSING: create with Write tool using `# [Repo] Memory\n\n` header
    - If exists: append with Edit tool
+4. Report: "MEMORY.md updated ([N] lines)."
 
 Constraints:
 - Never overwrite existing MEMORY.md content — append only

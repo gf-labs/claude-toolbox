@@ -1,53 +1,58 @@
 ---
 description: Start-of-session orientation — branch, backlog, snapshot health, plans, recent activity
-argument-hint: [--days N]
+argument-hint: [session-id | --days N]
 allowed-tools: Bash
 model: claude-haiku-4-5-20251001
 ---
 
-## Auto-collected context
+## Collect context
+
+Run each command below now before producing output. Store results mentally.
 
 **Scope**:
-!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/_scope.py
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/_scope.py
+```
 
 **Status**:
-!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-status.py
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-status.py
+```
 
 **Session log** (metadata + last 5 entries from most recent session):
-!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-session-log.py
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-session-log.py
+```
 
 **Plans** (with first bullet):
-!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plans.py
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plans.py
+```
 
 **Plan map** (project associations):
-!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plan-map.py
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plan-map.py
+```
 
-**Branch**:
-!git branch -vv 2>/dev/null | grep '^\*' || echo "not a git repo"
-
-**Changed files**:
-!git status --short 2>/dev/null || echo "clean"
-
-**Recent commits**:
-!git log --oneline -5 2>/dev/null || echo "none"
-
-**Stash**:
-!git stash list 2>/dev/null || echo "empty"
-
-**CLAUDE.md**:
-!test -f CLAUDE.md && echo "present" || echo "MISSING"
-
-**Backlog** (first 25 lines):
-!head -25 BACKLOG.md 2>/dev/null || echo "not found"
+**Branch, changes, commits, stash, CLAUDE.md, backlog, date**:
+```bash
+echo "BRANCH:" && (git branch -vv 2>/dev/null | grep '^\*' || echo "not a git repo")
+echo "CHANGES:" && (git status --short 2>/dev/null || echo "clean")
+echo "COMMITS:" && (git log --oneline -5 2>/dev/null || echo "none")
+echo "STASH:" && (git stash list 2>/dev/null || echo "empty")
+echo "CLAUDE_MD:" && (test -f CLAUDE.md && echo "present" || echo "MISSING")
+echo "BACKLOG:" && (head -25 BACKLOG.md 2>/dev/null || echo "not found")
+echo "DATE:" && date +%Y-%m-%d
+```
 
 **Recent Claude activity**:
-!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-history.py $ARGUMENTS
-
-**MEMORY.md** (first 12 lines):
-!head -12 MEMORY.md 2>/dev/null || echo "MISSING"
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-history.py $ARGUMENTS
+```
 
 **Ramp — nodes due today**:
-!python3 -c "
+```bash
+python3 -c "
 import re
 from datetime import date
 from pathlib import Path
@@ -64,27 +69,75 @@ else:
     xp = xp_match.group(1) if xp_match else '?'
     print(f'{len(due)} nodes due  |  {level}  |  {xp} XP')
 " 2>/dev/null || echo "no ramp graph"
+```
 
 **Phase / roadmap**:
-!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-phase.py 2>/dev/null || echo "NOT_FOUND"
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-phase.py 2>/dev/null || echo "NOT_FOUND"
+```
 
 **Toolbox env**:
-!printenv CLAUDE_TOOLBOX_ROOT 2>/dev/null && echo "(set)" || echo "NOT SET"
+```bash
+printenv CLAUDE_TOOLBOX_ROOT 2>/dev/null && echo "(set)" || echo "NOT SET"
+```
 
 **Plugin drift**:
-!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plugin-drift.py 2>/dev/null || echo "unavailable"
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plugin-drift.py 2>/dev/null || echo "unavailable"
+```
 
 **Auto-rename unnamed sessions**:
-!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/rename-unnamed.py
-
-**Today**:
-!date +%Y-%m-%d
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/rename-unnamed.py
+```
 
 ---
 
 ## Your role
 
-Read-only orient command. Read the auto-collected context above and render a concise status summary. No questions, no writes. One screen.
+**Mode detection:** Check `$ARGUMENTS` first. If it contains an 8+ character hex string (a session ID or UUID prefix), enter **Session Summary Mode** — ignore all auto-collected context above and do the following instead:
+
+1. Locate the JSONL file:
+```bash
+python3 -c "
+import json, os, sys
+from pathlib import Path
+sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
+try:
+    from _scope import get_scope
+    _m, _d, _ = get_scope()
+    _allowed = {_d} if _m == 'single' else ({k for k, _ in _d} if _m == 'parent' else None)
+except Exception:
+    _allowed = None
+arg = '$ARGUMENTS'.strip().split()[0]
+projects_dir = Path.home() / '.claude' / 'projects'
+for proj in sorted(projects_dir.iterdir()):
+    if not proj.is_dir(): continue
+    if _allowed is not None and proj.name not in _allowed: continue
+    for f in proj.glob('*.jsonl'):
+        if f.stem.startswith(arg) or f.stem.replace('-','').startswith(arg):
+            print(f'FOUND: {f}')
+            sys.exit(0)
+print(f'NOT_FOUND: {arg}')
+"
+```
+2. If NOT_FOUND: say "Session not found: [id]." and stop.
+3. Read the JSONL file. Parse: `custom-title`, first user message, tool_use blocks (files written/edited, bash commands, git commits visible in output), any `summary` type entries.
+4. Output:
+```
+## Session: [first 8 chars] — [title or "(untitled)"]
+**Date**: [mtime date]
+**Project**: [project name from path]
+
+**What happened** (3–6 bullets):
+- [key action or decision]
+
+**Files changed**: [comma-separated relative paths, or "none detected"]
+**Commits**: [N commits — "subject of most recent", or "none detected"]
+**Open threads**: [if any] (omit if none)
+```
+
+Otherwise (no session-id in arguments): Read-only orient command. Read the auto-collected context above and render a concise status summary. No questions, no writes. One screen.
 
 ---
 
