@@ -173,6 +173,15 @@ Break checkpoint assistant. Work through the steps below. Step 1 is display-only
 
 ---
 
+## Step 0 — Ramp check
+
+Check the current session's conversation history:
+- If `/ramp:pin` was run as the previous (or a recent) user message: proceed silently to Step 1.
+- If `/ramp:pin` has NOT been run this session: run it now automatically before continuing. Say: "Running `/ramp:pin` first…" then invoke the ramp:pin flow.
+- If ramp is not installed (no `/ramp:pin` command available): skip silently and proceed to Step 1.
+
+---
+
 ## Step 1 — Status (display only)
 
 Read the auto-collected context and render:
