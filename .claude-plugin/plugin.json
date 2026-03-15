@@ -1,7 +1,7 @@
 {
   "name": "tools",
   "version": "0.4.10",
-  "description": "Personal Claude Code global toolbox — brief, cleanup, doctor, pin, wrap commands with session log",
+  "description": "Session lifecycle management for Claude Code — orientation, checkpointing, archival, and health checks. Built by Bernie Green / Greenfield Labs.",
   "author": {"name": "Bernie Green"},
   "license": "MIT",
   "keywords": ["productivity", "cleanup", "maintenance"]
