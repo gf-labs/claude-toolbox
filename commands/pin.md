@@ -41,6 +41,43 @@ python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plans.py
 python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-summarize.py
 ```
 
+**Session title**:
+```bash
+python3 -c "
+import json, os, sys
+from pathlib import Path
+sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
+from _scope import get_scope
+mode, data, cwd = get_scope()
+projects_dir = Path.home() / '.claude' / 'projects'
+if mode == 'single':
+    proj_dir = projects_dir / data
+else:
+    import subprocess
+    try:
+        git_root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], stderr=subprocess.DEVNULL, text=True).strip()
+        proj_dir = projects_dir / git_root.replace('/', '-')
+    except Exception:
+        print('TITLE: (untitled)')
+        sys.exit(0)
+jsonl_files = list(proj_dir.glob('*.jsonl'))
+if not jsonl_files:
+    print('TITLE: (untitled)')
+    sys.exit(0)
+current = max(jsonl_files, key=lambda f: f.stat().st_mtime)
+title = ''
+for line in current.read_text(errors='replace').splitlines():
+    if not line.strip(): continue
+    try:
+        obj = json.loads(line)
+        if obj.get('type') == 'custom-title':
+            title = obj.get('customTitle', '')
+    except Exception:
+        continue
+print(f'TITLE: {title or \"(untitled)\"}')
+"
+```
+
 **Git log and diff**:
 ```bash
 echo "GIT_LOG:" && (git log --oneline -10 2>/dev/null || echo "none")
@@ -144,7 +181,7 @@ Read the auto-collected context and render:
 ## Pin — [repo] — [date]
 
 Branch: [branch name] [ahead N / behind N / up to date / no remote]
-Changes: [N files] or "clean"
+Changes: [N files changed, listed] or "clean"
 
 In Progress: [first BACKLOG in-progress item] or "(nothing)"
 Up Next: [first BACKLOG up-next item] or "(nothing)"
@@ -152,7 +189,24 @@ Plans: [N active, N marked for cleanup] or "none"
 
 Last snapshot: [date] [+(N sessions) if SESSIONS_SINCE > 0] or "—"
 Last session log: [date] ([N] entries) or "—"
+
+---
+
+### This session — [SESSION first 8 chars] · [TITLE]
+
+**What happened:**
+- [3–8 bullets synthesized from FILES_TOUCHED, git log, and this conversation's activity]
+
+**Files changed:** [comma-separated from FILES_TOUCHED, or "none"]
+**Git:** [N commit(s) — "message of most recent"] or "none"
+**Open threads:** [unresolved items visible in the conversation] (omit if none)
 ```
+
+"What happened" synthesis rules:
+- Lead with intent (what the user was trying to do), then actions taken
+- Include any diagnosis/root cause work, not just the fix
+- Group related changes into single bullets rather than listing every file
+- Omit if FILES_TOUCHED is "none" and no git activity — say "No file changes this session"
 
 No questions — display and proceed immediately to Step 2.
 
