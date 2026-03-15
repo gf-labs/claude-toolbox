@@ -13,12 +13,11 @@ Personal Claude Code global toolbox — versioned commands, agents, scripts, hoo
 | Command | Description |
 |---------|-------------|
 | `/tools:backlog`        | Add an item to BACKLOG.md from within Claude |
-| `/tools:brief`          | Start-of-session orientation — branch, backlog, plans, recent activity |
-| `/tools:cleanup`        | Clean up old Claude session artifacts — extract context, then delete |
+| `/tools:brief`          | Start-of-session orientation — branch, backlog, plans, recent activity; `/tools:brief [session-id]` to summarize a past session |
+| `/tools:cleanup`        | Clean up old Claude session artifacts — preview, extract context, then delete |
 | `/tools:doctor`         | Claude Code environment + project health check (scope-aware) |
-| `/tools:pin`            | Break checkpoint — status display, session log, optional MEMORY.md update |
+| `/tools:pin`            | Break checkpoint — status display, session log, MEMORY.md update |
 | `/tools:search-sessions`| Search session history by keyword |
-| `/tools:summarize`      | Summarize a session — given a session ID, path, or most recent |
 | `/tools:wrap`           | End-of-session housekeeping — git check, plan cleanup, backlog review, done marker |
 
 ## Session lifecycle
