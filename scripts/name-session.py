@@ -79,6 +79,10 @@ if existing and not force:
     sys.exit(0)
 
 record = json.dumps({'type': 'custom-title', 'customTitle': name, 'sessionId': sid})
-with open(current, 'a') as fh:
-    fh.write(record + '\n')
-print(f'Session named: {name}')
+try:
+    with open(current, 'a') as fh:
+        fh.write(record + '\n')
+    print(f'Session named: {name}')
+except Exception as e:
+    print(f'warning: could not write session name: {e}', file=sys.stderr)
+    sys.exit(1)

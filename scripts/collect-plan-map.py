@@ -159,7 +159,8 @@ def _scan() -> tuple[dict, float]:
             session_id = jsonl.stem
             try:
                 content = jsonl.read_text(errors='replace')
-            except Exception:
+            except Exception as e:
+                print(f'warning: could not read {jsonl}: {e}', file=sys.stderr)
                 continue
             for line in content.splitlines():
                 if not line.strip():

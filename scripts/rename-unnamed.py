@@ -172,8 +172,8 @@ for proj_dir in proj_dirs:
 
             results.append((f, f.stem[:8], current_title, name))
 
-        except Exception:
-            pass
+        except Exception as e:
+            print(f'warning: could not process {f}: {e}', file=sys.stderr)
 
 if not results:
     print('NONE')
