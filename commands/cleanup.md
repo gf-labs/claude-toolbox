@@ -338,6 +338,24 @@ Total: X sessions · Y MB (including session dirs, file-history, debug logs, ses
 | ...     | N lines   | OK / THIN / MISSING |
 ```
 
+After presenting the Phase 1 report, say: "To preview a session's content before deciding, reply `preview [session-id]`."
+
+If user replies `preview [session-id]`:
+1. Find and read the JSONL at `~/.claude/projects/[proj]/[session-id].jsonl`
+2. Parse: `custom-title`, first user message, tool_use blocks (files written/edited, bash commands, git commits), any `summary` entries
+3. Output a one-screen summary:
+   ```
+   ## Session: [first 8 chars] — [title or "(untitled)"]
+   **Date**: [mtime date]  **Size**: [K]
+
+   **What happened** (3–6 bullets):
+   - [key action or decision]
+
+   **Files changed**: [comma-separated, or "none detected"]
+   **Commits**: [N — "most recent subject", or "none"]
+   ```
+4. Re-prompt: "Delete this session, skip it, or preview another? Reply `delete [id]`, `skip`, or `preview [id]`."
+
 ---
 
 ## Phase 2 — Context extraction
