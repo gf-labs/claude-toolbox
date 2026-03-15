@@ -4,6 +4,7 @@ venv/
 .venv/
 .env
 .DS_Store
+.mcp.json
 .claude/knowledge-graphs/
 .claude/worktrees/
 *.log
