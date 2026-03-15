@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "claude-toolbox": {
+      "command": "<path-to-claude-toolbox>/mcp_server/.venv/bin/python3",
+      "args": ["<path-to-claude-toolbox>/mcp_server/server.py"]
+    }
+  }
+}

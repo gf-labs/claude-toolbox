@@ -8,6 +8,14 @@
             "command": "python3 $CLAUDE_TOOLBOX_ROOT/scripts/validate-env.py"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $CLAUDE_TOOLBOX_ROOT/scripts/setup-mcp.py"
+          }
+        ]
       }
     ],
     "PostToolUse": [
