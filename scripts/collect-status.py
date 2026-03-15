@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _scope import get_scope, _reconstruct
+from _scope import _reconstruct, get_scope
 
 
 def _run(cmd):
@@ -171,11 +171,11 @@ for key in all_proj_keys:
 # --- Output ---
 print('GROUP\tPROJECT\tBRANCH\tLOCAL_BRANCHES\tSESSIONS\tCHANGES\tLAST_COMMIT\tMEMORY_LINES\tMEMORY_STATUS\tBACKLOG_ITEMS\tLAST_SNAPSHOT\tSESSIONS_SINCE\tLAST_SESSION_LOG\tLOG_ENTRIES')
 
-for key, path in top_level:
+for _key, path in top_level:
     has_children = str(path) in groups
     group_tag = 'header' if has_children else ''
     _emit_row(path.name, path, group_tag, projects_dir)
-    for child_key, child_path in groups.get(str(path), []):
+    for _child_key, child_path in groups.get(str(path), []):
         _emit_row(child_path.name, child_path, path.name, projects_dir)
 
 if orphaned_entries:

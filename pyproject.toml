@@ -1,9 +1,16 @@
+[project]
+name = "claude-toolbox"
+version = "0.4.10"
+description = "Session lifecycle management for Claude Code"
+requires-python = ">=3.11"
+
 [tool.ruff]
 target-version = "py311"
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "W"]
+select = ["E", "F", "W", "I", "UP", "B"]
 ignore = [
     "E501",  # line too long — handled by line-length when needed
+    "B904",  # raise-from — inappropriate in hook/degradation contexts
 ]

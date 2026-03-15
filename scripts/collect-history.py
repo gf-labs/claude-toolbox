@@ -4,9 +4,9 @@ import argparse
 import json
 import sys
 import time
-from pathlib import Path
-from datetime import datetime, timezone
 from collections import defaultdict
+from datetime import UTC, datetime
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from _scope import get_scope
@@ -54,7 +54,7 @@ with open(history_file) as f:
             entries.append({
                 'ts': ts,
                 'repo': repo,
-                'date': datetime.fromtimestamp(ts, tz=timezone.utc).strftime('%Y-%m-%d'),
+                'date': datetime.fromtimestamp(ts, tz=UTC).strftime('%Y-%m-%d'),
                 'display': obj.get('display', '').replace('\n', ' ')[:100],
             })
         except Exception:
