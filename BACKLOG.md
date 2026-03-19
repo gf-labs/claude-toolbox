@@ -102,3 +102,16 @@
 - **Size:** S
 - Plan previews in `/tools:brief` and `/tools:pin` show the first bullet of each plan file, which is often a code snippet or fragment that reads poorly out of context (e.g. `` `idle_prompt` — Claude is waiting for user input ``)
 - Consider: show plan title only, extract a `purpose:` line from plan frontmatter, or pick the first prose bullet (skip code-heavy lines)
+
+### Review Anthropic agent SDK repos for best practices
+- **Size:** S
+- Two official Anthropic repos surfaced as best practices references:
+  - `https://github.com/anthropics/agent-sdk-workshop` — workshop materials for the Agent SDK
+  - `https://github.com/anthropics/claude-agent-sdk-demos` — demo implementations using Claude Agent SDK
+- Review both for patterns worth capturing in toolbox commands and hooks
+
+### Include current session summary in `brief` and `status`
+- **Size:** S
+- Both commands should surface a summary of the current session so Claude has immediate context on what's already been done this session
+- Options: call `mcp__claude-toolbox__get_session_log` for the active session, or read the session JSONL directly and extract recent assistant turns
+- Render as a "Session so far" section near the top of each command's output
