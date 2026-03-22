@@ -110,6 +110,13 @@
   - `https://github.com/anthropics/claude-agent-sdk-demos` — demo implementations using Claude Agent SDK
 - Review both for patterns worth capturing in toolbox commands and hooks
 
+### Review community Claude Code repos for hooks and tips
+- **Size:** S
+- Two community repos not yet mined for backlog items:
+  - `https://github.com/shanraisshan/claude-code-hooks` — community hook collection
+  - `https://github.com/ykdojo/claude-code-tips` — tips and tricks for Claude Code
+- Review both for hooks, settings, or patterns worth adding to toolbox
+
 ### Include current session summary in `brief` and `status`
 - **Size:** S
 - Both commands should surface a summary of the current session so Claude has immediate context on what's already been done this session
