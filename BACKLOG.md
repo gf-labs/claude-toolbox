@@ -117,6 +117,40 @@
   - `https://github.com/ykdojo/claude-code-tips` — tips and tricks for Claude Code
 - Review both for hooks, settings, or patterns worth adding to toolbox
 
+### run-pipeline.py: model selection per phase (Haiku for 2F/2H, Sonnet for 2G)
+- **Size:** S — **highest ROI item; saves ~$37 per full pipeline run**
+- 2F is structured template extraction — Haiku 4.5 handles it reliably; no cross-source reasoning needed
+- 2G is cross-source dedup + contradiction detection — Sonnet worth it; input is only ~875KB so cost is trivial (~$0.67)
+- 2H is rubric-based assessment — Haiku sufficient
+- Implementation: add `MODEL_2F = "claude-haiku-4-5-20251001"` and `MODEL_2G = "claude-sonnet-4-6"` constants; pass `"--model", MODEL_2F` to child sessions; make overridable via `--model` CLI flag
+- Quality check: spot-check 2-3 heavy combos after first Haiku run (gemini/home, chatgpt/learn-tech)
+
+### run-pipeline.py: Batch API for 2F — 50% additional cost reduction
+- **Size:** M
+- 41 independent 2F jobs = ideal Batch API use case; 50% cost reduction vs. regular API
+- With Haiku + Batch API: ~$14 → ~$7 for a full run
+- Implementation: replace `subprocess.run(["claude", "-p", ...])` with direct Anthropic SDK batch submission; poll for completion; process results from batch output stream
+- Tradeoff: async (minutes-to-hours latency); removes `--allowedTools` complexity since prompts go direct to API; removes child session startup overhead
+- Blocks on: model selection item above (Batch API + Haiku compounds both savings)
+
+### run-pipeline.py: incremental re-analysis — skip unchanged combos
+- **Size:** M
+- For subsequent export cycles, most combos won't have new threads; re-running all 41 wastes full cost
+- Implementation: store `{rows: N, date: YYYY-MM-DD}` alongside `status: complete` in pipeline-state.json; on next run, compare extracted_count vs stored rows; skip if unchanged
+- Expected savings: subsequent cycles cost $2-5 instead of $14-51 (90%+ reduction)
+
+### run-pipeline.py: pipeline 2F → 2G (start synthesis as soon as project's 2F done)
+- **Size:** M
+- Currently: 2F 100% complete → 2G starts; slow combos block entire synthesis phase
+- Optimization: after each `run_2f_combo` succeeds, check if all source combos for that project are complete → immediately submit `run_2g_project` to same executor
+- Saves ~20-30% wall-clock time at no cost increase
+
+### run-pipeline.py: replace `--re-analyze` scaffold with clean programmatic prompt
+- **Size:** S
+- Current prompt includes interactive-use noise ("Paste this into a new Claude session") and IMPORTANT OVERRIDES fighting the scaffold; cleaner prompt → better Haiku output
+- Replace: build prompt directly from extracted file list + inlined template content; remove scaffold entirely from 2F
+- Side effect: removes one `Read` tool call per session (template read eliminated)
+
 ### run-pipeline.py: reduce max_workers + add retry with backoff (2F/2G)
 - **Size:** S
 - First 2F run revealed: 6 concurrent `claude -p` sessions saturates rate limit; failed sessions return non-zero with empty stderr (rate limit signature); transient failures required 3 manual re-runs
