@@ -117,6 +117,28 @@
   - `https://github.com/ykdojo/claude-code-tips` — tips and tricks for Claude Code
 - Review both for hooks, settings, or patterns worth adding to toolbox
 
+### run-pipeline.py: reduce max_workers + add retry with backoff (2F/2G)
+- **Size:** S
+- First 2F run revealed: 6 concurrent `claude -p` sessions saturates rate limit; failed sessions return non-zero with empty stderr (rate limit signature); transient failures required 3 manual re-runs
+- Fix: reduce `max_workers` from 6 → 3; add retry-once-with-30s-backoff for "No analysis files written" failures before declaring combo failed
+- Also add jitter (random 0–5s delay) to session starts to prevent synchronized bursts
+
+### run-pipeline.py: log child session stdout to per-combo debug files (2F/2G)
+- **Size:** S
+- `r.stdout` is currently discarded on `returncode == 0`; this hid the "Could you approve those reads?" message that explained the permission failure for 30+ sessions
+- Fix: write `r.stdout` + `r.stderr` to `GENERATED/analysis-logs/source/project.txt` (or `synthesis-logs/`) regardless of success/failure; enables post-run auditing without re-running
+
+### run-pipeline.py: pre-flight cost estimate for 2F/2G
+- **Size:** S
+- 2F run cost ~$50 unexpectedly; no pre-flight estimate existed; total extracted file size is a proxy for input token count
+- Fix: add `--estimate` flag to 2F/2G that counts input tokens across all pending combos and prints projected cost at Sonnet 4.6 rates; exits before launching any sessions
+- Threshold: warn if projected cost >$10, require `--confirm` if >$25
+
+### run-pipeline.py: state/filesystem divergence check subcommand
+- **Size:** S
+- Abnormal termination can leave analysis files written but state not marked complete; required manual Python one-liners to diagnose and patch
+- Fix: add `run-pipeline.py check-state` subcommand that compares generated-data/analysis/ filesystem vs pipeline-state.json and reports/auto-fixes divergences
+
 ### Include current session summary in `brief` and `status`
 - **Size:** S
 - Both commands should surface a summary of the current session so Claude has immediate context on what's already been done this session
