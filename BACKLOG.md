@@ -178,3 +178,21 @@
 - Both commands should surface a summary of the current session so Claude has immediate context on what's already been done this session
 - Options: call `mcp__claude-toolbox__get_session_log` for the active session, or read the session JSONL directly and extract recent assistant turns
 - Render as a "Session so far" section near the top of each command's output
+
+### Make `pin` context-aware — audit activity since last pin
+- **Size:** XS
+- Before running the full pin flow, audit what has happened since the most recent pin in this session; if nothing worth capturing has accumulated, no-op with a short message
+- Audit should check: new tool calls, file edits, decisions made, memory candidates — not just whether pin was run earlier
+- Goal: multiple pins in a long session each capture their incremental window, not the full session redundantly
+
+### Add project extension support to `brief` — `.claude/status.md` injection
+- **Size:** XS
+- `status.md` already reads `.claude/status.md` and renders project-specific sections; `brief.md` does not
+- Add the `cat .claude/status.md` collect block + rendering instructions to `brief.md` (same pattern as status.md lines 112–116 and 162–168)
+- Prerequisite: lets each repo define its own rich context (bug tables, phase map, homelab section, immediate priority) that surfaces automatically in `/brief`
+
+### Build `/tools:overview` — cross-project dashboard
+- **Size:** S
+- New command + `collect-overview.py` script; renders two panels: **Plans** (all `~/.claude/plans/*.md` grouped by project + status, extracted from title/status markers) and **Sessions** (filtered notable sessions grouped by project, excluding re-analysis/synthesize/delete-me noise)
+- Must work equally well in single-project repos (scoped to current project) and multi-project directories (full cross-project view); use `_scope.py` to detect context and adjust grouping accordingly
+- Replaces the manual work of listing plans and sessions separately

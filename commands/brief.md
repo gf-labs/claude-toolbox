@@ -213,14 +213,22 @@ Render as follows:
 4. **Unscoped keys** (lines after `# UNSCOPED_KEYS` marker):
    `**Unscoped** (N sessions): N sessions with no project scope — run /done inside those sessions or /cleanup delete-me`
 
-5. **Plans block** — use Plans + Plan map data:
+5. **Project Summaries** — for every project row that has any of: SESSIONS > 0, LOG date present, CHANGES > 0. Skip rows where all three are absent.
+   ```
+   **[project]** · [branch] · [N sessions] · [N backlog] · Memory: [status]
+     [1–2 sentences: what was done last (from ENTRIES: block) + what's in flight (from associated plans)]
+     Flags: [comma list of any: "N uncommitted", "WARN memory", "THIN memory", "no snapshot", "MISSING memory"] (omit line if none)
+   ```
+   Source the narrative from the ENTRIES: block for this project in session log output, plus plan titles associated with this project from plan-map data. Max 2 body lines per project.
+
+6. **Plans block** — use Plans + Plan map data:
    ```
    Plans:
      plan1.md [project] — Title
        → first bullet
    ```
 
-6. **Last active block** — find the project with the most recent ENTRIES: block in Session log output.
+7. **Last active block** — find the project with the most recent ENTRIES: block in Session log output.
    Show its entries:
    ```
    Last active: [project] ([date, N days ago])
@@ -229,11 +237,11 @@ Render as follows:
      ...
    ```
 
-7. **Toolbox line**: `Toolbox: CLAUDE_TOOLBOX_ROOT [set / NOT SET] · plugins: [in sync / N stale / N missing / unavailable]`
+8. **Toolbox line**: `Toolbox: CLAUDE_TOOLBOX_ROOT [set / NOT SET] · plugins: [in sync / N stale / N missing / unavailable]`
 
-8. **Ramp line**: show the ramp due-nodes line from auto-collected context.
+9. **Ramp line**: show the ramp due-nodes line from auto-collected context.
 
-9. **Recent Claude activity** — from collect-history.py, at the bottom:
+10. **Recent Claude activity** — from collect-history.py, at the bottom:
    ```
    ---
 
