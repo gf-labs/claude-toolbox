@@ -64,9 +64,17 @@ lifecycle from orientation to archival.
 | `/tools:brief`          | Start-of-session orientation — branch, backlog, plans, recent activity; `/tools:brief [session-id]` to summarize a past session |
 | `/tools:cleanup`        | Clean up old Claude session artifacts — preview, extract context, then delete |
 | `/tools:doctor`         | Claude Code environment + project health check (scope-aware) |
+| `/tools:ingest`         | Ingest documents, PDFs, and repos into the analysis pipeline (Phase A, ≤20 files / ≤50k chars); large inputs fall back to `run-pipeline.py ingest` |
 | `/tools:pin`            | Break checkpoint — status display, session log, MEMORY.md update |
 | `/tools:search-sessions`| Search session history by keyword |
 | `/tools:wrap`           | End-of-session housekeeping — git check, plan cleanup, backlog review, done marker |
+
+Phase B (large-batch overflow):
+```bash
+python3 scripts/run-pipeline.py ingest <path> [--source NAME] [--force] [--auto]
+```
+Output lands in `~/Downloads/archive/timeline/` (global event log) and
+`~/Downloads/archive/generated-data/synthesis/<project>/`.
 
 ## MCP server
 
