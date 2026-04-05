@@ -117,6 +117,12 @@
   - `https://github.com/ykdojo/claude-code-tips` — tips and tricks for Claude Code
 - Review both for hooks, settings, or patterns worth adding to toolbox
 
+### run-pipeline.py: git event source-prefix mismatch
+- **Size:** S
+- Git commit events are stored with `source: "git:<hash8>"` (from `git_override` block) rather than `source: "{source}:<hash>"` — a targeted reset (`--source X`) cannot identify and remove them; they persist as orphans in `events.jsonl` after reset
+- Fix: change `git_override` to store `source: "{source}:git:{hash8}"` and update the staleness/by-project cleanup filters to match
+- Also update the force-clear filter (pre-loop) and targeted reset JSONL rewrite to use the new prefix scheme
+
 ### run-pipeline.py: model selection per phase (Haiku for 2F/2H, Sonnet for 2G)
 - **Size:** S — **highest ROI item; saves ~$37 per full pipeline run**
 - 2F is structured template extraction — Haiku 4.5 handles it reliably; no cross-source reasoning needed
