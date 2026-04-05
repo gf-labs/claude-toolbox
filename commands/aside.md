@@ -38,11 +38,13 @@ Do not switch until confirmed.
 ## Output format
 
 ```
-ASIDE: $ARGUMENTS
+ASIDE: [user question]
 
-[Answer the question concisely. Read-only during aside — no writes unless the answer directly requires a file read to answer accurately.]
+[Answer the question concisely.]
 
 — Back to task: [one-line description of what you were doing before the aside]
 ```
+
+Read-only during aside — no writes.
 
 After outputting this block, resume where you left off without restating the aside.
