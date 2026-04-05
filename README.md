@@ -67,6 +67,8 @@ lifecycle from orientation to archival.
 | `/tools:ingest`         | Ingest documents, PDFs, and repos into the analysis pipeline (Phase A, ≤20 files / ≤50k chars); large inputs fall back to `run-pipeline.py ingest` |
 | `/tools:pin`            | Break checkpoint — status display, session log, MEMORY.md update |
 | `/tools:search-sessions`| Search session history by keyword |
+| `/tools:status`         | Current project state — git detail, architecture snapshot, and next steps |
+| `/tools:thread-pipeline`| Show thread extraction pipeline status — INDEX.md summary, quality check, next steps |
 | `/tools:wrap`           | End-of-session housekeeping — git check, plan cleanup, backlog review, done marker |
 
 Phase B (large-batch overflow):
