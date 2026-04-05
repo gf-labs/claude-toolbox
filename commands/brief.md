@@ -91,6 +91,11 @@ python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plugin-drift.py 2>/dev/null || ec
 python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/rename-unnamed.py
 ```
 
+**Project extension**:
+```bash
+cat .claude/status.md 2>/dev/null || echo "(no project extension)"
+```
+
 ---
 
 ## Your role
@@ -139,6 +144,8 @@ print(f'NOT_FOUND: {arg}')
 
 Otherwise (no session-id in arguments): Read-only orient command. Read the auto-collected context above and render a concise status summary. No questions, no writes. One screen.
 
+If `.claude/status.md` content was injected above (not "(no project extension)"): insert those sections between Phase and MEMORY.md, replacing the `[Extension sections]` placeholder. Append any next-step bullets specified by the extension to any relevant section.
+
 ---
 
 ## Output format
@@ -173,6 +180,8 @@ Plans:
 
 Phase: [phase name from collect-phase.py] ([source file]) (omit entirely if NOT_FOUND)
   Blocker: [blocker text] (omit if no BLOCKER line)
+
+[Extension sections]      ← insert here if .claude/status.md was loaded; omit if no extension
 
 MEMORY.md: [NL OK / THIN / WARN / MISSING]
   [first 8–10 lines of content if present, indented]

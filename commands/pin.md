@@ -227,6 +227,8 @@ Run the summarize flow using session activity, git log, and git diff stat collec
 
 **Before drafting:** check **session-log.md** for any prior entry whose header contains the first 8 chars of SESSION (from collect-summarize.py). If a matching entry exists, this is a repeat pin in the same session — draft only the *new* activity since that entry (cross-reference its bullets to avoid duplication), and suffix the header with ` (2)`, ` (3)`, etc.
 
+**Skip check** (only if a prior entry for this session exists): compare the most recent git commit in GIT_LOG against what was listed in the prior entry's `**Git:**` line, and compare FILES_TOUCHED against the prior entry's `**Files changed:**` line. If both match (same commit, same files or both "none") — there is nothing new to capture. Print: `Nothing new since last pin — no-op.` and stop without writing.
+
 1. Draft a structured entry:
    ```
    ## [date] · [first 8 chars of SESSION id from collect-summarize.py]

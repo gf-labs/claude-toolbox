@@ -60,6 +60,7 @@ lifecycle from orientation to archival.
 
 | Command | Description |
 |---------|-------------|
+| `/tools:aside`          | Answer a mid-task side question in a fixed format, then resume |
 | `/tools:backlog`        | Add an item to BACKLOG.md from within Claude |
 | `/tools:brief`          | Start-of-session orientation — branch, backlog, plans, recent activity; `/tools:brief [session-id]` to summarize a past session |
 | `/tools:cleanup`        | Clean up old Claude session artifacts — preview, extract context, then delete |

@@ -16,17 +16,11 @@
 
 ### `/aside` command — mid-task side question
 - **Size:** XS
-- **Disposition:** New command — no existing command covers mid-task side questions
-- Pure Markdown command, no scripts needed
-- Freeze task state, answer in fixed format (`ASIDE: [question]\n\n[answer]\n\n— Back to task: [description]`), resume automatically; read-only during aside
-- Edge cases: question reveals a problem → flag before resuming; question is a redirect → ask before switching
-- Source: `commands/aside.md` — affaan-m/everything-claude-code
+- **Done 2026-04-05** — created `commands/aside.md`; pure Markdown, no scripts; handles redirect and reveals-a-problem edge cases
 
 ### `spinnerTipsOverride` with `excludeDefault: true`
 - **Size:** XS
-- Add to `~/.claude/settings.json`: `"spinnerTipsOverride": {"excludeDefault": true, "tips": [...]}`
-- Replaces Anthropic's default loading tips with custom ones
-- Source: `best-practice/claude-settings.md` — shanraisshan/claude-code-best-practice
+- **Done 2026-04-05** — already present in `~/.claude/settings.json` (lines 102–109); no action needed
 
 ### Suggest-compact hook — tool-call counter
 - **Size:** S
@@ -124,12 +118,8 @@
 - Also update the force-clear filter (pre-loop) and targeted reset JSONL rewrite to use the new prefix scheme
 
 ### run-pipeline.py: model selection per phase (Haiku for 2F/2H, Sonnet for 2G)
-- **Size:** S — **highest ROI item; saves ~$37 per full pipeline run**
-- 2F is structured template extraction — Haiku 4.5 handles it reliably; no cross-source reasoning needed
-- 2G is cross-source dedup + contradiction detection — Sonnet worth it; input is only ~875KB so cost is trivial (~$0.67)
-- 2H is rubric-based assessment — Haiku sufficient
-- Implementation: add `MODEL_2F = "claude-haiku-4-5-20251001"` and `MODEL_2G = "claude-sonnet-4-6"` constants; pass `"--model", MODEL_2F` to child sessions; make overridable via `--model` CLI flag
-- Quality check: spot-check 2-3 heavy combos after first Haiku run (gemini/home, chatgpt/learn-tech)
+- **Size:** S
+- **Done 2026-04-04** — `MODEL_2F = "claude-haiku-4-5-20251001"` and `MODEL_2G = "claude-sonnet-4-6"` constants in run-pipeline.py; `--model` overrides passed to child sessions
 
 ### run-pipeline.py: Batch API for 2F — 50% additional cost reduction
 - **Size:** M
@@ -187,15 +177,11 @@
 
 ### Make `pin` context-aware — audit activity since last pin
 - **Size:** XS
-- Before running the full pin flow, audit what has happened since the most recent pin in this session; if nothing worth capturing has accumulated, no-op with a short message
-- Audit should check: new tool calls, file edits, decisions made, memory candidates — not just whether pin was run earlier
-- Goal: multiple pins in a long session each capture their incremental window, not the full session redundantly
+- **Done 2026-04-05** — added skip check to Step 2 of `commands/pin.md`: if prior entry exists and git log + FILES_TOUCHED match, no-ops with short message
 
 ### Add project extension support to `brief` — `.claude/status.md` injection
 - **Size:** XS
-- `status.md` already reads `.claude/status.md` and renders project-specific sections; `brief.md` does not
-- Add the `cat .claude/status.md` collect block + rendering instructions to `brief.md` (same pattern as status.md lines 112–116 and 162–168)
-- Prerequisite: lets each repo define its own rich context (bug tables, phase map, homelab section, immediate priority) that surfaces automatically in `/brief`
+- **Done 2026-04-05** — added `**Project extension**` collect block and rendering instructions to `commands/brief.md`
 
 ### Build `/tools:overview` — cross-project dashboard
 - **Size:** S
