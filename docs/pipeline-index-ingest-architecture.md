@@ -125,8 +125,16 @@ python3 run-pipeline.py ingest --project example-project --force
 
 ---
 
-## Open questions
+## Open questions — resolved 2026-04-05
 
-- Does `index` also handle non-extracted sources (PDFs, git repos, notebooks) or is that a separate pass?
-- Does `ingest` replace `2f`/`2g` entirely, or do both paths coexist during transition?
-- Batching unit for gemini (489 files): per-project batches via INDEX.md, or fixed N-file chunks?
+- **Does `index` handle non-extracted sources (PDFs, git repos, notebooks)?**
+  No. `index` is AI-thread-only (reads from `source-data/{source}/extracted/` via INDEX.md).
+  PDFs, git repos, and notebooks use `batch <path> --source <S>` — the renamed ad-hoc path.
+
+- **Does `ingest` replace `2f`/`2g` entirely, or do both coexist?**
+  Both coexist. `2f`/`2g` remain for the old extraction-first workflow (full reprocess scenario).
+  `ingest --project <P>` is the new timeline-driven path — runs after `index`, not after `2f`.
+
+- **Batching unit for gemini (489 files)?**
+  Per-project batches via INDEX.md. `_parse_index_md("gemini")` groups files by destination slug;
+  each `src/proj` batch is one `claude -p` session. No fixed N-file chunks needed.
