@@ -111,59 +111,6 @@
   - `https://github.com/ykdojo/claude-code-tips` — tips and tricks for Claude Code
 - Review both for hooks, settings, or patterns worth adding to toolbox
 
-### run-pipeline.py: git event source-prefix mismatch
-- **Size:** S
-- Git commit events are stored with `source: "git:<hash8>"` (from `git_override` block) rather than `source: "{source}:<hash>"` — a targeted reset (`--source X`) cannot identify and remove them; they persist as orphans in `events.jsonl` after reset
-- Fix: change `git_override` to store `source: "{source}:git:{hash8}"` and update the staleness/by-project cleanup filters to match
-- Also update the force-clear filter (pre-loop) and targeted reset JSONL rewrite to use the new prefix scheme
-
-### run-pipeline.py: model selection per phase (Haiku for 2F/2H, Sonnet for 2G)
-- **Size:** S
-- **Done 2026-04-04** — `MODEL_2F = "claude-haiku-4-5-20251001"` and `MODEL_2G = "claude-sonnet-4-6"` constants in run-pipeline.py; `--model` overrides passed to child sessions
-
-### run-pipeline.py: Batch API for 2F — 50% additional cost reduction
-- **Size:** M
-- 41 independent 2F jobs = ideal Batch API use case; 50% cost reduction vs. regular API
-- With Haiku + Batch API: ~$14 → ~$7 for a full run
-- Implementation: replace `subprocess.run(["claude", "-p", ...])` with direct Anthropic SDK batch submission; poll for completion; process results from batch output stream
-- Tradeoff: async (minutes-to-hours latency); removes `--allowedTools` complexity since prompts go direct to API; removes child session startup overhead
-- Blocks on: model selection item above (Batch API + Haiku compounds both savings)
-
-### run-pipeline.py: incremental re-analysis — skip unchanged combos
-- **Size:** M
-- For subsequent export cycles, most combos won't have new threads; re-running all 41 wastes full cost
-- Implementation: store `{rows: N, date: YYYY-MM-DD}` alongside `status: complete` in pipeline-state.json; on next run, compare extracted_count vs stored rows; skip if unchanged
-- Expected savings: subsequent cycles cost $2-5 instead of $14-51 (90%+ reduction)
-
-### run-pipeline.py: pipeline 2F → 2G (start synthesis as soon as project's 2F done)
-- **Size:** M
-- Currently: 2F 100% complete → 2G starts; slow combos block entire synthesis phase
-- Optimization: after each `run_2f_combo` succeeds, check if all source combos for that project are complete → immediately submit `run_2g_project` to same executor
-- Saves ~20-30% wall-clock time at no cost increase
-
-### run-pipeline.py: replace `--re-analyze` scaffold with clean programmatic prompt
-- **Size:** S
-- Current prompt includes interactive-use noise ("Paste this into a new Claude session") and IMPORTANT OVERRIDES fighting the scaffold; cleaner prompt → better Haiku output
-- Replace: build prompt directly from extracted file list + inlined template content; remove scaffold entirely from 2F
-- Side effect: removes one `Read` tool call per session (template read eliminated)
-
-### run-pipeline.py: reduce max_workers + add retry with backoff (2F/2G)
-- **Size:** S
-- First 2F run revealed: 6 concurrent `claude -p` sessions saturates rate limit; failed sessions return non-zero with empty stderr (rate limit signature); transient failures required 3 manual re-runs
-- Fix: reduce `max_workers` from 6 → 3; add retry-once-with-30s-backoff for "No analysis files written" failures before declaring combo failed
-- Also add jitter (random 0–5s delay) to session starts to prevent synchronized bursts
-
-### run-pipeline.py: log child session stdout to per-combo debug files (2F/2G)
-- **Size:** S
-- `r.stdout` is currently discarded on `returncode == 0`; this hid the "Could you approve those reads?" message that explained the permission failure for 30+ sessions
-- Fix: write `r.stdout` + `r.stderr` to `GENERATED/analysis-logs/source/project.txt` (or `synthesis-logs/`) regardless of success/failure; enables post-run auditing without re-running
-
-### run-pipeline.py: pre-flight cost estimate for 2F/2G
-- **Size:** S
-- 2F run cost ~$50 unexpectedly; no pre-flight estimate existed; total extracted file size is a proxy for input token count
-- Fix: add `--estimate` flag to 2F/2G that counts input tokens across all pending combos and prints projected cost at Sonnet 4.6 rates; exits before launching any sessions
-- Threshold: warn if projected cost >$10, require `--confirm` if >$25
-
 ### run-pipeline.py: state/filesystem divergence check subcommand
 - **Size:** S
 - Abnormal termination can leave analysis files written but state not marked complete; required manual Python one-liners to diagnose and patch
@@ -182,6 +129,30 @@
 ### Add project extension support to `brief` — `.claude/status.md` injection
 - **Size:** XS
 - **Done 2026-04-05** — added `**Project extension**` collect block and rendering instructions to `commands/brief.md`
+
+### `brief` scope — directory-aware project inclusion
+- **Size:** S
+- Currently `brief` in parent/global mode includes all known projects regardless of cwd. Change to scope by directory:
+  - Run from a specific repo (e.g. `business/claude-toolbox`) → single-project mode, no sub-project table
+  - Run from a group dir (e.g. `business/` or `personal/`) → includes only projects whose paths are children of cwd
+  - Run from `~` or a root-like dir → includes all projects found in `~` and its subdirectories (current behavior)
+- Implementation: in `collect-status.py`, filter project rows by comparing each project's resolved disk path against `cwd`; emit only rows where `path.startswith(cwd)` (or exact match for single-repo mode)
+- Should replace the current `_scope.py` PARENT/SINGLE toggle with a pure path-prefix filter; `_scope.py` can remain for other consumers
+
+### run-pipeline.py: `artifacts` subcommand follow-up items
+- **Done 2026-04-07** — `artifacts` subcommand implemented (295 lines); `MODEL_ARTIFACTS = claude-sonnet-4-6`; per-thread extraction + rollup into `code-reference.md`; analysis-template.md updated with Technical Artifacts section
+- **example-project integration verified 2026-04-08** — full manual artifact pass complete; all 61 artifact files (13 claude, 12 chatgpt, 36 gemini) assessed; 2 unique appends written (constructRaindropFromYoutubePlaylistItem → marketplace-metering.md, RaindropClient + YouTubeClient → auth-connector-impl.md); manual process documented in pipeline-runbook.md Phase 4b
+- **Next:** Run `artifacts` for gfl, example-personal, homelab; then manual Phase 4b pass per project using runbook
+- **Known gaps:**
+  - `--max-workers` not implemented (sequential only — each thread awaits Claude subprocess before next starts); parallelization could cut runtime from ~6 hrs to ~1 hr for large projects
+  - No `--check` mode (unlike other subcommands); add divergence check for artifact files vs state keys
+
+### run-pipeline.py: `codex` subcommand — implementation-detail extraction layer
+- **Done 2026-04-08** — implemented two-pass architecture:
+  - Pass 1 (cluster): Sonnet reads `code-reference.md` + existing docs list → writes `generated-data/codex/{project}/cluster-map.json` → user confirms interactively (or `--auto`)
+  - Pass 2 (delta): one Sonnet call per cluster → reads existing destination + artifact sections → writes staging delta to `generated-data/codex/{project}/{dest_slug}.md`
+- Design decisions locked in: input = `code-reference.md` rollup only; output = staging files (not direct repo writes); `MODEL_CODEX = claude-sonnet-4-6`; `CODEX_DOCS_DIRS` dict for 4 projects; state under "codex" phase
+- Flags: `--project`, `--docs-dir`, `--force`, `--auto`, `--cluster-only`
 
 ### Build `/tools:overview` — cross-project dashboard
 - **Size:** S

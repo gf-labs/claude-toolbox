@@ -76,8 +76,8 @@ Phase B (large-batch overflow):
 ```bash
 python3 scripts/run-pipeline.py ingest <path> [--source NAME] [--force] [--auto]
 ```
-Output lands in `~/Downloads/archive/timeline/` (global event log) and
-`~/Downloads/archive/generated-data/synthesis/<project>/`.
+Output lands in `$AI_INGESTION_ROOT/timeline/` (global event log) and
+`$AI_INGESTION_ROOT/generated-data/synthesis/<project>/`.
 
 ## MCP server
 
