@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import json
 import os
 from pathlib import Path
-from typing import Optional
 
 DATA_ROOT = Path.home() / '.claude' / 'data' / 'tools'
 
@@ -28,7 +29,7 @@ def write_registry(project_key: str, data: dict) -> None:
     os.replace(tmp, path)
 
 
-def get_status(project_key: str, uuid: str) -> Optional[str]:
+def get_status(project_key: str, uuid: str) -> str | None:
     return read_registry(project_key).get(uuid, {}).get('status')
 
 

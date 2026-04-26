@@ -51,17 +51,19 @@ def test_set_status_merges_kwargs():
     assert reg["abc-123"]["status"] == "done"
 
 
-def test_write_is_atomic(tmp_path, monkeypatch):
+def test_write_is_atomic():
     import session_index
     session_index.write_registry("my-project", {"x": {"status": "done"}})
-    tmp_files = list(tmp_path.rglob("*.tmp"))
+    # Verify no temp files are left behind (cleanup is atomic)
+    # DATA_ROOT is patched to tmp_path by the autouse fixture
+    tmp_files = list(session_index.DATA_ROOT.rglob("*.tmp"))
     assert tmp_files == [], f"Temp file left behind: {tmp_files}"
 
 
-def test_write_creates_parent_dirs(tmp_path, monkeypatch):
+def test_write_creates_parent_dirs():
     import session_index
     session_index.write_registry("deep-project", {"x": {"status": "done"}})
-    expected = tmp_path / "deep-project" / "sessions-meta.json"
+    expected = session_index.DATA_ROOT / "deep-project" / "sessions-meta.json"
     assert expected.exists()
 
 
@@ -78,9 +80,9 @@ def test_set_status_overwrites_existing():
     assert session_index.get_status("my-project", "abc-123") == "keep"
 
 
-def test_read_corrupt_registry(tmp_path, monkeypatch):
+def test_read_corrupt_registry():
     import session_index
-    path = tmp_path / "my-project" / "sessions-meta.json"
+    path = session_index.DATA_ROOT / "my-project" / "sessions-meta.json"
     path.parent.mkdir(parents=True)
     path.write_text("{ bad json !!!")
     assert session_index.read_registry("my-project") == {}
