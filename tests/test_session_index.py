@@ -76,3 +76,11 @@ def test_set_status_overwrites_existing():
     session_index.set_status("my-project", "abc-123", "done", done_at="2026-01-01T00:00:00Z")
     session_index.set_status("my-project", "abc-123", "keep", done_at="2026-01-02T00:00:00Z")
     assert session_index.get_status("my-project", "abc-123") == "keep"
+
+
+def test_read_corrupt_registry(tmp_path, monkeypatch):
+    import session_index
+    path = tmp_path / "my-project" / "sessions-meta.json"
+    path.parent.mkdir(parents=True)
+    path.write_text("{ bad json !!!")
+    assert session_index.read_registry("my-project") == {}
