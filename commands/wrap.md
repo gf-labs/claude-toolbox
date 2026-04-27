@@ -1,5 +1,5 @@
 ---
-description: End-of-session housekeeping — snapshot, git check, plan cleanup, backlog review, done marker
+description: Use when the user wants to wrap up or end the session — "wrap", "I'm done", "close out", "end of session". Runs session log, git check, plan cleanup, backlog review, and done marker.
 allowed-tools: Bash, Read, Write, Edit
 model: claude-sonnet-4-6
 ---
@@ -18,6 +18,36 @@ python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/_scope.py
 python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-summarize.py
 ```
 
+**Session log status**:
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-session-log.py
+```
+
+**session-log.md** (full content, for skip check):
+```bash
+python3 -c "
+import os, sys
+sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
+from _scope import get_scope
+from pathlib import Path
+mode, data, cwd = get_scope()
+projects_dir = Path.home() / '.claude' / 'projects'
+if mode == 'single':
+    key = data
+else:
+    import subprocess
+    try:
+        git_root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], stderr=subprocess.DEVNULL, text=True).strip()
+        key = git_root.replace('/', '-')
+    except Exception:
+        print('SESSION_LOG: unavailable')
+        exit(0)
+log = projects_dir / key / 'memory' / 'session-log.md'
+print(f'PATH: {log}')
+print(log.read_text() if log.exists() else 'MISSING — will be created on first save')
+"
+```
+
 **Git state, diff, unpushed commits, backlog, date**:
 ```bash
 echo "GIT_DIFF_STAT:" && (git diff HEAD --stat 2>/dev/null || echo "none")
@@ -32,6 +62,31 @@ echo "DATE:" && date +%Y-%m-%d
 python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plans.py
 ```
 
+**Project MEMORY.md**:
+```bash
+python3 -c "
+import os, sys
+sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
+from _scope import get_scope
+mode, data, cwd = get_scope()
+from pathlib import Path
+projects_dir = Path.home() / '.claude' / 'projects'
+if mode == 'single':
+    mem = projects_dir / data / 'memory' / 'MEMORY.md'
+    print(f'PATH: {mem}')
+    print(mem.read_text() if mem.exists() else 'MISSING')
+elif mode == 'parent':
+    print('PARENT MODE — see scope output for child projects')
+else:
+    import subprocess
+    git_root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], stderr=subprocess.DEVNULL, text=True).strip()
+    key = git_root.replace('/', '-')
+    mem = projects_dir / key / 'memory' / 'MEMORY.md'
+    print(f'PATH: {mem}')
+    print(mem.read_text() if mem.exists() else 'MISSING')
+"
+```
+
 ---
 
 ## Your role
@@ -42,25 +97,22 @@ Do not skip steps unless the user says `skip`.
 
 ---
 
-## Step 0 — Ramp check
+## Step 0 — Ramp
 
-Check the current session's conversation history:
-- If `/ramp:wrap` was run as the previous (or a recent) user message: proceed silently to Step 1.
-- If `/ramp:wrap` has NOT been run this session: run it now automatically before continuing. Say: "Running `/ramp:wrap` first…" then invoke the ramp:wrap flow.
-- If ramp is not installed (no `/ramp:wrap` command available): skip silently and proceed to Step 1.
+Invoke `/ramp:wrap` now using the Skill tool with no arguments. If the Skill tool returns an error or the skill is not found (ramp not installed), skip silently and proceed to Step 1. After ramp:wrap completes its full flow, continue with Step 1.
 
 ---
 
 ## Step 1 — Session log
 
-If you already ran `/tools:pin` this session and the session log is saved, reply `done` to skip to Step 2.
+Check the **session log** collected above. If SESSION_LOG already contains an entry whose header includes the first 8 chars of SESSION (from collect-summarize.py), pin was already run this session — skip to Step 2.
 
 Otherwise, run the summarize flow using the session activity collected above:
 
 1. Read FILES_TOUCHED, CROSS_PROJECT_FILES, BASH_COMMANDS, git log, and git diff stat
 2. Draft a structured session-log entry:
    ```
-   ## [date]
+   ## [date] · [first 8 chars of SESSION id from collect-summarize.py]
    **Files changed:** [comma-separated relative paths, or "none"]
    **Git:** [N commit(s) — "message of most recent"] or "none"
    - [key action or decision — 3–8 bullets]
@@ -75,7 +127,7 @@ Otherwise, run the summarize flow using the session activity collected above:
 5. Cross-project: for each path in CROSS_PROJECT_FILES, append an attributed entry to
    that project's session-log.md (infer owning project from the absolute path prefix):
    ```
-   ## [date] [← source-repo]
+   ## [date] · [8-char session id] [← source-repo]
    **Cross-project work from [source-repo] session:**
    - [specific files/actions in this project]
    ```
@@ -84,29 +136,15 @@ Constraints:
 - Do NOT write to MEMORY.md — session history belongs in session-log.md only
 - Append only — never overwrite existing entries
 
-After saving the session log, update the project map:
+After saving the session log, run:
 ```bash
 python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-summarize.py | python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/update-project-map.py
 python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plan-map.py > /dev/null
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/post-save.py
 ```
-First command is silent if no cross-project references; prints "Updated .project-map" if it found any.
-Second command refreshes the `## Plans` section so any plans created this session are tracked.
-
-Then auto-name the session if it has no existing custom-title:
-- Derive a short name from: the most recent git commit subject (strip "feat:", "fix:", "chore:"
-  prefixes and trailing "(vX.Y.Z)"), or from FILES_TOUCHED if no commits (use primary dir/file)
-- Format: kebab-case, max 5 words, no dates, no generic words like "session" or "work"
-- Examples: `plan-map-refactor`, `brief-enhancements`, `dotfiles-plugin-fix`
-```bash
-python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/name-session.py "[derived-name]"
-```
-(Skips silently if already named.)
-
-Then rename any other unnamed sessions in scope, passing the current session ID to skip it:
-```bash
-python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/rename-unnamed.py --skip [SESSION_id_from_collect-summarize]
-```
-If output contains RENAMED lines, note them: `Renamed: id→name, id→name`
+First two commands refresh the project map and plan index.
+`post-save.py` names the current session (if unnamed) and renames any other unnamed sessions in scope.
+If output contains `Renamed:` lines, note them in your response.
 
 ---
 
@@ -135,7 +173,7 @@ If NONE: say "Plans: none ✓" and move on.
 Otherwise, for each plan assess its relevance using the filename, title, and this session's FILES_TOUCHED:
 
 - **This session** — plan was the focus of work done today (matches session activity)
-- **Stale** — already has `-delete-me` in the name, or title suggests completed/abandoned work
+- **Stale** — already has `_done-` prefix, or title suggests completed/abandoned work
 - **Active** — appears in-progress or unrelated to this session
 
 Present the assessment and your recommendation:
@@ -154,11 +192,11 @@ If all unmarked plans are active: say "Plans: [N] active, [N] already marked for
 
 On confirmation, rename each recommended file:
 ```bash
-mv ~/.claude/plans/[name].md ~/.claude/plans/[name]-delete-me.md
+mv ~/.claude/data/plans/[name].md ~/.claude/data/plans/_done-[name].md
 ```
 Report: "Marked [N] plan(s) for deletion: [filenames]"
 
-Never use `rm` — always rename with `-delete-me` suffix. Already-marked plans need no action.
+Never use `rm` — always rename with `_done-` prefix. Already-marked plans need no action.
 
 ---
 
@@ -179,10 +217,11 @@ or remove them if the user prefers. Ask: "Move to Done section or remove entirel
 
 ## Step 5 — Memory health
 
-Check MEMORY.md line count from the content collected above.
+Count the lines in the **Project MEMORY.md** content collected above (exclude the `PATH:` line).
 
 - ≥ 150 lines: "⚠ MEMORY.md is [N] lines — approaching the 200-line truncation limit. Consider archiving older sections to a topic file before the next session."
 - < 150 lines: "Memory: [N] lines ✓"
+- MISSING: "Memory: not yet created ✓"
 
 No user reply needed — informational only.
 
@@ -194,65 +233,11 @@ Ask: "Mark this session for deletion? Reply `yes` or `no`."
 
 If `yes`, run:
 ```bash
-python3 -c "
-import json, os
-from pathlib import Path
-
-cwd = os.getcwd()
-proj_key = cwd.replace('/', '-')
-proj_dir = Path.home() / '.claude' / 'projects' / proj_key
-
-jsonl_files = list(proj_dir.glob('*.jsonl'))
-if not jsonl_files:
-    print('ERROR: No session files found in', proj_dir)
-    exit(1)
-
-current = max(jsonl_files, key=lambda f: f.stat().st_mtime)
-
-last_title = ''
-first_slug = ''
-for line in current.read_text(errors='replace').splitlines():
-    if not line.strip(): continue
-    try:
-        obj = json.loads(line)
-    except Exception:
-        continue
-    if obj.get('type') == 'custom-title':
-        last_title = obj.get('customTitle', '')
-    if not first_slug and obj.get('slug'):
-        first_slug = obj['slug']
-
-base = last_title or first_slug or current.stem[:8]
-sid = current.stem
-
-if 'delete-me' in base:
-    print(f'Already marked: {base}')
-else:
-    new_title = base + '-delete-me'
-    record = json.dumps({'type': 'custom-title', 'customTitle': new_title, 'sessionId': sid})
-    with open(current, 'a') as fh:
-        fh.write(record + '\n')
-    print(f'Marked for deletion: {new_title}')
-
-# Clean up associated artifacts immediately
-import shutil
-cleaned = []
-fh_path = Path.home() / '.claude' / 'file-history' / sid
-dbg_path = Path.home() / '.claude' / 'debug' / (sid + '.txt')
-senv_path = Path.home() / '.claude' / 'session-env' / sid
-if fh_path.exists():
-    shutil.rmtree(fh_path)
-    cleaned.append('file-history')
-if dbg_path.exists():
-    dbg_path.unlink()
-    cleaned.append('debug')
-if senv_path.exists():
-    shutil.rmtree(senv_path)
-    cleaned.append('session-env')
-if cleaned:
-    print(f'Cleaned artifacts: {', '.join(cleaned)}')
-"
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/mark-session-done.py
 ```
+Report the output — e.g., "Marked for deletion: [name]" or "Already marked: [name]".
+
+If `no`: say "Session not marked for deletion." and proceed to wrap-up.
 
 ---
 
