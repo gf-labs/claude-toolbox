@@ -3,6 +3,7 @@
 Idempotent — skips sessions already in the registry.
 """
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -29,7 +30,7 @@ def _is_artifact(path: Path) -> bool:
             if obj.get('type') in CONVERSATION_TYPES:
                 return False
         return True
-    except Exception:
+    except OSError:
         return False
 
 
@@ -48,42 +49,46 @@ def _get_last_title(path: Path) -> str:
     return title
 
 
-projects_dir = Path.home() / '.claude' / 'projects'
-mode, data, cwd = get_scope()
+if __name__ == '__main__':
+    projects_dir = Path.home() / '.claude' / 'projects'
+    mode, data, cwd = get_scope()
 
-if mode == 'single':
-    allowed_keys = {data}
-elif mode == 'parent':
-    allowed_keys = {k for k, _ in data}
-else:
-    allowed_keys = None  # global — scan all
+    if mode == 'single':
+        allowed_keys = {data}
+    elif mode == 'parent':
+        allowed_keys = {k for k, _ in data}
+    else:
+        allowed_keys = None  # global — scan all
 
-done_count = 0
-artifact_count = 0
-skipped_count = 0
+    done_count = 0
+    artifact_count = 0
+    skipped_count = 0
 
-if not projects_dir.exists():
-    print('No projects directory found.')
-    sys.exit(0)
+    if not projects_dir.exists():
+        print('No projects directory found.')
+        sys.exit(0)
 
-for proj in sorted(projects_dir.iterdir()):
-    if not proj.is_dir():
-        continue
-    if allowed_keys is not None and proj.name not in allowed_keys:
-        continue
-    project_key = proj.name
-    for f in sorted(proj.glob('*.jsonl')):
-        uuid = f.stem
-        if get_status(project_key, uuid) is not None:
-            skipped_count += 1
+    for proj in sorted(projects_dir.iterdir()):
+        if not proj.is_dir():
             continue
-        title = _get_last_title(f)
-        if 'delete-me' in title.lower():
-            name = title.lower().replace('-delete-me', '').replace('delete-me-', '')
-            set_status(project_key, uuid, 'done', name=name)
-            done_count += 1
-        elif _is_artifact(f):
-            set_status(project_key, uuid, 'artifact')
-            artifact_count += 1
+        if allowed_keys is not None and proj.name not in allowed_keys:
+            continue
+        project_key = proj.name
+        for f in sorted(proj.glob('*.jsonl')):
+            uuid = f.stem
+            if get_status(project_key, uuid) is not None:
+                skipped_count += 1
+                continue
+            title = _get_last_title(f)
+            if 'delete-me' in title.lower():
+                # Strip delete-me marker (prefix, suffix, or standalone)
+                name = re.sub(r'(?:^delete-me-|-delete-me$|^delete-me$)', '', title.lower()).strip('-')
+                if not name:
+                    name = f.stem[:8]  # fallback to UUID prefix
+                set_status(project_key, uuid, 'done', name=name)
+                done_count += 1
+            elif _is_artifact(f):
+                set_status(project_key, uuid, 'artifact')
+                artifact_count += 1
 
-print(f'Migrated: {done_count} done, {artifact_count} artifact, {skipped_count} skipped (already indexed)')
+    print(f'Migrated: {done_count} done, {artifact_count} artifact, {skipped_count} skipped (already indexed)')
