@@ -2,7 +2,7 @@
 """Plans inventory with project association (reads ## Plans section of .project-map)."""
 from pathlib import Path
 
-plans_dir = Path.home() / '.claude' / 'plans'
+plans_dir = Path.home() / '.claude' / 'data' / 'plans'
 
 if not plans_dir.exists() or not list(plans_dir.glob('*.md')):
     print('NONE')

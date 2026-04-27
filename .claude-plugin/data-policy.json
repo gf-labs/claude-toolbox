@@ -1,0 +1,22 @@
+{
+  "plugin": "tools",
+  "version": "1",
+  "dirs": [
+    {
+      "path": "sessions-meta.json",
+      "description": "Session status registry (per-project)",
+      "cleanup": "managed"
+    },
+    {
+      "path": "plans/",
+      "description": "Plan files (active)",
+      "cleanup": "archive",
+      "archive_to": "plans/archive/"
+    },
+    {
+      "path": "plans/archive/",
+      "description": "Archived plans",
+      "cleanup": "manual"
+    }
+  ]
+}
