@@ -145,7 +145,7 @@ Run each Bash command below now before proceeding. Store the output mentally —
 python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/_scope.py
 ```
 
-**Session inventory** (age, size, OLD/KEEP/ARTIFACT status):
+**Session inventory** (age, size, OLD/KEEP/ARTIFACT/DELETE-ME status — registry-aware):
 ```bash
 python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-sessions.py $ARGUMENTS
 ```
@@ -253,18 +253,48 @@ You are a Claude artifact cleanup assistant. Run all commands in Step 0 first, t
 
 Respect the `--days N` argument if provided — use that number instead of 30 for the age threshold. Adjust the OLD/KEEP labels accordingly by recalculating from session ages shown above.
 
-If `--dry-run` is in the arguments: run all phases, produce all reports, but skip the actual deletion in Phase 3. Say "DRY RUN — no files deleted" at the end.
+If `--dry-run` is in the arguments: run all phases, produce all reports, but skip the actual deletion in Phases 1, 2, and 3. Say "DRY RUN — no files deleted" at the end.
 
 ---
 
-## Phase 0 — Hygiene report
+## Phase 0 — Plugin data policy scan
 
-Before touching sessions, surface structural issues:
+Scan `~/.claude/data/*/data-policy.json` and display what each plugin owns:
 
-**Plans:**
-- List all plans from the Plans inventory above: name, line count, title
-- Flag any that appear completed (title starts with "Plan:" and the work is likely done based on title)
-- Prompt: "Found [N] plan(s). Review each and reply `delete [name]` to remove, or `keep` to skip."
+```bash
+python3 -c "
+import json
+from pathlib import Path
+data_root = Path.home() / '.claude' / 'data'
+if not data_root.exists():
+    print('No plugin data found.')
+else:
+    found = False
+    for policy_file in sorted(data_root.glob('*/data-policy.json')):
+        plugin = policy_file.parent.name
+        try:
+            policy = json.loads(policy_file.read_text())
+            for d in policy.get('dirs', []):
+                full = policy_file.parent / d['path']
+                if full.is_dir():
+                    count = sum(1 for _ in full.rglob('*') if _.is_file())
+                    size = f'{count} files'
+                elif full.is_file():
+                    size = '1 file'
+                else:
+                    size = 'empty'
+                print(f'  {plugin}/{d[\"path\"]}  [{d[\"cleanup\"]}]  {size}')
+                found = True
+        except Exception as e:
+            print(f'  {plugin}: error reading policy — {e}')
+    if not found:
+        print('No plugin data found.')
+"
+```
+
+Display the summary. No user action needed — informational only. Proceed to Phase 1.
+
+Also surface hygiene issues from Step 0:
 
 **MEMORY.md size:**
 - For any project showing `WARN:NEAR-LIMIT` (≥150 lines): say "⚠ [project] MEMORY.md is [N] lines — approaching 200-line truncation limit. Consider archiving older sessions to a topic file."
@@ -273,12 +303,11 @@ Before touching sessions, surface structural issues:
 **Orphaned project keys:**
 - If the Orphaned project keys output from Step 0 is not `NONE`, list them with session counts and sizes
 - These are project dirs whose source repo was moved, renamed, or deleted — the key no longer maps to any real path on disk
-- Note any with sessions > 0 as requiring context extraction before deletion
-- Say: "Found [N] orphaned project key dir(s) — will be handled in Phase 3c."
+- Say: "Found [N] orphaned project key dir(s) — will be handled in Phase 4."
 
 **Session-env:**
 - Report the empty count from the Session-env output
-- If empty count > 0: "Found [N] empty session-env dirs — will be auto-deleted in Phase 3a."
+- If empty count > 0: "Found [N] empty session-env dirs — will be auto-deleted in Phase 1."
 - List any NONEMPTY dirs with their sizes
 
 **Reference docs:**
@@ -287,7 +316,9 @@ Before touching sessions, surface structural issues:
 
 ---
 
-## Phase 1 — Scan report
+## Phase 1 — Artifact deletion
+
+Sessions with status `ARTIFACT` (from registry or detected via JSONL scan) are deleted automatically without prompting. The `collect-sessions.py` output from Step 0 provides registry-aware status — prefer registry status as the primary source; fall back to JSONL scanning for unregistered sessions.
 
 Use the scope output from Step 0 to label the report:
 - **Single mode** (`SINGLE [name] (key)`): label is the project name
@@ -323,90 +354,13 @@ Present a clean summary:
 
 Note: These are internal Claude Code artifacts (e.g. file-history snapshots) that appear
 as unnamed sessions in /resume but contain no conversation content. Always delete these.
-
-### Sessions to remove (>[N] days old or marked delete-me)
-
-| Project | Session | Age | Size | Reason |
-|---------|---------|-----|------|--------|
-| ...     | ...     | ...d | ...K | old / delete-me |
-
-Total: X sessions · Y MB (including session dirs, file-history, debug logs, session-env)
-
-### Memory health
-| Project | MEMORY.md | Status |
-|---------|-----------|--------|
-| ...     | N lines   | OK / THIN / MISSING |
 ```
 
-After presenting the Phase 1 report, say: "To preview a session's content before deciding, reply `preview [session-id]`."
-
-If user replies `preview [session-id]`:
-1. Find and read the JSONL at `~/.claude/projects/[proj]/[session-id].jsonl`
-2. Parse: `custom-title`, first user message, tool_use blocks (files written/edited, bash commands, git commits), any `summary` entries
-3. Output a one-screen summary:
-   ```
-   ## Session: [first 8 chars] — [title or "(untitled)"]
-   **Date**: [mtime date]  **Size**: [K]
-
-   **What happened** (3–6 bullets):
-   - [key action or decision]
-
-   **Files changed**: [comma-separated, or "none detected"]
-   **Commits**: [N — "most recent subject", or "none"]
-   ```
-4. Re-prompt: "Delete this session, skip it, or preview another? Reply `delete [id]`, `skip`, or `preview [id]`."
-
----
-
-## Phase 2 — Context extraction
-
-For any project where:
-- Old sessions exist **AND**
-- MEMORY.md is THIN (<50 lines) or MISSING
-
-Offer to extract context before deleting. Say:
-
-> "**[project-name]** has old sessions but thin/missing memory ([N] lines). Extract key context before deleting? Reply `extract [project-name]` or `skip`."
-
-If user says `extract [project]`:
-1. Use the Read tool to read the old session `.jsonl` files for that project at `~/.claude/projects/[project-dir]/[session-id].jsonl`
-2. From the JSONL, extract only the `display` fields (user prompts) — these are the lightest representation of what was discussed
-3. Identify: key decisions made, architectural patterns established, bugs fixed, recurring patterns
-
-Then write to **two separate targets**:
-
-**Session summaries → session-log.md:**
-For each old session (chronological order), append a dated entry:
-```
-## [session-date] (extracted from [session-id])
-**Files changed:** [if detectable, else "unknown"]
-- [key action or topic from session]
----
-```
-Create `session-log.md` with `# [Repo] Session Log\n\n` header if missing.
-
-**Stable patterns only → MEMORY.md:**
-Append a single dated section with distilled patterns (no event sequences, no narrative):
-```
-## Memory update — [date] (extracted)
-- [stable pattern or decision]
-- [stable pattern or decision]
-```
-Create MEMORY.md with `# [Repo] Memory\n\n` header if missing.
-
-5. Confirm: "Extracted [N] session(s) to session-log.md · [M] stable patterns to MEMORY.md."
-
-If user says `skip` or project has adequate memory: proceed to Phase 3.
-
----
-
-## Phase 3 — Delete
-
-**Step 3a — Auto-delete artifact-only files and empty session-env dirs (no confirmation needed):**
+**Auto-delete artifact-only files and empty session-env dirs (no confirmation needed):**
 
 Delete immediately without asking:
-1. ARTIFACT-status JSONL files (contain no conversation content)
-2. Empty session-env dirs (all 135 or however many reported in Step 0)
+1. ARTIFACT-status JSONL files (contain no conversation content — from registry or JSONL detection)
+2. Empty session-env dirs (all reported in Step 0)
 3. session-env dirs belonging to ARTIFACT sessions
 
 Use full absolute paths — never relative paths starting with `-`, which `rm` interprets as flags:
@@ -433,28 +387,59 @@ print(f'Deleted {deleted} empty session-env dirs')
 
 Report: "Auto-deleted [N] artifact file(s) · [M] empty session-env dirs"
 
-**Step 3b — Delete old and delete-me sessions (requires confirmation):**
+Also show the memory health table:
+```
+### Memory health
+| Project | MEMORY.md | Status |
+|---------|-----------|--------|
+| ...     | N lines   | OK / THIN / MISSING |
+```
 
-Include both `OLD` (age > threshold) and `DELETE-ME` (title contains "delete-me") sessions in the list below.
+---
 
-Show exactly what will be removed, then ask for confirmation:
+## Phase 2 — Done session deletion
+
+Sessions with status `DELETE-ME` (from registry `done` status or `delete-me` in custom-title) are offered for deletion. Sessions with status `KEEP` (from registry `keep` status) are listed but skipped — never offered for deletion.
+
+The `collect-sessions.py` output from Step 0 is the primary source for session status. Registry status takes precedence over JSONL-detected status for registered sessions; unregistered sessions fall back to JSONL scanning.
+
+Present what will be removed and ask for confirmation:
 
 ```
-### Ready to delete
+### Sessions to remove (>[N] days old, registry `done`, or marked delete-me)
 
-- ~/.claude/projects/[proj]/[session-id].jsonl  ([size])
-- ~/.claude/projects/[proj]/[session-id]/       ([size], tool-results + subagents)
-- ~/.claude/file-history/[session-id]/          ([size])
-- ~/.claude/debug/[session-id].txt              ([size])
-- ~/.claude/session-env/[session-id]/           ([size])
-...
+| Project | Session | Age | Size | Reason |
+|---------|---------|-----|------|--------|
+| ...     | ...     | ...d | ...K | old / done / delete-me |
 
-Total: X files · Y MB
+### Sessions kept (registry `keep` — skipped)
+
+| Project | Session | Age | Size |
+|---------|---------|-----|------|
+| ...     | ...     | ...d | ...K |
+
+Total pending deletion: X sessions · Y MB (including session dirs, file-history, debug logs, session-env)
 
 Proceed? Reply `yes` to delete, anything else to cancel.
 ```
 
-Omit any row where the file/dir doesn't exist for that session.
+After presenting the Phase 2 report, say: "To preview a session's content before deciding, reply `preview [session-id]`."
+
+If user replies `preview [session-id]`:
+1. Find and read the JSONL at `~/.claude/projects/[proj]/[session-id].jsonl`
+2. Parse: `custom-title`, first user message, tool_use blocks (files written/edited, bash commands, git commits), any `summary` entries
+3. Output a one-screen summary:
+   ```
+   ## Session: [first 8 chars] — [title or "(untitled)"]
+   **Date**: [mtime date]  **Size**: [K]
+
+   **What happened** (3–6 bullets):
+   - [key action or decision]
+
+   **Files changed**: [comma-separated, or "none detected"]
+   **Commits**: [N — "most recent subject", or "none"]
+   ```
+4. Re-prompt: "Delete this session, skip it, or preview another? Reply `delete [id]`, `skip`, or `preview [id]`."
 
 **If user confirms `yes`:** Use Bash to delete each listed path:
 ```bash
@@ -479,10 +464,43 @@ After deletion, run `du -sh ~/.claude/projects/ ~/.claude/file-history/ ~/.claud
 - `~/.claude/projects/*/memory/session-log.md`
 - Any session newer than the threshold
 - The current active session (most recent `.jsonl` per project)
+- Any session with registry status `KEEP`
 
 ---
 
-## Phase 3c — Delete orphaned project keys
+## Phase 3 — Plan archival
+
+Move completed plans (those with `_done-` prefix) from `~/.claude/data/plans/` to `~/.claude/data/plans/archive/`:
+
+```bash
+python3 -c "
+import shutil
+from pathlib import Path
+plans_dir = Path.home() / '.claude' / 'data' / 'plans'
+archive_dir = plans_dir / 'archive'
+if not plans_dir.exists():
+    print('No plans directory.')
+else:
+    archive_dir.mkdir(exist_ok=True)
+    moved = []
+    for f in sorted(plans_dir.glob('_done-*.md')):
+        dest = archive_dir / f.name
+        shutil.move(str(f), str(dest))
+        moved.append(f.name)
+    if moved:
+        print(f'Archived {len(moved)} plan(s):')
+        for name in moved:
+            print(f'  {name}')
+    else:
+        print('No completed plans to archive.')
+"
+```
+
+No user confirmation needed. Report the count.
+
+---
+
+## Phase 4 — Orphaned project keys
 
 If the **Orphaned project keys** output from Step 0 showed any entries (not `NONE`), handle them here.
 
@@ -500,7 +518,7 @@ Show a summary table:
 Total: N directories · X MB
 ```
 
-Warn for any directory with sessions > 0: "⚠ [name] has [N] sessions — context will be lost. Run Phase 2 to extract first, or confirm deletion."
+Warn for any directory with sessions > 0: "⚠ [name] has [N] sessions — context will be lost. Confirm deletion."
 
 Ask: "Delete all orphaned project key directories? Reply `yes` to delete, anything else to cancel."
 
@@ -525,9 +543,7 @@ Report: "Deleted [N] orphaned project key directories."
 
 If `--dry-run`: show the table and report "DRY RUN — no directories deleted."
 
----
-
-## Phase 3d — Plugin cache cleanup (auto, no confirmation)
+Also handle plugin cache cleanup (auto, no confirmation):
 
 Check if the plugin cache is orphaned:
 ```bash
@@ -574,12 +590,41 @@ If `--dry-run`: report "DRY RUN — orphaned plugin cache would be deleted: [N]M
 
 ---
 
-## Phase 4 — Summary
+## Phase 5 — Manual plugin data review
+
+For each directory marked `cleanup: manual` in the Phase 0 scan, show it and ask if the user wants to review:
+
+```bash
+python3 -c "
+import json
+from pathlib import Path
+data_root = Path.home() / '.claude' / 'data'
+if data_root.exists():
+    for policy_file in sorted(data_root.glob('*/data-policy.json')):
+        plugin = policy_file.parent.name
+        try:
+            policy = json.loads(policy_file.read_text())
+            for d in policy.get('dirs', []):
+                if d.get('cleanup') == 'manual':
+                    full = policy_file.parent / d['path']
+                    if full.is_dir():
+                        count = sum(1 for _ in full.rglob('*') if _.is_file())
+                        print(f'MANUAL: {plugin}/{d[\"path\"]}  {count} files  ({full})')
+        except Exception:
+            pass
+"
+```
+
+For each `MANUAL:` line, ask: "Review `<path>`? Reply `yes` or `skip`." If yes, list the files. No automated action — user decides.
+
+---
+
+## Summary
 
 ```
 ## Done
 
 Removed: X sessions · Y MB freed
-Memory extracted: [list of projects] or "none"
+Plans archived: [N] or "none"
 Skipped: [list of projects kept, if any]
 ```
