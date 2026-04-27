@@ -8,6 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from _scope import get_scope
+from session_index import read_registry
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--days', type=int, default=30)
@@ -53,6 +54,7 @@ else:
             continue
         if allowed_keys is not None and proj.name not in allowed_keys:
             continue
+        registry = read_registry(proj.name)
         for f in sorted(proj.iterdir()):
             if not f.name.endswith('.jsonl'):
                 continue
@@ -70,12 +72,22 @@ else:
                             pass
                 except Exception:
                     pass
-                if is_artifact_only(f):
+                reg_entry = registry.get(f.stem, {})
+                reg_status = reg_entry.get('status')
+                if reg_status == 'artifact':
                     status = 'ARTIFACT'
-                elif 'delete-me' in custom_title.lower():
+                elif reg_status == 'done':
                     status = 'DELETE-ME'
+                elif reg_status == 'keep':
+                    status = 'KEEP'
                 else:
-                    status = 'OLD' if stat.st_mtime < cutoff else 'KEEP'
+                    # Fallback: JSONL scan for sessions not yet in registry
+                    if is_artifact_only(f):
+                        status = 'ARTIFACT'
+                    elif 'delete-me' in custom_title.lower():
+                        status = 'DELETE-ME'
+                    else:
+                        status = 'OLD' if stat.st_mtime < cutoff else 'KEEP'
                 label = f'  title={custom_title!r}' if custom_title else ''
                 print(f'{proj.name}  {f.stem}  {age:.0f}d  {stat.st_size // 1024}K  {status}{label}')
             except Exception as e:
