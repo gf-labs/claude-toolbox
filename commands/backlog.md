@@ -1,44 +1,64 @@
 ---
-description: Add an item to BACKLOG.md from within Claude
-argument-hint: [item description]
-allowed-tools: Bash, Read, Edit, Write
+description: Add a task to TaskWarrior for this project
+argument-hint: [item description] [+tag] [size:S]
+allowed-tools: Bash
+model: claude-sonnet-4-6
 ---
 
 ## Arguments
 
 `$ARGUMENTS`
 
-If arguments provided: use them as the item title/description.
-If no arguments: derive an item from this session's recent context (open threads, incomplete work, things mentioned as "later" or "TODO").
+If arguments provided: use them as the item description (with optional tags and size).
+If no arguments: derive a task from this session's recent context (open threads, incomplete work, things mentioned as "later" or "TODO").
 
 ---
 
 ## Your role
 
-Add a new backlog item to the project's BACKLOG.md.
+Add a new task to TaskWarrior for the current project.
 
-**Step 1 — Find target BACKLOG.md:**
+**Step 1 — Determine project slug:**
 ```bash
-git rev-parse --show-toplevel 2>/dev/null || echo ""
+REPO=$(git rev-parse --show-toplevel 2>/dev/null | xargs basename 2>/dev/null || echo "")
+DOMAIN=$(git rev-parse --show-toplevel 2>/dev/null | sed 's|.*/Repos/||' | cut -d'/' -f1 2>/dev/null || echo "")
+echo "SLUG: ${DOMAIN}.${REPO}"
 ```
-- If in a git repo: target is `[repo-root]/BACKLOG.md`
-- If not in a git repo: target is `$CLAUDE_TOOLBOX_ROOT/BACKLOG.md`
+If not in a git repo: ask the user for the project slug (format: `domain.reponame`).
 
-**Step 2 — Read the BACKLOG.md** to understand the format and existing items. Check whether a similar item already exists — if so, say so and stop.
-
-**Step 3 — Compose the item:**
-
-Format:
+**Step 2 — Check for existing similar task:**
+```bash
+task project:[slug] list
 ```
-### [title]
-- **Size:** [XS / S / M / L]
-- [one-line description of what to do and why]
+If a closely matching task exists, say so and stop.
+
+**Step 3 — Draft task add + annotation:**
+
+From `$ARGUMENTS`, extract:
+- **Short title** (required, ≤ 70 chars): a scannable lede — the verb + object, no qualifiers, no bench specs, no env-var lists, no parentheticals
+- **Details** (when present): everything else from the input — benchmarks to run, env vars to set, rationale, things to skip, gated-on conditions, links. Becomes an annotation
+- **Type tag** (infer from description): `+command`, `+agent`, `+hook`, `+pipeline`, `+infra`, `+research`
+- **Size** (default `size:S`): `size:XS|S|M|L|XL`
+- **Priority** (omit unless clearly blocking): `priority:H|M|L`
+- **Special status**: `wait:someday` for truly indefinite deferrals; `+blocked` for gated items
+
+If the user's input is one short sentence with no rationale, just use it as the title — no annotation needed. Default behavior is to *split* longer input into title + annotation, not stuff everything into the title.
+
+Draft commands:
+```bash
+task add "[short title]" project:[slug] +[type] size:[S] source:manual
+# only if details present:
+task annotate [ID] "[details]"
 ```
 
-- Title: concise imperative phrase (e.g. "Fix X", "Add Y", "Refactor Z")
-- Size: XS = trivial change, S = a focused session, M = multi-session, L = large/unknown
-- Body: one line is usually enough; add bullets only if there are distinct sub-steps
+Show the draft to the user. If the split between title and details is ambiguous, confirm before executing.
 
-**Step 4 — Append to the `## Backlog` section** using the Edit tool (match the last item in the section, append after it). If no `## Backlog` section exists, append one at the end of the file.
+**Step 4 — Execute:**
+Run `task add` first, capture the new task ID from output (e.g. `Created task 563.`), then run `task annotate [ID] ...` if details were drafted.
 
-**Step 5 — Confirm:** "Added to BACKLOG.md: [title]"
+For `+blocked` items, add a gated-on annotation (in addition to the details annotation, if any):
+```bash
+task annotate [ID] "gated on: [condition]"
+```
+
+**Step 5 — Confirm:** "Added task [N]: [description]"
