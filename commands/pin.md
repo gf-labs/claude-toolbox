@@ -1,169 +1,42 @@
 ---
 description: Break checkpoint — status display, session log, optional MEMORY.md update
 allowed-tools: Bash, Read, Write, Edit
-model: claude-sonnet-4-6
+# No model override: pin runs at high context by design. A command-level model
+# (e.g. claude-sonnet-4-6) resolves to the 200K-context variant and drops the
+# session's 1M window — collapsing the %-used denominator and triggering an
+# auto-compact loop. Inherit the session model so the window is preserved.
 ---
 
 ## Collect context
 
-Run each command below now before proceeding. Store results mentally.
+Run this **once** — it derives scope once, reads the session JSONL once, and emits
+every section pin needs in a single pass:
 
-**Scope**:
 ```bash
-python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/_scope.py
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-pin.py
 ```
 
-**Status**:
-```bash
-python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-status.py
-```
+Output is delimited by `=== SECTION ===` markers. Read the values from each:
 
-**Session log status**:
-```bash
-python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-session-log.py
-```
+| Section | Fields |
+|---------|--------|
+| `SCOPE` | `MODE`, `PROJECT_KEY`, `PROJECT_DIR`, `REPO`, `TW_PROJECT`, `DATE` |
+| `SESSION` | `SESSION` (id), `TITLE`, `FILES_TOUCHED`, `CROSS_PROJECT_FILES`, `BASH_COMMANDS` |
+| `GIT` | `BRANCH`, `CHANGES`, `GIT_LOG`, `GIT_DIFF_STAT` |
+| `BACKLOG` | `IN_PROGRESS`, `UP_NEXT` (TaskWarrior) |
+| `STATUS` | `LAST_SNAPSHOT`, `SESSIONS_SINCE`, `LAST_SESSION_LOG`, `LOG_ENTRIES` |
+| `SESSION_LOG` | `PATH`, `REPEAT_PIN` (+ next header suffix), `LAST_ENTRY`, `SAME_SESSION_ENTRIES` |
+| `MEMORY` | `PATH`, `LINES`, `MIGRATION` / `MIGRATION_NEEDED`, `CONTENT` (full) or `TAIL` (only if very large) |
+| `PLANS` | plan inventory (or `NONE`) |
+| `PLUGIN_DRIFT` | plugin cache drift (or `unavailable`) |
+| `RAMP` | nodes due / level / XP (or `RAMP: no graph`) |
 
-**Branch, changes, backlog, date**:
-```bash
-echo "BRANCH:" && (git branch -vv 2>/dev/null | grep '^\*' || echo "not a git repo")
-echo "CHANGES:" && (git status --short 2>/dev/null || echo "clean")
-echo "BACKLOG:" && (head -25 BACKLOG.md 2>/dev/null || echo "not found")
-echo "DATE:" && date +%Y-%m-%d
-```
-
-**Plans**:
-```bash
-python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plans.py
-```
-
-**Session activity**:
-```bash
-python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-summarize.py
-```
-
-**Session title**:
-```bash
-python3 -c "
-import json, os, sys
-from pathlib import Path
-sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
-from _scope import get_scope
-mode, data, cwd = get_scope()
-projects_dir = Path.home() / '.claude' / 'projects'
-if mode == 'single':
-    proj_dir = projects_dir / data
-else:
-    import subprocess
-    try:
-        git_root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], stderr=subprocess.DEVNULL, text=True).strip()
-        proj_dir = projects_dir / git_root.replace('/', '-')
-    except Exception:
-        print('TITLE: (untitled)')
-        sys.exit(0)
-jsonl_files = list(proj_dir.glob('*.jsonl'))
-if not jsonl_files:
-    print('TITLE: (untitled)')
-    sys.exit(0)
-current = max(jsonl_files, key=lambda f: f.stat().st_mtime)
-title = ''
-for line in current.read_text(errors='replace').splitlines():
-    if not line.strip(): continue
-    try:
-        obj = json.loads(line)
-        if obj.get('type') == 'custom-title':
-            title = obj.get('customTitle', '')
-    except Exception:
-        continue
-print(f'TITLE: {title or \"(untitled)\"}')
-"
-```
-
-**Git log and diff**:
-```bash
-echo "GIT_LOG:" && (git log --oneline -10 2>/dev/null || echo "none")
-echo "GIT_DIFF_STAT:" && (git diff HEAD --stat 2>/dev/null || echo "none")
-```
-
-**session-log.md**:
-```bash
-python3 -c "
-import os, sys
-sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
-from _scope import get_scope
-from pathlib import Path
-mode, data, cwd = get_scope()
-projects_dir = Path.home() / '.claude' / 'projects'
-if mode == 'single':
-    key = data
-else:
-    import subprocess
-    try:
-        git_root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], stderr=subprocess.DEVNULL, text=True).strip()
-        key = git_root.replace('/', '-')
-    except Exception:
-        print('ERROR: Could not determine project key')
-        exit(1)
-log = projects_dir / key / 'memory' / 'session-log.md'
-print(f'PATH: {log}')
-print(log.read_text() if log.exists() else 'MISSING — will be created on first save')
-"
-```
-
-**Migration check**:
-```bash
-python3 -c "
-import re, os, sys
-sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT','') + '/scripts')
-from _scope import get_scope
-from pathlib import Path
-mode, data, cwd = get_scope()
-if mode == 'global' or cwd is None:
-    try:
-        import subprocess
-        git_root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], stderr=subprocess.DEVNULL, text=True).strip()
-        key = git_root.replace('/', '-')
-    except Exception:
-        print('MIGRATION: none')
-        sys.exit(0)
-elif mode == 'single':
-    key = data
-else:
-    key = str(cwd).replace('/', '-')
-projects_dir = Path.home() / '.claude' / 'projects'
-mem = projects_dir / key / 'memory' / 'MEMORY.md'
-if not mem.exists():
-    print('MIGRATION: none')
-else:
-    n = len(re.findall(r'^## Session snapshot —', mem.read_text(), re.MULTILINE))
-    print(f'MIGRATION: {n} snapshot section(s) found' if n else 'MIGRATION: none')
-    if n: print('MIGRATION_NEEDED: yes')
-"
-```
-
-**Project MEMORY.md**:
-```bash
-python3 -c "
-import os, sys
-sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
-from _scope import get_scope
-mode, data, cwd = get_scope()
-from pathlib import Path
-projects_dir = Path.home() / '.claude' / 'projects'
-if mode == 'single':
-    mem = projects_dir / data / 'memory' / 'MEMORY.md'
-    print(f'PATH: {mem}')
-    print(mem.read_text() if mem.exists() else 'MISSING — will be created')
-elif mode == 'parent':
-    print('PARENT MODE — see scope output for child projects')
-else:
-    import subprocess
-    git_root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], stderr=subprocess.DEVNULL, text=True).strip()
-    key = git_root.replace('/', '-')
-    mem = projects_dir / key / 'memory' / 'MEMORY.md'
-    print(f'PATH: {mem}')
-    print(mem.read_text() if mem.exists() else 'MISSING — will be created')
-"
-```
+Notes:
+- `SESSION_LOG` emits only the **last entry** plus any **same-session match** — not the
+  full file. `REPEAT_PIN` is computed for you; trust it instead of re-scanning.
+- `MEMORY` emits a `TAIL` for dedup awareness; full `CONTENT` appears only when
+  `MIGRATION_NEEDED: yes`.
+- If the script prints `ERROR: No project detected`, say so and stop — pin is project-scoped.
 
 ---
 
@@ -173,41 +46,40 @@ Break checkpoint assistant. Work through the steps below. Step 1 is display-only
 
 ---
 
-## Step 0 — Ramp check
+## Step 0 — Ramp
 
-Check the current session's conversation history:
-- If `/ramp:pin` was run as the previous (or a recent) user message: proceed silently to Step 1.
-- If `/ramp:pin` has NOT been run this session: run it now automatically before continuing. Say: "Running `/ramp:pin` first…" then invoke the ramp:pin flow.
-- If ramp is not installed (no `/ramp:pin` command available): skip silently and proceed to Step 1.
+Invoke `/ramp:pin` now using the Skill tool with no arguments. If the Skill tool returns an error or the skill is not found (ramp not installed), skip silently and proceed to Step 1. After ramp:pin completes its full flow, continue with Step 1.
 
 ---
 
 ## Step 1 — Status (display only)
 
-Read the auto-collected context and render:
+Read the collected sections and render:
 
 ```
-## Pin — [repo] — [date]
+## Pin — [REPO] — [DATE]
 
-Branch: [branch name] [ahead N / behind N / up to date / no remote]
-Changes: [N files changed, listed] or "clean"
+Branch: [BRANCH]
+Changes: [N files from CHANGES, listed] or "clean"
 
-In Progress: [first BACKLOG in-progress item] or "(nothing)"
-Up Next: [first BACKLOG up-next item] or "(nothing)"
-Plans: [N active, N marked for cleanup] or "none"
+In Progress: [first task from IN_PROGRESS] or "(nothing)"
+Up Next: [top tasks from UP_NEXT, one per line indented] or "(nothing)"
+Plans: [N active, N marked for cleanup from PLANS] or "none"
 
-Last snapshot: [date] [+(N sessions) if SESSIONS_SINCE > 0] or "—"
-Last session log: [date] ([N] entries) or "—"
+Last snapshot: [LAST_SNAPSHOT] [+(SESSIONS_SINCE sessions) if > —] or "—"
+Last session log: [LAST_SESSION_LOG] ([LOG_ENTRIES] entries) or "—"
+Ramp: [RAMP line]  (omit if RAMP: no graph)
+Toolbox: plugins [in sync / N stale / N missing / unavailable from PLUGIN_DRIFT]
 
 ---
 
 ### This session — [SESSION first 8 chars] · [TITLE]
 
 **What happened:**
-- [3–8 bullets synthesized from FILES_TOUCHED, git log, and this conversation's activity]
+- [3–8 bullets synthesized from FILES_TOUCHED, GIT_LOG, and this conversation's activity]
 
 **Files changed:** [comma-separated from FILES_TOUCHED, or "none"]
-**Git:** [N commit(s) — "message of most recent"] or "none"
+**Git:** [N commit(s) — "message of most recent" from GIT_LOG] or "none"
 **Open threads:** [unresolved items visible in the conversation] (omit if none)
 ```
 
@@ -223,16 +95,22 @@ No questions — display and proceed immediately to Step 2.
 
 ## Step 2 — Session log
 
-Run the summarize flow using session activity, git log, and git diff stat collected above:
+**Repeat-pin / skip check** (uses the `SESSION_LOG` section — do not re-scan the file):
 
-**Before drafting:** check **session-log.md** for any prior entry whose header contains the first 8 chars of SESSION (from collect-summarize.py). If a matching entry exists, this is a repeat pin in the same session — draft only the *new* activity since that entry (cross-reference its bullets to avoid duplication), and suffix the header with ` (2)`, ` (3)`, etc.
-
-**Skip check** (only if a prior entry for this session exists): compare the most recent git commit in GIT_LOG against what was listed in the prior entry's `**Git:**` line, and compare FILES_TOUCHED against the prior entry's `**Files changed:**` line. If both match (same commit, same files or both "none") — there is nothing new to capture. Print: `Nothing new since last pin — no-op.` and stop without writing.
+- If `REPEAT_PIN: no` — this is the first pin for this session. Draft a full entry (below).
+- If `REPEAT_PIN: yes` — prior entr(ies) for this session already exist (shown in full
+  under `SAME_SESSION_ENTRIES`). Two cases:
+  - **Nothing new:** the most recent commit in `GIT_LOG` matches the prior entry's
+    `**Git:**` line **and** `FILES_TOUCHED` matches its `**Files changed:**` line (or both
+    are "none"). Print `Nothing new since last pin — no-op.` and stop without writing.
+  - **New activity:** draft only the *new* work since those entries (cross-reference the
+    bullets in all `SAME_SESSION_ENTRIES` to avoid duplication) and use the header suffix
+    given by `REPEAT_PIN` (e.g. `(2)`, `(3)`).
 
 1. Draft a structured entry:
    ```
-   ## [date] · [first 8 chars of SESSION id from collect-summarize.py]
-   **Files changed:** [comma-separated relative paths, or "none"]
+   ## [DATE] · [first 8 chars of SESSION]   ← append suffix from REPEAT_PIN if repeat
+   **Files changed:** [comma-separated relative paths from FILES_TOUCHED, or "none"]
    **Git:** [N commit(s) — "message of most recent"] or "none"
    - [key action or decision — 3–8 bullets]
    **What didn't work:** [failed approach — "tried X, failed because Y"] (omit if none)
@@ -240,12 +118,13 @@ Run the summarize flow using session activity, git log, and git diff stat collec
    **Open threads:** [blocker or deferred item] (omit section entirely if none)
    ```
 2. Show the draft. Ask: "Save to session-log.md? Reply `yes` or edit inline."
-3. On confirm: append to the PATH shown in **session-log.md** context above.
-   - If MISSING: create with Write tool using `# [Repo] Session Log\n\n` header
-   - If exists: append with Edit tool (match last chars of existing content, append `\n\n` + entry)
-4. Cross-project: for each path in CROSS_PROJECT_FILES, append an attributed entry to that project's session-log.md (infer owning project from the absolute path prefix):
+3. On confirm: append to the `SESSION_LOG` `PATH`.
+   - If state is MISSING: create with Write tool using `# [REPO] Session Log\n\n` header
+   - If exists: append with Edit tool (match the tail of `LAST_ENTRY`, append `\n\n` + entry)
+4. Cross-project: for each path in `CROSS_PROJECT_FILES`, append an attributed entry to that
+   project's session-log.md (infer owning project from the absolute path prefix):
    ```
-   ## [date] · [8-char session id] [← source-repo]
+   ## [DATE] · [8-char session id] [← source-repo]
    **Cross-project work from [source-repo] session:**
    - [specific files/actions in this project]
    ```
@@ -255,49 +134,40 @@ Constraints:
 - Do NOT write to MEMORY.md — session history belongs in session-log.md only
 - If FILES_TOUCHED is "none": note "No file changes detected" in the entry body
 
-After saving the session log, auto-name the session if it has no existing custom-title:
-- Derive a short name from: the most recent git commit subject (strip "feat:", "fix:", "chore:"
-  prefixes and trailing "(vX.Y.Z)"), or from FILES_TOUCHED if no commits (primary dir/file)
-- Format: kebab-case, max 5 words, no dates, no generic words like "session" or "work"
-- Examples: `plan-map-refactor`, `brief-enhancements`, `dotfiles-plugin-fix`
+After saving the session log, run this single block (names the session, refreshes the maps):
 ```bash
-python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/name-session.py "[derived-name]"
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/post-save.py
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-summarize.py | python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/update-project-map.py
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plan-map.py > /dev/null
 ```
-(Skips silently if already named.)
+`post-save.py` names the current session (if unnamed) and renames any other unnamed sessions
+in scope. If its output contains `Renamed:` lines, append them as a compact note to your response.
 
-Then rename any other unnamed sessions in scope, passing the current session ID to skip it:
-```bash
-python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/rename-unnamed.py --skip [SESSION_id_from_collect-summarize]
-```
-If output contains RENAMED lines, append a compact note to your response: `Renamed: id→name, id→name`
-
-After the session log is saved and named, tell the user:
-> Context saved. Run `/compact` to compress the window.
+Then proceed immediately to Step 3.
 
 ---
 
 ## Step 3 — Stable patterns (optional)
 
-If MIGRATION_NEEDED is "yes": run the migration flow first —
-1. Read MEMORY.md
-2. Extract all `## Session snapshot — YYYY-MM-DD` blocks (each ends at the next `##` or EOF)
-3. Convert each to session-log format: `## YYYY-MM-DD (migrated)\n[bullets]\n`
-4. Append to session-log.md (create with header if missing)
-5. Remove snapshot blocks from MEMORY.md (preserve all other content)
-6. Report: "Migrated [N] snapshot(s) to session-log.md · MEMORY.md now [M] lines."
+If `MIGRATION_NEEDED` is "yes": run the migration flow first (full MEMORY.md is in `CONTENT`) —
+1. From `CONTENT`, extract all `## Session snapshot — YYYY-MM-DD` blocks (each ends at the next `##` or EOF)
+2. Convert each to session-log format: `## YYYY-MM-DD (migrated)\n[bullets]\n`
+3. Append to session-log.md (create with header if missing)
+4. Remove snapshot blocks from MEMORY.md (preserve all other content)
+5. Report: "Migrated [N] snapshot(s) to session-log.md · MEMORY.md now [M] lines."
 
 Then automatically capture stable patterns in MEMORY.md (no prompt needed):
-1. Look back at this conversation. Identify durable facts: key decisions, stable patterns, important file paths, conventions, architectural choices — anything a future session needs. Discard session narrative (that belongs in session-log), git commit details, and ephemeral mechanics.
+1. Look back at this conversation. Identify durable facts: key decisions, stable patterns, important file paths, conventions, architectural choices — anything a future session needs. Discard session narrative (that belongs in session-log), git commit details, and ephemeral mechanics. Use the `MEMORY` `CONTENT` (full file, unless flagged ⚠ LARGE) to avoid duplicating what's already recorded.
 2. Draft a concise dated section (5–15 bullets):
    ```
-   ## Session snapshot — [date] · [first 8 chars of SESSION id]
+   ## Session snapshot — [DATE] · [first 8 chars of SESSION]
 
-   - [key insight or decision]
    - [key insight or decision]
    ...
    ```
-3. Show the draft to the user for awareness, then immediately append to MEMORY.md using the PATH shown in **Project MEMORY.md** context above — no confirmation needed.
-   - If MISSING: create with Write tool using `# [Repo] Memory\n\n` header
+3. Show the draft to the user for awareness, then immediately append to MEMORY.md using the
+   `MEMORY` `PATH` — no confirmation needed.
+   - If state is MISSING: create with Write tool using `# [REPO] Memory\n\n` header
    - If exists: append with Edit tool
 4. Report: "MEMORY.md updated ([N] lines)."
 
@@ -305,4 +175,12 @@ Constraints:
 - Never overwrite existing MEMORY.md content — append only
 - Never fabricate details not discussed in this session
 - Do not include ramp knowledge-graph, XP, or level details — those belong in /ramp:snapshot
-- If not in a git repo and scope is global: say "No project detected — MEMORY.md is project-scoped. Run this from within a repo."
+- If MODE is `global` (no project): say "No project detected — MEMORY.md is project-scoped. Run this from within a repo."
+
+---
+
+## Step 4 — Compact
+
+After Step 3 completes (or is skipped), output this single line and nothing else:
+
+> Pinned. Run `/compact` now.

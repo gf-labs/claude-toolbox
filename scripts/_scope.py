@@ -56,6 +56,11 @@ def get_scope(cwd: str | None = None) -> tuple[str, str | list[tuple[str, Path]]
     if not projects_dir.exists():
         return ('global', None, None)
 
+    # Single check first: if cwd is itself a known project, return single regardless
+    # of whether it also has descendant projects (running from within a project root).
+    if (projects_dir / cwd_key).exists():
+        return ('single', cwd_key, cwd)
+
     # Find all known projects that are descendants of cwd (any depth)
     seen = set()
     descendants = []
@@ -70,9 +75,6 @@ def get_scope(cwd: str | None = None) -> tuple[str, str | list[tuple[str, Path]]
 
     if descendants:
         return ('parent', descendants, cwd)
-
-    if (projects_dir / cwd_key).exists():
-        return ('single', cwd_key, cwd)
 
     return ('global', None, None)
 

@@ -18,11 +18,14 @@ args, _ = parser.parse_known_args()
 
 # Auto-detect scope if --project not explicitly passed
 project_names = None  # multi-name filter (parent mode)
+_parent_path = None   # path-prefix filter (parent mode)
 if not args.project:
     _mode, _scope_data, _scope_cwd = get_scope()
     if _mode == 'single':
         args.project = _scope_cwd.name
     elif _mode == 'parent':
+        # Filter by path prefix so entries for the parent repo itself are included
+        _parent_path = str(_scope_cwd)
         project_names = [c.name for _, c in _scope_data]
 
 project_filter = args.project.lower() if args.project else None
@@ -47,9 +50,12 @@ with open(history_file) as f:
                 continue
             project = obj.get('project', '')
             repo = project.split('/')[-1] if project else '(no repo)'
-            if project_filter and project_filter not in repo.lower():
+            if _parent_path:
+                if not (project == _parent_path or project.startswith(_parent_path + '/')):
+                    continue
+            elif project_filter and project_filter not in repo.lower():
                 continue
-            if project_names and not any(name.lower() in repo.lower() for name in project_names):
+            elif project_names and not any(name.lower() in repo.lower() for name in project_names):
                 continue
             entries.append({
                 'ts': ts,

@@ -1,7 +1,10 @@
 ---
 description: Use when the user wants to wrap up or end the session — "wrap", "I'm done", "close out", "end of session". Runs session log, git check, plan cleanup, backlog review, and done marker.
 allowed-tools: Bash, Read, Write, Edit
-model: claude-sonnet-4-6
+# No model override: wrap runs at high context by design. A command-level model
+# (e.g. claude-sonnet-4-6) resolves to the 200K-context variant and drops the
+# session's 1M window — collapsing the %-used denominator and triggering an
+# auto-compact loop. Inherit the session model so the window is preserved.
 ---
 
 ## Collect context
@@ -53,7 +56,11 @@ print(log.read_text() if log.exists() else 'MISSING — will be created on first
 echo "GIT_DIFF_STAT:" && (git diff HEAD --stat 2>/dev/null || echo "none")
 echo "GIT_STATE:" && (git status --short 2>/dev/null || echo "clean")
 echo "UNPUSHED:" && (git log @{u}.. --oneline 2>/dev/null || echo "none (or no remote)")
-echo "BACKLOG:" && (head -10 BACKLOG.md 2>/dev/null || echo "not found")
+REPO=$(git rev-parse --show-toplevel 2>/dev/null | xargs basename 2>/dev/null)
+DOMAIN=$(git rev-parse --show-toplevel 2>/dev/null | sed 's|.*/Repos/||' | cut -d'/' -f1)
+TW_PROJECT="${DOMAIN}.${REPO}"
+echo "IN_PROGRESS:" && (task rc.verbose=nothing project:${TW_PROJECT} +ACTIVE list 2>/dev/null || echo "(none)")
+echo "UP_NEXT:" && (task rc.verbose=nothing project:${TW_PROJECT} limit:3 list 2>/dev/null || echo "(none)")
 echo "DATE:" && date +%Y-%m-%d
 ```
 
@@ -202,16 +209,14 @@ Never use `rm` — always rename with `_done-` prefix. Already-marked plans need
 
 ## Step 4 — Backlog review
 
-Read the **Backlog** output above (In Progress + Up Next sections).
+Read the **IN_PROGRESS** and **UP_NEXT** TaskWarrior output above.
 
 If both are empty/nothing: say "Backlog: nothing in progress ✓" and move on.
 
 Otherwise show the In Progress and Up Next items. Ask:
-"Any items completed this session? Reply with item name(s) or `skip`."
+"Any items completed this session? Reply with task ID(s) or `skip`."
 
-If items named: use Edit tool to mark them done in BACKLOG.md — move completed items
-from `## In Progress` or `## Up Next` into a `## Done` section (create it if absent),
-or remove them if the user prefers. Ask: "Move to Done section or remove entirely?"
+If IDs given: run `task ID done` for each confirmed item, then report completions.
 
 ---
 
