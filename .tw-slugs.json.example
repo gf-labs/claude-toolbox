@@ -1,0 +1,11 @@
+{
+  "docs/dot.md": "business.toolbox.dot",
+  "docs/workstation.md": "business.toolbox.workstation",
+  "docs/notebook.md": "business.toolbox.notebook",
+  "docs/homelab/**": "homelab.dotfiles",
+  "exclude": [
+    "docs/handoff-*.md",
+    "docs/*-runbook.md",
+    "docs/design-log.md"
+  ]
+}

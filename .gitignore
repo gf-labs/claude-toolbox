@@ -8,3 +8,7 @@ venv/
 .claude/knowledge-graphs/
 .claude/worktrees/
 *.log
+.worktrees/
+
+# Local TaskWarrior slug-mapping config (commit .tw-slugs.json.example instead)
+.tw-slugs.json
