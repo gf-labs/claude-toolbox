@@ -1,5 +1,5 @@
 ---
-description: Start-of-session orientation — branch, backlog, snapshot health, plans, recent activity
+description: Cold-start session orientation — use when starting fresh or returning after a long absence (days or weeks). Scales depth to how long you've been away. Not for quick mid-session checks (use /tools:status) or planning (use /tools:overview).
 argument-hint: [session-id | --days N]
 allowed-tools: Bash
 model: claude-haiku-4-5-20251001
@@ -19,7 +19,48 @@ python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/_scope.py
 python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-status.py
 ```
 
-**Session log** (metadata + last 5 entries from most recent session):
+**Absence duration + resume point**:
+```bash
+python3 -c "
+import os, re, sys
+from datetime import datetime
+from pathlib import Path
+sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
+from _scope import get_scope
+mode, data, cwd = get_scope()
+projects_dir = Path.home() / '.claude' / 'projects'
+if mode == 'single':
+    key = data
+else:
+    import subprocess
+    try:
+        git_root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], stderr=subprocess.DEVNULL, text=True).strip()
+        key = git_root.replace('/', '-')
+    except Exception:
+        print('ABSENCE_DAYS: unknown')
+        sys.exit(0)
+log = projects_dir / key / 'memory' / 'session-log.md'
+if not log.exists():
+    print('ABSENCE_DAYS: unknown')
+    sys.exit(0)
+text = log.read_text()
+dates = re.findall(r'^## (\d{4}-\d{2}-\d{2})', text, re.MULTILINE)
+if not dates:
+    print('ABSENCE_DAYS: unknown')
+    sys.exit(0)
+last = max(dates)
+delta = (datetime.today().date() - datetime.strptime(last, '%Y-%m-%d').date()).days
+print(f'ABSENCE_DAYS: {delta}')
+print(f'LAST_SESSION_DATE: {last}')
+blocks = re.split(r'(?=^## \d{4}-\d{2}-\d{2})', text, flags=re.MULTILINE)
+dated = [b for b in blocks if re.match(r'^## \d{4}-\d{2}-\d{2}', b)]
+last_block = sorted(dated, key=lambda b: re.match(r'^## (\d{4}-\d{2}-\d{2})', b).group(1))[-1] if dated else ''
+resume = re.search(r'^\*\*Resume:\*\* (.+)$', last_block, re.MULTILINE)
+print(f'RESUME: {resume.group(1)}' if resume else 'RESUME: (none)')
+"
+```
+
+**Session log** (metadata + recent entries — depth scales to absence):
 ```bash
 python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-session-log.py
 ```
@@ -41,8 +82,17 @@ echo "CHANGES:" && (git status --short 2>/dev/null || echo "clean")
 echo "COMMITS:" && (git log --oneline -5 2>/dev/null || echo "none")
 echo "STASH:" && (git stash list 2>/dev/null || echo "empty")
 echo "CLAUDE_MD:" && (test -f CLAUDE.md && echo "present" || echo "MISSING")
-echo "BACKLOG:" && (head -25 BACKLOG.md 2>/dev/null || echo "not found")
+REPO=$(git rev-parse --show-toplevel 2>/dev/null | xargs basename 2>/dev/null)
+DOMAIN=$(git rev-parse --show-toplevel 2>/dev/null | sed 's|.*/Repos/||' | cut -d'/' -f1)
+TW_PROJECT="${DOMAIN}.${REPO}"
+echo "IN_PROGRESS:" && (task rc.verbose=nothing project:${TW_PROJECT} +ACTIVE list 2>/dev/null || echo "(none)")
+echo "UP_NEXT:" && (task rc.verbose=nothing project:${TW_PROJECT} limit:3 list 2>/dev/null || echo "(none)")
 echo "DATE:" && date +%Y-%m-%d
+```
+
+**Current session**:
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-summarize.py
 ```
 
 **Recent Claude activity**:
@@ -144,6 +194,13 @@ print(f'NOT_FOUND: {arg}')
 
 Otherwise (no session-id in arguments): Read-only orient command. Read the auto-collected context above and render a concise status summary. No questions, no writes. One screen.
 
+**Depth scaling by absence:** Use ABSENCE_DAYS to tune output depth:
+- **< 2 days** (warm): show last 1 session log entry, skip architecture snapshot, skip MEMORY.md content
+- **2–7 days** (moderate): show last 3 session log entries, include architecture snapshot briefly
+- **7+ days or unknown** (cold): show last 5 session log entries, full architecture snapshot, full MEMORY.md content
+
+**Resume point:** If RESUME is not "(none)", surface it prominently at the top of the output as: `Resume: [text]`
+
 If `.claude/status.md` content was injected above (not "(no project extension)"): insert those sections between Phase and MEMORY.md, replacing the `[Extension sections]` placeholder. Append any next-step bullets specified by the extension to any relevant section.
 
 ---
@@ -164,8 +221,10 @@ Recent commits:
 
 CLAUDE.md: present / MISSING
 
-In Progress: [first BACKLOG in-progress item] or "(nothing)"
-Up Next: [first BACKLOG up-next item] or "(nothing)"
+In Progress: [first task from IN_PROGRESS] or "(nothing)"
+Up Next: [top tasks from UP_NEXT, one per line indented] or "(nothing)"
+
+This session: [SESSION first 8 chars] — [N files changed, or "no changes"]
 
 Last snapshot: [date (N days ago)] [+(N sessions) if SESSIONS_SINCE > 0] or "—"
 Last session log: [date (N days ago)] ([N] entries)
