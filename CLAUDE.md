@@ -44,7 +44,6 @@ Plugin delivers it automatically on next install.
 | `scripts/validate-env.py` | SessionStart hook — validates CLAUDE_TOOLBOX_ROOT |
 | `scripts/_scope.py` | Scope detection — returns `single`, `parent`, or `global` mode |
 | `scripts/post-save.py` | Names current session + renames unnamed sessions in scope |
-| `scripts/run-pipeline.py` | AI ingestion pipeline orchestration |
 | `docs/claude-directory-reference.md` | Claude Code directory discovery reference |
 
 ## Gotchas

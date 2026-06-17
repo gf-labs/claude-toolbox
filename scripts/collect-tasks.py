@@ -17,7 +17,7 @@ SKIP_SECTIONS = {"done", "completed", "shipped", "archived", "history",
 PLANNING_HEADINGS = {"backlog", "todo", "planned", "up next", "active",
                      "queued", "later", "deferred", "in progress", "next"}
 
-DISCOVER_SKIP_DIRS = {"_archive", "__unsorted__", "archive", ".git",
+DISCOVER_SKIP_DIRS = {"_archive", "__unsorted__", ".git",
                       "node_modules", ".venv", "dist", "build"}
 
 DOCS_SKIP_DIRS = {"superpowers", "standards"}

@@ -28,7 +28,7 @@ Skip this skill for: simple status questions, single-session recaps, point-in-ti
 
 **Environment-variable fallbacks.** The skill references two distinct roots:
 
-- `CLAUDE_TOOLBOX_ROOT` — the claude-toolbox repo (provides `_scope.py`, `collect-plans.py`). If unset, default to `~/Repos/business/claude-toolbox`, or shell out to `git -C ~/Repos/business/claude-toolbox rev-parse --show-toplevel`.
+- `CLAUDE_TOOLBOX_ROOT` — the claude-toolbox repo (provides `_scope.py`, `collect-plans.py`). If unset, default to `~/Repos/claude-toolbox`, or shell out to `git rev-parse --show-toplevel` from within the repo.
 - `CLAUDE_PLUGIN_ROOT` — the active plugin install location (provides this skill's bundled `scripts/collect-velocity.sh`). If unset, fall back to `${CLAUDE_TOOLBOX_ROOT}/skills/sit-rep` since the skill ships from claude-toolbox.
 
 **Optional first positional argument: topic filter.** When set, exclude commits, files, milestones, pivots, and learnings unrelated to that topic. Multi-word filters are space-separated and treated as an OR (e.g. `knowledge registries areas` includes commits matching any of those terms).
