@@ -1,6 +1,5 @@
 [project]
 name = "claude-toolbox"
-version = "0.4.11"
 description = "Session lifecycle management for Claude Code"
 requires-python = ">=3.11"
 
@@ -14,3 +13,9 @@ ignore = [
     "E501",  # line too long — handled by line-length when needed
     "B904",  # raise-from — inappropriate in hook/degradation contexts
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]

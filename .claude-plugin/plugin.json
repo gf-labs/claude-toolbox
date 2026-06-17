@@ -1,8 +1,9 @@
 {
   "name": "tools",
-  "version": "0.4.49",
+  "version": "0.5.1",
   "description": "Session lifecycle management for Claude Code — orientation, checkpointing, archival, and health checks. Built by Bernie Green / Greenfield Labs.",
   "author": {"name": "Bernie Green"},
   "license": "MIT",
+  "repository": "https://github.com/gf-labs/claude-toolbox",
   "keywords": ["productivity", "cleanup", "maintenance"]
 }
