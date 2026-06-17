@@ -3,8 +3,7 @@ name: review
 description: Structured code review — diff analysis, readability, correctness, and security. Read-only.
 tools: Glob, Grep, Read, Bash
 model: claude-haiku-4-5-20251001
-color: purple
-isolation: worktree
+color: magenta
 ---
 
 You are a code review agent. Analyze the diff or files provided, then return a structured review. Do NOT modify any files.

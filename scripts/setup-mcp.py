@@ -14,8 +14,7 @@ import subprocess
 from pathlib import Path
 
 PLUGIN_ROOT = Path(os.environ.get("CLAUDE_TOOLBOX_ROOT", Path(__file__).parent.parent))
-SERVER_SCRIPT = PLUGIN_ROOT / "mcp_server" / "server.py"
-VENV_PYTHON = PLUGIN_ROOT / "mcp_server" / ".venv" / "bin" / "python3"
+START_SCRIPT = PLUGIN_ROOT / "mcp_server" / "start.sh"
 CLAUDE_JSON = Path.home() / ".claude.json"
 SERVER_NAME = "claude-toolbox"
 
@@ -40,12 +39,14 @@ def main() -> None:
         print("[claude-toolbox] 'claude' not found in PATH — skipping MCP setup")
         return
 
-    python_cmd = str(VENV_PYTHON) if VENV_PYTHON.exists() else "python3"
+    if not START_SCRIPT.exists():
+        print(f"[claude-toolbox] {START_SCRIPT} not found — skipping MCP setup")
+        return
 
     try:
         subprocess.run(
             [claude, "mcp", "add", "-s", "user",
-             SERVER_NAME, python_cmd, str(SERVER_SCRIPT)],
+             SERVER_NAME, str(START_SCRIPT)],
             check=True, timeout=15,
             capture_output=True,
         )

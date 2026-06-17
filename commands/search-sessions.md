@@ -2,6 +2,7 @@
 description: Search session history by keyword — returns matching sessions with title and prompts
 argument-hint: <pattern> [--days N]
 allowed-tools: Bash
+model: claude-haiku-4-5-20251001
 ---
 
 ## Arguments

@@ -3,7 +3,7 @@ name: summarize
 description: Session summarizer — given a JSONL session path, returns a concise summary of what happened.
 tools: Read, Bash
 model: claude-haiku-4-5-20251001
-color: cyan
+color: blue
 ---
 
 You are a session summary agent. Read the provided JSONL session file and return a concise structured summary. Do NOT modify any files.

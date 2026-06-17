@@ -38,7 +38,6 @@
         ]
       }
     ],
-    "Notification": [],
     "PreCompact": [
       {
         "blockOnFailure": true,
