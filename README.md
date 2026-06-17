@@ -94,59 +94,6 @@ See [docs/design-log.md — Orientation Command Taxonomy](#) for the full differ
 | `/tools:cleanup`        | Clean up old Claude session artifacts — preview, extract context, then delete |
 | `/tools:search-sessions`| Full-text search across session history by keyword and age |
 
-### AI ingestion pipeline
-
-| Command | Description |
-|---------|-------------|
-| `/tools:ingest`         | Ingest documents, PDFs, notes into the pipeline (Phase A, ≤20 files / ≤50k chars) |
-| `/tools:codex`          | Run preserve → codex → integrate sequence for code artifact extraction |
-| `/tools:pipeline`       | Full pipeline status snapshot — sources, index, synthesis, Tier 2 coverage, next steps |
-| `/tools:thread-pipeline`| *(deprecated — use `/tools:pipeline`)* Thread extraction pipeline status |
-
----
-
-## AI ingestion pipeline
-
-The pipeline transforms AI chat exports (Claude, ChatGPT, Gemini) into durable project
-documentation across multiple repos. It runs as a series of phases orchestrated by
-`scripts/run-pipeline.py`.
-
-```
-conversations.json  (claude / chatgpt / gemini)
-        ↓
-[Phase 1]  extract-threads.py
-           scan  → INDEX.md  (thread inventory)
-           index → per-project .md thread files
-        ↓
-[Phase 2F] run-pipeline.py synthesize
-           Haiku per-thread analysis; clusters, flags unclear threads
-        ↓
-[Phase 2G] run-pipeline.py synthesize --integrate
-           Sonnet cross-thread synthesis; convergence loop into project docs
-        ↓
-[Phase 3]  run-pipeline.py preserve / codex
-           Code artifact extraction → code-reference.md rollup → codex staging files
-        ↓
-[Phase 4]  run-pipeline.py integrate
-           Merge staged docs into destination repos (example-project, gfl, home, etc.)
-        ↓
-Output: durable docs in each project repo
-```
-
-The central fact store is an immutable append-only `events.jsonl` in
-`$AI_INGESTION_ROOT/timeline/`, with a derived staleness layer
-(`staleness.json`: current / superseded / review-needed) computed separately.
-
-For large batch runs, bypass the commands and call the orchestrator directly:
-
-```bash
-python3 scripts/run-pipeline.py index --project example-project --auto
-python3 scripts/run-pipeline.py synthesize --project example-project
-python3 scripts/run-pipeline.py integrate --project example-project
-```
-
-Full operational guide: `docs/pipeline-runbook.md`
-
 ---
 
 ## Agents
@@ -224,7 +171,7 @@ claude-toolbox/
 ├── scripts/     # Python scripts called by commands and hooks
 ├── hooks/       # hooks.json — plugin-registered lifecycle hooks
 ├── mcp_server/  # MCP server (search_sessions, list_plans, get_session_log)
-└── docs/        # architecture, pipeline runbook, design logs
+└── docs/        # architecture and design reference
 ```
 
 ---
