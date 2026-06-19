@@ -1,160 +1,180 @@
-# claude-toolbox
+<p align="center">
+  <!-- LOGO: drop a hosted banner/glyph here later, e.g. <img src="docs/assets/toolbox.png" width="120"> -->
+</p>
 
-Personal Claude Code global toolbox — versioned commands, agents, scripts, hooks, and MCP server.
+<h1 align="center">claude-toolbox</h1>
 
-Built by [Bernie Green](https://github.com/berniegreen) / Greenfield Labs
+<p align="center"><em>Session lifecycle management for Claude Code — orient, checkpoint, close out, and never lose the thread between sessions.</em></p>
+
+<p align="center">
+  <a href="https://github.com/gf-labs/claude-toolbox"><img src="https://img.shields.io/badge/version-0.5.1-3b82f6?style=flat-square" alt="version"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square" alt="license"></a>
+  <img src="https://img.shields.io/badge/Claude_Code-plugin-d97757?style=flat-square&logo=anthropic&logoColor=white" alt="Claude Code plugin">
+  <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+">
+  <img src="https://img.shields.io/badge/MCP-server-6366f1?style=flat-square" alt="MCP server">
+</p>
+
+<p align="center">Built by <a href="https://github.com/berniegreen">Bernie Green</a> · <a href="https://github.com/gf-labs">Greenfield Labs</a></p>
+
+> **Repo, plugin, and namespace.** The repository is `claude-toolbox`. It ships as the **`tools`** plugin through the [GFL marketplace](https://github.com/gf-labs/gfl-marketplace), and its commands are namespaced **`/tools:*`**. One artifact, three names — that's normal for a Claude Code plugin, and worth knowing before you read on.
 
 ---
 
 ## Why this exists
 
-Claude Code's session model creates a context hygiene problem: context accumulates, decisions
-get lost between sessions, and there's no structured way to carry understanding forward.
-claude-toolbox is the system I built to solve this — a plugin managing the full session
-lifecycle from orientation to archival.
+Claude Code's greatest strength is also its sharpest edge: the **session**. Everything happens inside a single rolling context window — messages, file reads, tool output — and when that window fills, the reasoning that got you there is compacted away. Decisions evaporate between sessions. After a few days off, you reopen a repo with no idea where you left it.
 
-## Goals
+`claude-toolbox` is the system I built to keep the thread. It manages the full session lifecycle — **orient** at the start, **checkpoint** in the middle, **close out** cleanly at the end, and **archive** what matters — so understanding compounds across sessions instead of resetting with each one.
 
-- Version-control and distribute global Claude Code commands, scripts, agents, hooks, and docs
-- Extract large inline bash blocks from commands into standalone, reusable Python scripts
-- Distribute via the plugin system (gfl-marketplace) — commands namespaced as `/tools:*`
+The conceptual backbone lives in [`docs/context-hygiene.md`](docs/context-hygiene.md): how the context window works, what persists where, and what each command automates.
+
+## What you get
+
+- **Never lose the thread.** Orientation commands rebuild your mental model in seconds — scaled to how long you've been away, from a 30-second pulse to a full cold-start brief.
+- **Checkpoint without ceremony.** `/tools:pin` captures status, writes a session-log entry, and updates durable memory in one step — run it before you `/compact`.
+- **Close out cleanly.** `/tools:wrap` runs the end-of-session ritual: session log, git check, plan cleanup, backlog review, memory health.
+- **Keep context lean.** A `PreCompact` hook refuses to compact until you've checkpointed; `/tools:cleanup` extracts context from old sessions *before* deleting them.
+- **Query your own history.** Full-text search across every session — from any project — via a command or a local MCP server.
 
 ---
 
 ## Session lifecycle
 
+The commands map onto the natural arc of a working session. You rarely need all of them at once; reach for the one that matches where you are.
+
 ```
-[start of session]
-  /tools:brief        — orient: branch, in-progress, last snapshot, plans, recent activity
+[ start of session ]
+  /tools:brief        orient — branch, in-progress, last snapshot, plans, recent activity
+  /tools:overview     plan  — current state + backlog priorities + a sequencing recommendation
 
-[during session]
-  work...
-  /tools:pin          — break checkpoint: status + session log + optional MEMORY.md update
-  /tools:backlog      — add a new item to BACKLOG.md mid-session
+[ during the session ]
+  work…
+  /tools:status       quick pulse — git detail, last session note, in-progress backlog
+  /tools:pin          break checkpoint — status + session log + optional MEMORY.md  (run before /compact)
+  /tools:aside        answer a side question in a fixed format, then resume
+  /tools:backlog      capture a task to TaskWarrior without breaking flow
 
-[end of session]
-  /ramp:wrap          — knowledge graph harvest (if ramp installed)
-  /tools:wrap         — full close-out ritual:
-    Step 0: ramp check
-    Step 1: session log   → skip if /tools:pin already run
-    Step 2: git check     → surface uncommitted changes + unpushed commits
-    Step 3: plan cleanup  → list plans, offer to mark done
-    Step 4: backlog       → mark completed items done
-    Step 5: memory health → warn if MEMORY.md approaching 200-line limit
-    Step 6: done?         → optionally mark session for deletion
+[ end of session ]
+  /ramp:wrap          harvest the knowledge graph   (if the ramp plugin is installed)
+  /tools:wrap         close-out ritual:
+                        session log → git check → plan cleanup → backlog review
+                        → memory health → optional "mark session done"
 
-[periodic]
-  /tools:cleanup           — delete old sessions, extract context to session-log.md + MEMORY.md
-  /tools:search-sessions   — search session history by keyword
+[ periodic housekeeping ]
+  /tools:cleanup          extract context from old sessions, then delete them
+  /tools:search-sessions  full-text search across session history
+  /tools:sit-rep          narrative situation report — velocity, pivots, learnings, risks
+  /tools:doctor           environment + project health check
 ```
-
-### Storage
-
-| Store | Location | Loaded automatically? | Written by |
-|-------|----------|-----------------------|------------|
-| `MEMORY.md` | `~/.claude/projects/[key]/memory/MEMORY.md` | Yes (auto-memory, 200-line limit) | `/tools:pin` |
-| `session-log.md` | `~/.claude/projects/[key]/memory/session-log.md` | No | `/tools:pin`, `/tools:wrap`, `/tools:cleanup` |
-| `CLAUDE.md` | `[repo]/CLAUDE.md` or `~/.claude/CLAUDE.md` | Yes (every session) | Manual |
-| Plans | `~/.claude/plans/[name].md` | No | Manual / agents |
-| Session files | `~/.claude/projects/[key]/[id].jsonl` | No | Claude Code |
 
 ---
 
 ## Commands
 
-### Orientation
+Twelve commands plus one skill, grouped by when you reach for them. Cheap, high-frequency commands run on Haiku; reasoning-heavy ones run on Sonnet.
 
-Four commands answer different re-entry questions. Pick by how long you've been away and what you need:
+### Orientation — *"where am I?"*
 
-| Command | When | Question answered |
-|---------|------|-------------------|
-| `/tools:brief`   | Cold start / long absence (days or weeks) | "Get me back up to speed" |
-| `/tools:status`  | Mid-stream, still warm | "Where am I right now?" |
-| `/tools:recap`   | After stepping away briefly (hours or a day) | "What did I do recently?" |
-| `/tools:overview`| Planning / deciding what to work on next | "What should I work on next?" |
+Four commands answer different re-entry questions. Pick by how long you've been away and what you need.
 
-See [docs/design-log.md — Orientation Command Taxonomy](#) for the full differentiation table.
+| Command | When | Question it answers |
+|---------|------|---------------------|
+| `/tools:brief`    | Cold start / long absence (days or weeks) | "Get me back up to speed" |
+| `/tools:status`   | Mid-stream, still warm | "Where am I right now?" |
+| `/tools:recap`    | After stepping away briefly (hours or a day) | "What did I do recently?" |
+| `/tools:overview` | Planning / deciding what's next | "What should I work on next?" |
 
-| Command | Description |
-|---------|-------------|
-| `/tools:brief`   | Cold-start orientation — absence-scaled depth (session log, backlog, plans, architecture, recent activity); `/tools:brief [session-id]` to summarize a past session |
-| `/tools:status`  | Warm mid-session check — git diff detail with hunk headers, last session log entry, In Progress backlog |
-| `/tools:recap`   | Time-windowed "where was I?" — git commits, files touched, session notes in window; `--days N` or `--hours N` |
-| `/tools:overview`| PM-style project overview — recent work, in-flight, backlog priorities, active plans, 3-tier sequencing |
+> See [`docs/design-log.md`](docs/design-log.md) § *Orientation Command Taxonomy* for the full differentiation table — the reasoning behind splitting one "status" command into four.
 
-### Session lifecycle
+### In-session — capture & checkpoint
 
 | Command | Description |
 |---------|-------------|
-| `/tools:pin`            | Break checkpoint — status display, session log, optional MEMORY.md update |
-| `/tools:wrap`           | End-of-session housekeeping — git check, plan cleanup, backlog review, done marker |
-| `/tools:aside`          | Answer a mid-task side question in a fixed format, then resume |
-| `/tools:backlog`        | Add an item to BACKLOG.md from within Claude |
-| `/tools:doctor`         | Claude Code environment + project health check (scope-aware) |
-| `/tools:cleanup`        | Clean up old Claude session artifacts — preview, extract context, then delete |
-| `/tools:search-sessions`| Full-text search across session history by keyword and age |
+| `/tools:pin`               | Break checkpoint — status display, session-log entry, optional MEMORY.md update |
+| `/tools:aside`             | Answer a mid-task side question in a fixed format, then return to the task |
+| `/tools:backlog`           | Add a task to TaskWarrior for this project (`[item] [+tag] [size:S]`) |
+| `/tools:consolidate-tasks` | Sweep work items — markdown trackers, code `TODO`/`FIXME`, GitHub issues — into TaskWarrior, with dedup and tombstoning |
+| `/tools:sit-rep`           | Narrative situation report across weeks of work — velocity, milestones, pivots, learnings, risks *(ships as a skill)* |
+
+### Close-out & maintenance
+
+| Command | Description |
+|---------|-------------|
+| `/tools:wrap`            | End-of-session housekeeping — session log, git check, plan cleanup, backlog review, done marker |
+| `/tools:cleanup`         | Clean up old session artifacts — preview, extract context, then delete |
+| `/tools:doctor`          | Claude Code environment + project health check (scope-aware) |
+| `/tools:search-sessions` | Full-text search across session history by keyword and age |
+
+---
+
+## Where state lives
+
+`claude-toolbox` reads from and writes to the stores Claude Code already uses. Nothing is hidden in a database — every store is a plain file you can open, edit, and version.
+
+| Store | Location | Auto-loaded? | Written by |
+|-------|----------|--------------|------------|
+| `MEMORY.md`      | `~/.claude/projects/[key]/memory/MEMORY.md`      | Yes — auto-memory, 200-line budget | `/tools:pin` |
+| `session-log.md` | `~/.claude/projects/[key]/memory/session-log.md` | No | `/tools:pin`, `/tools:wrap`, `/tools:cleanup` |
+| `CLAUDE.md`      | `[repo]/CLAUDE.md` or `~/.claude/CLAUDE.md`      | Yes — every session | Manual |
+| Plans            | `~/.claude/plans/[name].md`                      | No — read on demand | Manual / agents |
+| Session files    | `~/.claude/projects/[key]/[id].jsonl`            | No — archive only | Claude Code |
 
 ---
 
 ## Agents
 
-Agents are subprocesses invoked by Claude during a task. They run in isolation and return
-a single structured result. Use them for read-heavy subtasks that would otherwise consume
-main context.
+Agents are subprocesses Claude can spawn during a task. They run in a separate context and return a single result — ideal for read-heavy subtasks that would otherwise flood your main window.
 
-| Agent | Model | Isolation | Description |
-|-------|-------|-----------|-------------|
-| `plan` | Sonnet | worktree | Implementation planner — reads codebase, returns a phase-by-phase plan. No writes. |
-| `review` | Haiku | worktree | Structured code review — diff analysis, readability, correctness, security. Read-only. |
-| `explore` | Haiku | — | Fast codebase explorer — finds files, searches code, answers structure questions. |
-| `summarize` | Haiku | — | Session summarizer — given a JSONL path, returns a concise summary of what happened. |
+| Agent | Model | Description |
+|-------|-------|-------------|
+| `explore`   | Haiku  | Fast codebase explorer — finds files, searches code, answers structure questions |
+| `plan`      | Sonnet | Implementation planner — reads the codebase, returns a phase-by-phase plan |
+| `review`    | Haiku  | Structured code review — diff analysis, readability, correctness, security |
+| `summarize` | Haiku  | Session summarizer — given a JSONL path, returns a concise account of what happened |
 
-Worktree isolation means the agent operates on a temporary copy of the repo; it cannot
-affect the working tree even if it writes files.
+> All four are **read-only** — none has `Write` or `Edit`, so they can't touch your working tree. Most use `Glob, Grep, Read, Bash`; `summarize` is narrower (`Read, Bash`). They explore and report, nothing more.
 
 ---
 
 ## Hooks
 
-Hooks are shell commands that fire automatically on Claude Code lifecycle events. The plugin
-registers hooks via `hooks/hooks.json`; they apply to every session that loads the plugin.
+Hooks are commands Claude Code fires automatically on lifecycle events. The plugin registers them via [`hooks/hooks.json`](hooks/hooks.json); they apply to every session that loads the plugin.
 
 | Event | Matcher | Script | What it does |
 |-------|---------|--------|--------------|
-| `SessionStart` | — | `validate-env.py` | Checks `CLAUDE_TOOLBOX_ROOT` is set and valid |
-| `SessionStart` | — | `setup-mcp.py` | Auto-registers MCP server at user scope (idempotent) |
-| `PostToolUse` | `Write` | `collect-plan-map.py` | Refreshes plan-to-project map after file creates |
-| `PostToolUse` | `Edit\|Write` | `lint-py.py` | Syntax-checks any Python file that was just edited |
-| `PreCompact` | — | `check-pin-ran.py` | Blocks context compaction unless `/tools:pin` was run this session |
+| `SessionStart` | — | `validate-env.py`     | Checks `CLAUDE_TOOLBOX_ROOT` is set and valid |
+| `SessionStart` | — | `setup-mcp.py`        | Auto-registers the MCP server at user scope (idempotent) |
+| `PostToolUse`  | `Write`        | `collect-plan-map.py` | Refreshes the plan-to-project map after file creates |
+| `PostToolUse`  | `Edit \| Write` | `lint-py.py`          | Syntax-checks any Python file that was just edited |
+| `PreCompact`   | — | `check-pin-ran.py`    | **Blocks** compaction unless `/tools:pin` ran this session (so context is never summarized away uncheckpointed) |
 
 ---
 
 ## MCP server
 
-claude-toolbox exposes a local MCP server with three tools for querying session data from
-any Claude context — not just the current project.
+`claude-toolbox` exposes a local [MCP](https://modelcontextprotocol.io) server so any Claude context — not just the current project — can query your session data.
 
 | Tool | Description |
 |------|-------------|
 | `search_sessions` | Full-text search across session history by keyword and age |
-| `list_plans` | List all active plans with project attribution |
-| `get_session_log` | Read session log entries for a project |
+| `list_plans`      | List all active plans with project attribution |
+| `get_session_log` | Read session-log entries for a project |
 
-Setup (one-time):
+The `setup-mcp.py` SessionStart hook registers it for you. To register manually, first create the server's virtualenv — it depends on the `mcp` package, and the system `python3` won't resolve it:
 
 ```bash
-python3 -m venv <path-to-claude-toolbox>/mcp_server/.venv
-<path-to-claude-toolbox>/mcp_server/.venv/bin/pip install mcp
+python3 -m venv mcp_server/.venv
+mcp_server/.venv/bin/pip install mcp
 ```
 
-Add to `.mcp.json` to enable:
+Then point a config entry at the venv's python (or use `mcp_server/start.sh`, which resolves it for you):
 
 ```json
 {
   "mcpServers": {
     "claude-toolbox": {
-      "command": "<path-to-claude-toolbox>/mcp_server/.venv/bin/python3",
-      "args": ["<path-to-claude-toolbox>/mcp_server/server.py"]
+      "command": "/path/to/claude-toolbox/mcp_server/.venv/bin/python3",
+      "args": ["/path/to/claude-toolbox/mcp_server/server.py"]
     }
   }
 }
@@ -162,38 +182,96 @@ Add to `.mcp.json` to enable:
 
 ---
 
-## Structure
+## Getting started
+
+### Requirements
+
+- **Claude Code** (latest)
+- **Python 3.11+** — commands and hooks are stdlib-only; no third-party dependencies
+- **[TaskWarrior](https://taskwarrior.org)** *(optional)* — only `/tools:backlog` and `/tools:consolidate-tasks` use it
+
+### Install
+
+Commands resolve their scripts through the `CLAUDE_TOOLBOX_ROOT` environment variable, so the cleanest setup is a local clone plus one env var.
+
+1. **Clone the repo:**
+   ```bash
+   git clone https://github.com/gf-labs/claude-toolbox ~/path/to/claude-toolbox
+   ```
+2. **Point `CLAUDE_TOOLBOX_ROOT` at it** in `~/.claude/settings.json`:
+   ```json
+   { "env": { "CLAUDE_TOOLBOX_ROOT": "/Users/you/path/to/claude-toolbox" } }
+   ```
+3. **Load the plugin** via `pluginDirs` in the same file:
+   ```json
+   { "pluginDirs": ["/Users/you/path/to/claude-toolbox/.claude-plugin"] }
+   ```
+4. **Restart the session.** A SessionStart hook validates your setup; commands are now available as `/tools:*`.
+
+> **Via the GFL marketplace.** `tools` is also published in the [`gf-labs/gfl-marketplace`](https://github.com/gf-labs/gfl-marketplace) catalog (`/plugin marketplace add gf-labs/gfl-marketplace` → `/plugin install tools@gfl-marketplace`). You still set `CLAUDE_TOOLBOX_ROOT` so the scripts can find themselves.
+
+### First run
+
+```
+/tools:doctor     # confirm the environment is healthy
+/tools:brief      # orient — even on a fresh repo this shows you what it sees
+```
+
+<!-- DEMO GIF: /tools:brief on a returning repo, ~15s asciinema -->
+
+---
+
+## Repo structure
 
 ```
 claude-toolbox/
-├── commands/    # slash commands delivered as /tools:*
-├── agents/      # subagents (plan, review, explore, summarize)
-├── scripts/     # Python scripts called by commands and hooks
+├── commands/    # slash commands, delivered as /tools:*
+├── agents/      # read-only subagents (explore, plan, review, summarize)
+├── skills/      # multi-step skills (sit-rep)
+├── scripts/     # Python collectors called by commands and hooks (stdlib only)
 ├── hooks/       # hooks.json — plugin-registered lifecycle hooks
-├── mcp_server/  # MCP server (search_sessions, list_plans, get_session_log)
-└── docs/        # architecture and design reference
+├── mcp_server/  # local MCP server (search_sessions, list_plans, get_session_log)
+├── docs/        # context-hygiene reference, design log, directory reference
+└── tests/       # pytest coverage for the collectors
 ```
 
 ---
 
-## Install
+## Built with Claude Code
 
-1. Add `CLAUDE_TOOLBOX_ROOT` to your `~/.claude/settings.json`:
-   ```json
-   { "env": { "CLAUDE_TOOLBOX_ROOT": "/path/to/claude-toolbox" } }
-   ```
-2. Add this repo as a plugin source using `--plugin-dir`:
-   ```json
-   { "pluginDirs": ["/path/to/claude-toolbox/.claude-plugin"] }
-   ```
-3. Restart the session — commands are available as `/tools:*`.
+`claude-toolbox` is itself a tour of Claude Code's extension model — there is no application runtime, only configuration and stdlib Python. If you're learning what a plugin can do, this repo is a worked example of every major surface:
+
+- **Slash commands** — 12 commands using `$ARGUMENTS`, `!bash` output injection, `@file` includes, and per-command `model` selection (Haiku for cheap/fast, Sonnet for reasoning)
+- **Subagents** — 4 custom read-only agents in `agents/` for context-isolated work
+- **Skills** — `sit-rep`, a multi-step synthesis skill with bundled scripts and references
+- **Hooks** — 5 hooks across `SessionStart`, `PostToolUse`, and `PreCompact`, including a `blockOnFailure` gate
+- **MCP server** — a local stdio server exposing three session-query tools
+- **Plugin packaging** — a versioned `plugin.json` manifest, distributed through a marketplace catalog
+- **Settings hierarchy** — global / project / local `settings.json`, env vars, and permission scoping
+
+---
 
 ## Extending
 
-**New command**: create `commands/[name].md` with frontmatter (`description`, `allowed-tools`, optional `model`). Bump version in `.claude-plugin/plugin.json`, then restart.
+| Add a… | Steps |
+|--------|-------|
+| **Command** | Create `commands/[name].md` with frontmatter (`description`, `allowed-tools`, optional `model`, `argument-hint`). Bump the version, restart. |
+| **Script**  | Add `scripts/[name].py` (stdlib only). Call it from a command with `!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/[name].py`. |
+| **Agent**   | Create `agents/[name].md` with frontmatter (`name`, `description`, `tools`, `model`, `color`). Bump the version, restart. |
+| **Hook**    | Add an entry to `hooks/hooks.json` under the event key (`SessionStart`, `PostToolUse`, `PreCompact`, `Stop`, …). Bump the version, restart. |
 
-**New script**: add `scripts/[name].py` (stdlib only — no third-party deps). Reference it from a command via `python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/[name].py`.
+Bump the version in [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) on every release. See [`CLAUDE.md`](CLAUDE.md) for repo conventions and gotchas.
 
-**New agent**: create `agents/[name].md` with frontmatter (`name`, `description`, `tools`, `model`, `color`). Bump version and restart.
+---
 
-**New hook**: add an entry to `hooks/hooks.json` under the appropriate event key (`SessionStart`, `PostToolUse`, `PreCompact`, `Stop`, etc.). Bump version and restart.
+## Roadmap
+
+- **Unified search** across sessions, plans, memory, and backlog from one command
+- **Tighter ramp integration** — a single knowledge-and-session harvest at wrap time
+- **Submission to the official Anthropic plugin marketplace** once stabilized
+
+---
+
+## License
+
+[MIT](./LICENSE) © 2026 Greenfield Labs
