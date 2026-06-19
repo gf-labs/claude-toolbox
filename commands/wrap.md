@@ -199,7 +199,7 @@ If all unmarked plans are active: say "Plans: [N] active, [N] already marked for
 
 On confirmation, rename each recommended file:
 ```bash
-mv ~/.claude/data/plans/[name].md ~/.claude/data/plans/_done-[name].md
+mv ~/.claude/plans/[name].md ~/.claude/plans/_done-[name].md
 ```
 Report: "Marked [N] plan(s) for deletion: [filenames]"
 

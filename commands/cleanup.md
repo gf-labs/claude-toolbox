@@ -470,13 +470,13 @@ After deletion, run `du -sh ~/.claude/projects/ ~/.claude/file-history/ ~/.claud
 
 ## Phase 3 — Plan archival
 
-Move completed plans (those with `_done-` prefix) from `~/.claude/data/plans/` to `~/.claude/data/plans/archive/`:
+Move completed plans (those with `_done-` prefix) from `~/.claude/plans/` to `~/.claude/plans/archive/`:
 
 ```bash
 python3 -c "
 import shutil
 from pathlib import Path
-plans_dir = Path.home() / '.claude' / 'data' / 'plans'
+plans_dir = Path.home() / '.claude' / 'plans'
 archive_dir = plans_dir / 'archive'
 if not plans_dir.exists():
     print('No plans directory.')
