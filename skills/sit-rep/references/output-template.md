@@ -1,6 +1,6 @@
 # Sit-Rep Output Template
 
-Canonical structure for the project sit-rep. Each section below specifies its purpose, what to include, what to exclude, and an example row drawn from a real knowledge-engine sit-rep produced 2026-06-08.
+Canonical structure for the project sit-rep. Each section below specifies its purpose, what to include, what to exclude, and an example row drawn from an example search-index sit-rep produced 2026-06-08.
 
 The document opens with an H1 header naming the scope and date:
 
@@ -20,24 +20,24 @@ If a topic filter is active, declare it on the line immediately below:
 
 **Purpose:** Anchor the reader in scale before narrative. Five to ten numbers that surprise.
 
-**Include:** Commit count + line delta over the window, hot files, peak day, key dataset sizes (atoms, slugs, corpus tokens), money spent on paid runs, percent of target reached.
+**Include:** Commit count + line delta over the window, hot files, peak day, key dataset sizes (events, docs, corpus tokens), money spent on paid runs, percent of target reached.
 
-**Exclude:** Round-number metrics that anyone could guess. "We have a CI pipeline" is not an order of magnitude; "tier-2 sweep processed 1.7M tokens" is.
+**Exclude:** Round-number metrics that anyone could guess. "We have a CI pipeline" is not an order of magnitude; "tier-2 sweep processed 1.2M tokens" is.
 
 **Example:**
 
 ```markdown
 | Metric | Value |
 |---|---|
-| Knowledge-scoped commits | **113** of 125 total (90%) |
+| Search-scoped commits | **113** of 125 total (90%) |
 | Lines net | **+35,314 / −1,620** |
 | Hot file | `cli.py` — touched in **34** commits |
-| Findings docs created this week | **5** under `docs/tools/knowledge/findings/` |
-| Atoms in `atoms.db` | **77K+** |
-| Tier-2 sweep corpus | **1.7M tokens** |
-| Discovery arc surface | **889 ready slugs** at v2 dual-score threshold |
-| Discovery arc spend | **$89.61** combined dry-run |
-| North-star achievement | **178%** (target 500, hit 889) |
+| Findings docs created this week | **5** under `docs/tools/search/findings/` |
+| Events in `events.db` | **84K+** |
+| Tier-2 sweep corpus | **1.2M tokens** |
+| Index arc surface | **612 ready docs** at v2 dual-score threshold |
+| Index arc spend | **$42.00** combined dry-run |
+| North-star achievement | **153%** (target 400, hit 612) |
 ```
 
 Close with one sentence framing the scale ("This is the work of a small team's quarter, compressed.").
@@ -48,7 +48,7 @@ Close with one sentence framing the scale ("This is the work of a small team's q
 
 **Purpose:** Show the arc, not the diff. The reader should see how shape changed over the window.
 
-**Include:** Dated milestones; for each, a one-line "order-of-magnitude marker" in the right column (cost cut, atom yield, lines shipped, % achieved).
+**Include:** Dated milestones; for each, a one-line "order-of-magnitude marker" in the right column (cost cut, event yield, lines shipped, % achieved).
 
 **Exclude:** Routine commit messages. A milestone is something the project would lose value if you removed.
 
@@ -57,16 +57,16 @@ Close with one sentence framing the scale ("This is the work of a small team's q
 ```markdown
 | Date | Milestone | Order of magnitude |
 |---|---|---|
-| 2026-05-25 → 5/30 | V1 engine scaffold: atoms + FTS5 + edges + Synthesis V1 + ATP + embeddings | ~50 commits in 6 days |
+| 2026-05-25 → 5/30 | V1 engine scaffold: ingest + FTS5 + dedup + ranking V1 + scheduler + embeddings | ~50 commits in 6 days |
 | 2026-05-30 | **V1 shipped** | Foundational |
-| 2026-06-01 | **TC #100 K=3 batching** — 47% cost cut, 2–3× atom yield | Cost halved |
-| 2026-06-05 | **Multi-method discovery arc closed dry-run at 889 / 178%** | North-star reached |
-| 2026-06-06 | **/tmp wipe loses $89 / 2.5hr arc** → policy locked | Painful corrective |
+| 2026-06-01 | **TICKET-204 batch tuning** — 47% cost cut, 2–3× event yield | Cost halved |
+| 2026-06-05 | **Multi-method index arc closed dry-run at 612 / 153%** | North-star reached |
+| 2026-06-06 | **/tmp wipe loses $42 / 2hr arc** → policy locked | Painful corrective |
 ```
 
 After the table, name the bend in the curve in one sentence:
 
-> "The bend in the curve: mid-arc we shifted from *building extraction* to *validating extraction quality* — the v2 dual-score model and the dry-run-only policy both flow from recognizing that 'Sonnet says new' is insufficient signal for promotion."
+> "The bend in the curve: mid-arc we shifted from *building extraction* to *validating extraction quality* — the v2 dual-score model and the dry-run-only policy both flow from recognizing that 'the ranker says new' is insufficient signal for promotion."
 
 ---
 
@@ -89,11 +89,11 @@ Work that is correct but waiting. Name the trigger explicitly. If double-blocked
 
 ```markdown
 ### Gated (correctly)
-**Write-back of 754 net-new ready slugs → `_proposals.db` → `registry.toml`** is gated on:
-1. [[discovery-arc-dry-run-only]] — explicit user go-ahead required
-2. /tmp artifact loss — verdicts cost ~$89 to re-derive against durable storage
+**Write-back of 503 net-new ready docs → `_staging.db` → `catalog.toml`** is gated on:
+1. [[indexing-dry-run-only]] — explicit user go-ahead required
+2. /tmp artifact loss — verdicts cost ~$42 to re-derive against durable storage
 
-**Decision trigger:** downstream-consumer demand (vault rollout, projects integration, dashboard).
+**Decision trigger:** downstream-consumer demand (serving-layer rollout, export job, dashboard).
 ```
 
 End the section with one **Repo state** line: branch + ahead/behind + dirty count + scope of dirty work.
@@ -123,7 +123,7 @@ Table format: Item · Trigger. Re-trigger conditions must be measurable, not asp
 | Phase 2A live probe (full enrichment) | Phase 2C succeeds + cost envelope confirmed |
 | Phase 3 v3 (related/depends_on edges via LLM) | Parent inference proves out at scale |
 | Self-hosted embeddings | bge-small-en-v1.5 hits quality ceiling |
-| Method 4 exhaustive enrich (~8,413 candidates, ~$630) | Write-back happens AND Method-4 coverage gap independently flagged downstream |
+| Full re-index pass (~6,200 docs, ~$310) | Write-back happens AND re-index coverage gap independently flagged downstream |
 ```
 
 ---
@@ -148,7 +148,7 @@ Bullets describing what was *held* despite pressure to change. These are the und
 **Example costly-correction row:**
 
 ```markdown
-| Overnight Sonnet arc to `/tmp` | **$89 + 2.5hr arc lost** to macOS reboot wipe | [[long-runs-durable-output]] — runs >$5/100calls MUST write to `~/data/` or `~/Repos/<project>/.runs/`; NEVER `/tmp` |
+| Overnight Sonnet arc to `/tmp` | **$42 + 2hr arc lost** to macOS reboot wipe | [[long-runs-write-durable]] — runs >$5/100calls MUST write to `~/data/` or `~/Repos/<project>/.runs/`; NEVER `/tmp` |
 ```
 
 ---
@@ -167,11 +167,11 @@ Same format; describe what was tried and why it was retired.
 
 **Example "Keep" item:**
 
-> Script→library lifting — when 2nd instance of in-script pattern appears, lift to library. Expose mechanism, keep policy in caller. (#246 left `output_dir` to caller per docstring guidance)
+> Script→library lifting — when 2nd instance of in-script pattern appears, lift to library. Expose mechanism, keep policy in caller. (TICKET-246 left `output_dir` to caller per docstring guidance)
 
 **Example "Killed" item:**
 
-> Trusting the `[knowledge extract] WARN: 5h quota at X%` line — per-session-scope, not account-aggregate. Replaced by Settings → Usage as ground truth (`[[feedback_knowledge_quota_warn_unreliable]]`)
+> Trusting the `[index build] WARN: 5h quota at X%` line — per-session-scope, not account-aggregate. Replaced by Settings → Usage as ground truth (`[[quota-warn-unreliable]]`)
 
 ---
 
@@ -189,7 +189,7 @@ Same format; describe what was tried and why it was retired.
 **Example row:**
 
 ```markdown
-| #246 library hardening untested in real production traffic | Until next paid run | Edge cases the 8 unit tests miss | First real-traffic test will be the next discovery arc; `paused`/`rate_limited` summary keys give observability |
+| TICKET-246 library hardening untested in real production traffic | Until next paid run | Edge cases the 8 unit tests miss | First real-traffic test will be the next index arc; `paused`/`rate_limited` summary keys give observability |
 ```
 
 ---
@@ -210,7 +210,7 @@ Same format; describe what was tried and why it was retired.
 
 **Example close:**
 
-> Two weeks of build → validate → lock policy has produced a clean dry-run frontier and a hardened library substrate. The next inflection is **wait for downstream pull, or seed it**. The 754 ready slugs are correct work that has nowhere to land productively yet. Two paths: be patient and let consumers materialize on their own cadence, or stand up a minimum vault POC to give write-back a target. The choice is downstream of how much you trust the dry-run counts to age well — which is downstream of #250's concept-tag taxonomy review. **#250 is the gate that gates the gate.**
+> Two weeks of build → validate → lock policy has produced a clean dry-run frontier and a hardened library substrate. The next inflection is **wait for downstream pull, or seed it**. The 503 ready docs are correct work that has nowhere to land productively yet. Two paths: be patient and let consumers materialize on their own cadence, or stand up a minimum serving-layer POC to give write-back a target. The choice is downstream of how much you trust the dry-run counts to age well — which is downstream of TICKET-250's field-mapping schema review. **TICKET-250 is the gate that gates the gate.**
 
 End with one sentence reading the overall health:
 

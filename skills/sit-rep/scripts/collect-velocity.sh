@@ -4,7 +4,7 @@
 #
 # Args:
 #   $1 (optional) — topic filter. Space-separated words are treated as OR
-#                   (e.g. "knowledge registries areas"). Empty = full project.
+#                   (e.g. "search index ranking"). Empty = full project.
 #   $2 (optional) — window in days. Default: 14
 #
 # Output (to stdout):
@@ -49,7 +49,7 @@ echo "TOTAL_COMMITS: $TOTAL"
 
 # --- Topic-scoped commit count ---
 if [ -n "$TOPIC" ]; then
-  # Build a regex alternation: "knowledge registries areas" → "knowledge\|registries\|areas"
+  # Build a regex alternation: "search index ranking" → "search\|index\|ranking"
   PATTERN=$(printf '%s\n' $TOPIC | paste -sd'|' - | sed 's/|/\\|/g')
   SCOPED=$(git log --since="$SINCE" --oneline --grep="$PATTERN" --regexp-ignore-case 2>/dev/null | wc -l | tr -d ' ')
   if [ "$TOTAL" -gt 0 ]; then
@@ -114,14 +114,14 @@ git log --since="$SINCE" --pretty=format:"%ad" --date=short 2>/dev/null \
   | head -3
 echo ""
 
-# --- TC ticket references (durable identifiers for cost/quality experiments) ---
-# Section 2 milestones should cite TC #NNN rather than paraphrase.
-TC_REFS=$(git log --since="$SINCE" --pretty=format:"%cs %s" 2>/dev/null \
-  | grep -E 'TC #[0-9]+' || true)
-if [ -n "$TC_REFS" ]; then
-  echo "=== TC ticket references in window ==="
-  echo "$TC_REFS" | head -25
+# --- Ticket references (durable identifiers for cost/quality experiments) ---
+# Section 2 milestones should cite TICKET-NNN rather than paraphrase.
+TICKET_REFS=$(git log --since="$SINCE" --pretty=format:"%cs %s" 2>/dev/null \
+  | grep -E 'TICKET-[0-9]+' || true)
+if [ -n "$TICKET_REFS" ]; then
+  echo "=== Ticket references in window ==="
+  echo "$TICKET_REFS" | head -25
   echo ""
-  echo "Unique TCs:"
-  echo "$TC_REFS" | grep -oE 'TC #[0-9]+' | sort -u
+  echo "Unique tickets:"
+  echo "$TICKET_REFS" | grep -oE 'TICKET-[0-9]+' | sort -u
 fi

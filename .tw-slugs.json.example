@@ -1,11 +1,9 @@
 {
-  "docs/dot.md": "business.toolbox.dot",
-  "docs/workstation.md": "business.toolbox.workstation",
-  "docs/notebook.md": "business.toolbox.notebook",
-  "docs/homelab/**": "homelab.dotfiles",
+  "docs/payments.md": "acme.billing.api",
+  "docs/web/**": "acme.web.frontend",
+  "scripts/etl.py": "acme.data.pipeline",
   "exclude": [
-    "docs/handoff-*.md",
-    "docs/*-runbook.md",
-    "docs/design-log.md"
+    "docs/draft-*.md",
+    "docs/*-scratch.md"
   ]
 }

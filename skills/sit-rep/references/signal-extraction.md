@@ -19,9 +19,9 @@ Located at `~/.claude/projects/<project-key>/memory/MEMORY.md`. Auto-loaded into
 ### What to extract
 
 **For Section 1 (orders of magnitude):**
-- Dollar amounts in ramp snapshots and session-log entries (e.g. "overnight $89 arc")
-- Token counts mentioned as totals ("1.7M tokens", "77K atoms")
-- Percentages vs targets ("178% of north-star", "47% cost cut")
+- Dollar amounts in ramp snapshots and session-log entries (e.g. "overnight $42 arc")
+- Token counts mentioned as totals ("1.2M tokens", "84K events")
+- Percentages vs targets ("153% of north-star", "47% cost cut")
 
 **For Section 5 (pivots):**
 - Memory entries with names starting `feedback_` describe rules locked from past corrections. Each is a healthy pivot or costly correction. Follow the `[[slug]]` reference to read the full entry.
@@ -60,7 +60,7 @@ Located at `~/.claude/projects/<project-key>/memory/session-log.md`. Append-only
 
 **For Section 5 (pivots — costly):**
 - `**What didn't work:**` sections are gold — each names a deviation and (often) its cost.
-- Entries with cost figures in their bullets (e.g. "$89 + 2.5hr lost") are costly-correction candidates.
+- Entries with cost figures in their bullets (e.g. "$42 + 2hr lost") are costly-correction candidates.
 
 **For Section 7 (risks):**
 - `**Open threads:**` sections name what was unresolved as of that entry. Cross-reference forward — if an open thread never reappears resolved, it is still a risk.
@@ -87,13 +87,13 @@ Located under `docs/tools/<tool>/findings/`, `docs/tools/<tool>/review-*.md`, or
 ### What to extract
 
 **For Section 1 (orders of magnitude):**
-- Findings docs usually open with the headline numbers ("889 ready slugs / 178% / $89.61 combined"). Quote them directly.
+- Findings docs usually open with the headline numbers ("612 ready docs / 153% / $42.00 combined"). Quote them directly.
 
 **For Section 2 (chronological):**
 - The arc's closure date (from the doc's `_YYYY-MM-DD.md` filename or its opening date line) is a milestone.
 
 **For Section 4 (deferred with triggers):**
-- Findings docs often have "Deferred specs" or "Method N exhaustive" sections naming items with explicit re-trigger conditions. Lift these directly into the deferral table; do not paraphrase.
+- Findings docs often have "Deferred specs" or "Full re-index" sections naming items with explicit re-trigger conditions. Lift these directly into the deferral table; do not paraphrase.
 
 **For Section 5 (costly corrections):**
 - "Library hardening opportunities" or "What we'd do differently" sections in findings docs catalog deviations that produced rules.
@@ -157,12 +157,12 @@ The git log is canonical for **what shipped**, not **why it shipped**. Use it to
 
 ## Source: canonical SQLite / corpus stores
 
-When the topic has a persistent data store (atoms.db, _proposals.db, areas.db, registry.toml-derived sqlite), it is the **only** trustworthy source for "how big is X right now."
+When the topic has a persistent data store (events.db, _staging.db, shards.db, catalog.toml-derived sqlite), it is the **only** trustworthy source for "how big is X right now."
 
 ### Heuristics
 
-- **Never cite "77K atoms" / "889 ready slugs" / "$89.61 spend" from MEMORY.md.** Those numbers were correct when written, but counts drift. Re-derive with a live `COUNT(*)` (or read the live findings doc, which itself was written against the live DB at closure time).
-- **File size on disk** is itself a Section 1 anchor — `ls -lh ~/data/knowledge/atoms.db` → "atoms.db = 1.27 GB" surprises the reader more than the row count alone.
+- **Never cite "84K events" / "612 ready docs" / "$42.00 spend" from MEMORY.md.** Those numbers were correct when written, but counts drift. Re-derive with a live `COUNT(*)` (or read the live findings doc, which itself was written against the live DB at closure time).
+- **File size on disk** is itself a Section 1 anchor — `ls -lh ~/data/search/events.db` → "events.db = 1.3 GB" surprises the reader more than the row count alone.
 - **Cost-log files** (e.g. `cost-log.jsonl`) — count rows for total paid-call magnitude; do not infer model split from memory, query the file.
 - When the canonical store is missing or empty but a memory entry references a number, surface this as a discrepancy in Section 7 (Risks).
 
@@ -173,7 +173,7 @@ When the topic has a persistent data store (atoms.db, _proposals.db, areas.db, r
 Once signals are extracted, the sit-rep is mostly a sorting exercise:
 
 1. **Numbers → Section 1.** Pick the 5–10 most surprising. Re-derive from live DBs + git, never from memory citations.
-2. **Dated events → Section 2.** Sort chronologically; note the bend. Cite TC #NNN references verbatim when present.
+2. **Dated events → Section 2.** Sort chronologically; note the bend. Cite TICKET-NNN references verbatim when present.
 3. **Completed/pending/blocked → Section 3.** Three buckets. Topic-scoped TW IDs are durable; cite them.
 4. **Pending + gated + deferred → Section 4.** Three horizons. Deferral triggers must be measurable.
 5. **`feedback_` memory + session-log `**What didn't work:**` → Section 5.** Three sub-tables.
@@ -194,7 +194,7 @@ Section 8 fails when an interesting-but-orthogonal blocker is named instead of t
 For each candidate gate, ask: **"If this resolved tomorrow, what gets unblocked?"** Then trace **two hops out**:
 
 - Hop 1: what work item moves to ready?
-- Hop 2: what downstream consumer (a tool, a vault, a dashboard) starts deriving value?
+- Hop 2: what downstream consumer (a tool, a serving layer, a dashboard) starts deriving value?
 
 The right gate is the one whose forward-trace reaches the **largest downstream consumer**. If a candidate's forward-trace terminates at "we'd have signal for a future experiment," that's a Section 7 risk, not a Section 8 gate.
 
@@ -210,7 +210,7 @@ A candidate is probably the wrong gate if:
 A candidate is probably the right gate if:
 
 - The user has named it as a decision they're sitting on
-- A ready-but-gated artifact (proposals, slugs, drafts) is waiting on its resolution
+- A ready-but-gated artifact (proposals, docs, drafts) is waiting on its resolution
 - Multiple downstream items in Section 4 reference it (directly or transitively)
 - Memory contains a recent `feedback_` entry sharpening the policy around it
 
@@ -224,18 +224,18 @@ Heuristic: if you can sensibly say "we can't stand up Candidate A until we decid
 
 ### Worked examples
 
-**Example 1 — orthogonal blocker vs consumer-unblocking gate (2026-06-08 knowledge sit-rep):**
+**Example 1 — orthogonal blocker vs consumer-unblocking gate (2026-06-08 search sit-rep):**
 
-- **Candidate A:** Fix `cost-log.atoms_extracted=0` field-population bug (discovered today). Forward-trace: → enables $/atom comparison → enables Haiku-vs-Sonnet bake-off → bake-off informs future model choice. Terminates at "future experiment."
-- **Candidate B:** Resolve concept-tag taxonomy review. Forward-trace: → unblocks discovery write-back policy → unblocks 754 ready slugs → unblocks `registry.toml` writes → unblocks vault/projects/dashboard consumers. Terminates at "actual downstream consumer."
+- **Candidate A:** Fix `cost-log.docs_indexed=0` field-population bug (discovered today). Forward-trace: → enables $/doc comparison → enables Haiku-vs-Sonnet bake-off → bake-off informs future model choice. Terminates at "future experiment."
+- **Candidate B:** Resolve field-mapping schema review. Forward-trace: → unblocks index write-back policy → unblocks 503 ready docs → unblocks `catalog.toml` writes → unblocks serving-layer/export/dashboard consumers. Terminates at "actual downstream consumer."
 
 **B is the gate.** A is a Section 7 risk row.
 
 **Example 2 — same chain, different depths (same sit-rep, second iteration):**
 
-- **Candidate B:** Concept-tag taxonomy review. Forward-trace: → write-back posture decided → vault rollout productive → consumers integrate.
-- **Candidate C:** Vault POC (`~/data/vault/knowledge.yaml`). Forward-trace: → vault exists → write-back has a target → consumers integrate.
+- **Candidate B:** Field-mapping schema review. Forward-trace: → write-back posture decided → serving-layer rollout productive → consumers integrate.
+- **Candidate C:** Serving-layer POC (`~/data/search/serve.yaml`). Forward-trace: → serving layer exists → write-back has a target → consumers integrate.
 
-Both terminate at the same consumer (vault-mediated integrations). But **B is earlier in the chain** — you can't sensibly stand up the vault until you've decided what posture write-back takes. Naming C as the gate buries the actual decision (B) under an implementation step that can't begin until B resolves.
+Both terminate at the same consumer (serving-layer-mediated integrations). But **B is earlier in the chain** — you can't sensibly stand up the serving layer until you've decided what posture write-back takes. Naming C as the gate buries the actual decision (B) under an implementation step that can't begin until B resolves.
 
 **B is the gate.** C is the work that fires once B lands.

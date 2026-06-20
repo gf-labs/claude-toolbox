@@ -512,7 +512,7 @@ Show a summary table:
 
 | Directory | Sessions | Size |
 |-----------|----------|------|
-| -Users-berniegreen-Repos-old-project | 3 | 1200K |
+| -Users-you-Repos-old-project | 3 | 1200K |
 | ...                                  | ...| ...  |
 
 Total: N directories · X MB

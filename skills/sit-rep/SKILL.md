@@ -1,6 +1,6 @@
 ---
 name: sit-rep
-description: This skill should be used when the user asks for a "sit-rep", "situation report", "comprehensive overview of the project", "paint a picture of where we've been and where we're going", "show me orders of magnitude", or any narrative synthesis of project state covering velocity, milestones, pivots, learnings, and risks. Defaults to the current git repository; accepts an optional topic filter (e.g. "knowledge", "dot") to scope output to a single sub-arc.
+description: This skill should be used when the user asks for a "sit-rep", "situation report", "comprehensive overview of the project", "paint a picture of where we've been and where we're going", "show me orders of magnitude", or any narrative synthesis of project state covering velocity, milestones, pivots, learnings, and risks. Defaults to the current git repository; accepts an optional topic filter (e.g. "search", "billing") to scope output to a single sub-arc.
 version: 0.1.0
 ---
 
@@ -31,14 +31,14 @@ Skip this skill for: simple status questions, single-session recaps, point-in-ti
 - `CLAUDE_TOOLBOX_ROOT` — the claude-toolbox repo (provides `_scope.py`, `collect-plans.py`). If unset, default to `~/Repos/claude-toolbox`, or shell out to `git rev-parse --show-toplevel` from within the repo.
 - `CLAUDE_PLUGIN_ROOT` — the active plugin install location (provides this skill's bundled `scripts/collect-velocity.sh`). If unset, fall back to `${CLAUDE_TOOLBOX_ROOT}/skills/sit-rep` since the skill ships from claude-toolbox.
 
-**Optional first positional argument: topic filter.** When set, exclude commits, files, milestones, pivots, and learnings unrelated to that topic. Multi-word filters are space-separated and treated as an OR (e.g. `knowledge registries areas` includes commits matching any of those terms).
+**Optional first positional argument: topic filter.** When set, exclude commits, files, milestones, pivots, and learnings unrelated to that topic. Multi-word filters are space-separated and treated as an OR (e.g. `search index ranking` includes commits matching any of those terms).
 
 Examples:
 - `(no arg)` — full project scope
-- `knowledge` — only the knowledge engine arc
-- `dot baseline` — dot + baseline (treated as one combined arc)
+- `search` — only the search-index arc
+- `billing api` — billing + api (treated as one combined arc)
 
-**Discovering the right filter:** If the working directory holds multiple parallel arcs (more than one tool family or product line under active development) and the user did not specify a filter, ask once via `AskUserQuestion` before producing output. Do not guess. If the session name encodes a sub-tool scope (see memory `[[feedback_session_scope]]`), surface it as the recommended default.
+**Discovering the right filter:** If the working directory holds multiple parallel arcs (more than one tool family or product line under active development) and the user did not specify a filter, ask once via `AskUserQuestion` before producing output. Do not guess. If the session name encodes a sub-tool scope (see memory `[[session-scope-naming]]`), surface it as the recommended default.
 
 ## Collect context
 
@@ -69,7 +69,7 @@ task rc.verbose=nothing project:${TW_PROJECT} status:completed end.after:today-2
 # When a topic filter is set, ALSO list TW items whose description mentions the topic.
 # These are the items that should populate Section 3 (In flight) and Section 4 (Next 1–2 weeks)
 # for a topic-scoped sit-rep — without this filter, topic-relevant TW items get drowned in
-# repo-wide noise. Cite TW IDs (#249, #250) verbatim; they are durable identifiers.
+# repo-wide noise. Cite TW IDs (#142, #143) verbatim; they are durable identifiers.
 if [ -n "$TOPIC" ]; then
   for t in $TOPIC; do
     task rc.verbose=nothing project:${TW_PROJECT} status:pending /${t}/ list 2>/dev/null
@@ -98,7 +98,7 @@ find "$ROOT/docs" -type f \( -name "*findings*" -o -path "*/findings/*" -o -name
 
 # When a topic filter is set, ALSO ls the topic's findings dir directly. The mtime filter above
 # routinely misses docs that were last touched outside the window but carry the headline numbers
-# (north-star %, $ spend, ready-slug counts). Read each file that names a closed arc and lift the
+# (north-star %, $ spend, ready-doc counts). Read each file that names a closed arc and lift the
 # top-of-file numbers verbatim into Section 1. These docs are the canonical source for the
 # arc's magnitude — MEMORY.md citations of the same numbers are usually stale.
 if [ -n "$TOPIC" ]; then
@@ -111,31 +111,31 @@ fi
 **Canonical-DB / corpus magnitudes (re-derive, never cite from memory):**
 ```bash
 # If the topic has a SQLite store (or any persistent data store), query it directly for live
-# counts. MEMORY.md citations like "77K atoms" drift across sessions — see
-# [[feedback_cumulative_ready_counts]]. Always cite the number the DB returns NOW.
+# counts. MEMORY.md citations like "84K events" drift across sessions — see
+# [[counts-drift-rederive]]. Always cite the number the DB returns NOW.
 #
 # This step is topic-aware: the agent should identify the canonical DBs for the topic before
-# running and replace the examples below. For the knowledge engine:
-for db in ~/data/knowledge/atoms.db ~/.config/registries/atoms.db ~/.config/registries/_proposals.db; do
+# running and replace the examples below. For a search-index store:
+for db in ~/data/search/events.db ~/.config/index/events.db ~/.config/index/_staging.db; do
   [ -f "$db" ] && { ls -lh "$db"; echo "  tables:"; sqlite3 "$db" ".tables" 2>/dev/null | head -5; }
 done
 # Then run topic-appropriate COUNT(*) queries against the tables you found. File size on disk
-# is itself an order-of-magnitude anchor (Section 1 row: "atoms.db = 1.27 GB").
+# is itself an order-of-magnitude anchor (Section 1 row: "events.db = 1.3 GB").
 ```
 
-**TC (TaskCard) ticket references in the window:**
+**Ticket references in the window:**
 ```bash
-# Commit messages frequently cite TC #NNN — durable identifiers for cost/quality experiments,
+# Commit messages frequently cite TICKET-NNN — durable identifiers for cost/quality experiments,
 # library-hardening arcs, and prompt A/B harnesses. Extract them so Section 2 milestones can
-# cite the ID rather than paraphrase ("TC #100 K=3 batching — 47% cost cut").
+# cite the ID rather than paraphrase ("TICKET-204 batch tuning — 47% cost cut").
 git log --since="14 days ago" --pretty="%cs %s" 2>/dev/null \
-  | grep -E 'TC #[0-9]+' | head -25
+  | grep -E 'TICKET-[0-9]+' | head -25
 git log --since="14 days ago" --pretty="%cs %s" 2>/dev/null \
-  | grep -oE 'TC #[0-9]+' | sort -u
+  | grep -oE 'TICKET-[0-9]+' | sort -u
 
-# Also grep docs + topic source dirs — TCs often appear in findings, planning, or architecture
+# Also grep docs + topic source dirs — tickets often appear in findings, planning, or architecture
 # docs but never in a commit message (e.g. an experiment ID that produced a finding without a
-# code commit). Catches TC IDs that the git-log grep alone would miss. Scope is intentionally
+# code commit). Catches IDs that the git-log grep alone would miss. Scope is intentionally
 # broad: docs/architecture/, docs/tools/<topic>/, and lib/tools/<topic>/ all commonly hold them.
 ROOT=$(git rev-parse --show-toplevel)
 SCAN_DIRS=("$ROOT/docs/architecture")
@@ -144,7 +144,7 @@ if [ -n "$TOPIC" ]; then
     SCAN_DIRS+=("$ROOT/docs/tools/$t" "$ROOT/lib/tools/$t")
   done
 fi
-grep -rhoE 'TC #[0-9]+' "${SCAN_DIRS[@]}" 2>/dev/null | sort -u
+grep -rhoE 'TICKET-[0-9]+' "${SCAN_DIRS[@]}" 2>/dev/null | sort -u
 ```
 
 **Memory + session log (read directly via Read tool):**
@@ -192,15 +192,15 @@ Table: Risk · Likelihood · Impact · Mitigation status. 5–8 rows max. Includ
 ### 8. The shape of the next inflection
 2–4 sentences narrative close. Name the gate that gates the gate — the question that, if answered, unlocks the rest.
 
-**Picking the right gate (judgment heuristic):** This section fails when an interesting but orthogonal blocker gets named instead of the actual load-bearing one. Trace forward from each candidate gate: "if this resolved tomorrow, what gets unblocked?" The correct gate is the one whose resolution unblocks the **largest downstream consumer**, not the one that surfaced most recently. A cost-log bug that blocks a future quality experiment is **not** the right gate when 754 ready slugs are sitting behind a policy decision that blocks the entire write-back arc. Today-fresh discoveries belong in Section 7 (Risks) unless they sit on the consumer-unblocking critical path.
+**Picking the right gate (judgment heuristic):** This section fails when an interesting but orthogonal blocker gets named instead of the actual load-bearing one. Trace forward from each candidate gate: "if this resolved tomorrow, what gets unblocked?" The correct gate is the one whose resolution unblocks the **largest downstream consumer**, not the one that surfaced most recently. A cost-log bug that blocks a future quality experiment is **not** the right gate when 503 ready docs are sitting behind a policy decision that blocks the entire write-back arc. Today-fresh discoveries belong in Section 7 (Risks) unless they sit on the consumer-unblocking critical path.
 
-**Tie-breaker — when two candidates unblock the same consumer:** If two gates both forward-trace to the same downstream destination, they sit on the same dependency chain at different depths. Pick the one **earlier** in the chain — the upstream gate of the gate. A vault rollout and a concept-tag taxonomy review may both ultimately unblock write-back-to-`registry.toml`; but the taxonomy review gates the write-back posture that the vault would consume, so the taxonomy review is the true gate. Naming the downstream-terminal candidate misses the fact that you can't sensibly stand it up until the upstream decision lands.
+**Tie-breaker — when two candidates unblock the same consumer:** If two gates both forward-trace to the same downstream destination, they sit on the same dependency chain at different depths. Pick the one **earlier** in the chain — the upstream gate of the gate. A serving-layer rollout and a field-mapping schema review may both ultimately unblock write-back-to-`catalog.toml`; but the schema review gates the write-back posture that the serving layer would consume, so the schema review is the true gate. Naming the downstream-terminal candidate misses the fact that you can't sensibly stand it up until the upstream decision lands.
 
 ## Constraints
 
 - **Default scope is the current git repository.** Do not aggregate across multiple repos unless explicitly asked.
-- **Honor the topic filter strictly.** If the filter is "knowledge", exclude commits, milestones, and pivots that are purely about other arcs. When in doubt, include and annotate why it relates.
-- **Re-derive numerical anchors from canonical artifacts.** Never sum cited counts from `MEMORY.md` — counts drift across sessions (see `[[feedback_cumulative_ready_counts]]`). Always go to git log / DB / source file for the actual number.
+- **Honor the topic filter strictly.** If the filter is "search", exclude commits, milestones, and pivots that are purely about other arcs. When in doubt, include and annotate why it relates.
+- **Re-derive numerical anchors from canonical artifacts.** Never sum cited counts from `MEMORY.md` — counts drift across sessions (see `[[counts-drift-rederive]]`). Always go to git log / DB / source file for the actual number.
 - **Quote dates verbatim.** Don't say "last week" — say "2026-06-05". Memory and session logs are time-anchored; preserve that.
 - **Cite policy locks as `[[memory-slug]]` references.** If a rule was locked into memory, mark which memory file holds it so the reader can trace it.
 - **Lead with surprise.** Section 1's numbers and Section 5's pivots should make the reader recognize patterns they had not yet named.
@@ -209,7 +209,7 @@ Table: Risk · Likelihood · Impact · Mitigation status. 5–8 rows max. Includ
 ## Additional Resources
 
 ### Reference Files
-- **`references/output-template.md`** — canonical 8-section structure with example rows drawn from a real knowledge-engine sit-rep
+- **`references/output-template.md`** — canonical 8-section structure with example rows drawn from an example search-index sit-rep
 - **`references/signal-extraction.md`** — heuristics for surfacing orders of magnitude, pivots, learnings, and risks from `MEMORY.md` + `session-log.md` + findings docs
 
 ### Scripts
