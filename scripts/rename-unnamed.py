@@ -11,8 +11,9 @@ Options:
   --dry-run       print proposals without writing; outputs PROPOSAL lines instead of RENAMED
 
 Output (normal):  "RENAMED: id8 → name"  or  "NONE"
-Output (dry-run): "PROPOSAL: /path/to/file|id8|current_title|proposed_name"  or  "NONE"
+Output (dry-run): one JSON object per line, "PROPOSAL: {path, id8, current_title, name}", or "NONE"
 """
+import json
 import sys
 from pathlib import Path
 
@@ -95,7 +96,9 @@ if not results:
 
 for f, sid8, current_title, name in results:
     if dry_run:
-        print(f'PROPOSAL: {f}|{sid8}|{current_title}|{name}')
+        print('PROPOSAL: ' + json.dumps({
+            'path': str(f), 'id8': sid8, 'current_title': current_title, 'name': name,
+        }))
     else:
         write_title(f, name)
         print(f'RENAMED: {sid8} → {name}')
