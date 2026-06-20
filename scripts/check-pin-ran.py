@@ -39,4 +39,4 @@ print(
     f"⚠  Run /tools:pin before /compact (session {session_prefix} not yet logged).",
     file=sys.stderr,
 )
-sys.exit(1)
+sys.exit(2)

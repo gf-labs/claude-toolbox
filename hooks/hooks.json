@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 $CLAUDE_TOOLBOX_ROOT/scripts/validate-env.py"
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/validate-env.py"
           }
         ]
       },
@@ -13,7 +13,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 $CLAUDE_TOOLBOX_ROOT/scripts/setup-mcp.py"
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/setup-mcp.py"
           }
         ]
       }
@@ -24,7 +24,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 $CLAUDE_TOOLBOX_ROOT/scripts/collect-plan-map.py > /dev/null"
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/collect-plan-map.py > /dev/null"
           }
         ]
       },
@@ -33,18 +33,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 $CLAUDE_TOOLBOX_ROOT/scripts/lint-py.py"
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/lint-py.py"
           }
         ]
       }
     ],
     "PreCompact": [
       {
-        "blockOnFailure": true,
         "hooks": [
           {
             "type": "command",
-            "command": "python3 $CLAUDE_TOOLBOX_ROOT/scripts/check-pin-ran.py"
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/scripts/check-pin-ran.py"
           }
         ]
       }
