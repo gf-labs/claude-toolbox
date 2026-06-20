@@ -6,38 +6,23 @@ model: claude-haiku-4-5-20251001
 
 ## Collect context
 
-Run each command below now before producing output. Store results mentally.
+The deterministic git/system context below is **injected automatically** via `` !`…` `` —
+it runs at command-render time and lands in your context before you respond, with no tool
+calls. The multi-line Python blocks further down are too involved to inline, so run those as
+bash before producing output. Store all results mentally.
 
-**Today's date and repo**:
-```bash
-echo "DATE:" && date +%Y-%m-%d
-echo "REPO:" && (basename "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null || echo "(not a git repo)")
-```
+**Today's date:** !`date +%Y-%m-%d`
+**Repo:** !`basename "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null || echo "(not a git repo)"`
+**Branch & sync:** !`git status -b --short 2>/dev/null | head -3 || echo "not a git repo"`
+**Staged changes:** !`git diff --stat --cached HEAD 2>/dev/null || echo "none staged"`
+**Unstaged changes:** !`git diff --stat 2>/dev/null || echo "none"`
+**Untracked files:** !`git ls-files --others --exclude-standard 2>/dev/null | head -10 || echo "none"`
+**Recent commits:** !`git log --oneline -8 2>/dev/null || echo "no commits"`
+**Git diff hunk headers:** !`git diff HEAD --unified=0 2>/dev/null | grep '^@@' | head -20 || echo "no diff"`
+**.claude/ inventory:** !`ls -1 .claude/ 2>/dev/null || echo "none"`
+**Project extension:** !`cat .claude/status.md 2>/dev/null || echo "(no project extension)"`
 
-**Git branch and remote sync**:
-```bash
-git status -b --short 2>/dev/null | head -3 || echo "not a git repo"
-```
-
-**Staged changes**:
-```bash
-git diff --stat --cached HEAD 2>/dev/null || echo "none staged"
-```
-
-**Unstaged changes**:
-```bash
-git diff --stat 2>/dev/null || echo "none"
-```
-
-**Untracked files**:
-```bash
-git ls-files --others --exclude-standard 2>/dev/null | head -10 || echo "none"
-```
-
-**Recent commits**:
-```bash
-git log --oneline -8 2>/dev/null || echo "no commits"
-```
+Run the remaining commands below before producing output. Store results mentally.
 
 **Top-level directory listing**:
 ```bash
@@ -55,11 +40,6 @@ for e in entries:
     else:
         print(e.name)
 " 2>/dev/null || ls -1
-```
-
-**.claude/ inventory**:
-```bash
-ls -1 .claude/ 2>/dev/null || echo "none"
 ```
 
 **Root config files**:
@@ -166,16 +146,6 @@ echo "UP_NEXT:" && (task rc.verbose=nothing project:${TW_PROJECT} limit:3 list 2
 **Current session**:
 ```bash
 python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-summarize.py
-```
-
-**Git diff hunk headers** (what changed inside files):
-```bash
-git diff HEAD --unified=0 2>/dev/null | grep '^@@' | head -20 || echo "no diff"
-```
-
-**Project extension**:
-```bash
-cat .claude/status.md 2>/dev/null || echo "(no project extension)"
 ```
 
 ---
