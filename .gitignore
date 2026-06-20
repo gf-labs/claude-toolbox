@@ -12,3 +12,6 @@ venv/
 
 # Local TaskWarrior slug-mapping config (commit .tw-slugs.json.example instead)
 .tw-slugs.json
+
+# Working notes — implementation plans & specs (never ship publicly)
+docs/superpowers/
