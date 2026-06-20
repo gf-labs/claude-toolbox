@@ -43,7 +43,7 @@ def is_artifact_only(path):
             if t not in ARTIFACT_TYPES:
                 return False
         return True
-    except Exception:
+    except (OSError, ValueError):
         return False
 
 

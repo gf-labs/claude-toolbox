@@ -12,7 +12,7 @@ from _scope import _reconstruct, get_scope
 def _run(cmd):
     try:
         return subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True).strip()
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         return None
 
 
@@ -44,7 +44,7 @@ def _snapshot_info(mem_file):
         cutoff += 86400
         newer = sum(1 for f in proj_dir.glob('*.jsonl') if f.stat().st_mtime > cutoff)
         return last_date, str(newer) if newer else '—'
-    except Exception:
+    except (OSError, ValueError):
         return last_date, '—'
 
 
@@ -100,7 +100,7 @@ def _emit_row(name, path, group, projects_dir):
             bl_lines = backlog_file.read_text(encoding='utf-8').splitlines()[:50]
             items = [ln for ln in bl_lines if ln.strip() and not ln.startswith('#')]
             backlog_count = str(len(items)) if items else '—'
-        except Exception:
+        except (OSError, ValueError):
             pass
 
     last_snap, sessions_since = _snapshot_info(mem_file)

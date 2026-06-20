@@ -22,7 +22,7 @@ else:
         ).strip()
         cwd = Path(git_root)
         cwd_key = str(cwd).replace('/', '-')
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         print('ERROR: Could not determine project directory')
         sys.exit(1)
 
@@ -81,7 +81,7 @@ for line in current.read_text(encoding='utf-8', errors='replace').splitlines():
         continue
     try:
         obj = json.loads(line)
-    except Exception:
+    except json.JSONDecodeError:
         continue
 
     if obj.get('type') != 'assistant':

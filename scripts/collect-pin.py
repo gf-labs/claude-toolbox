@@ -39,7 +39,7 @@ def _run(cmd, cwd=None):
         return subprocess.check_output(
             cmd, stderr=subprocess.DEVNULL, text=True, cwd=cwd
         ).strip()
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         return None
 
 
@@ -92,7 +92,7 @@ def _current_jsonl():
         for sf in sessions_dir.iterdir():
             try:
                 obj = json.loads(sf.read_text(encoding='utf-8'))
-            except Exception:
+            except (OSError, ValueError):
                 continue
             if obj.get('cwd') == str(project_dir) and obj.get('sessionId'):
                 cand = proj_meta_dir / (obj['sessionId'] + '.jsonl')
@@ -124,7 +124,7 @@ if current is not None:
             continue
         try:
             obj = json.loads(line)
-        except Exception:
+        except json.JSONDecodeError:
             continue
         otype = obj.get('type')
         if otype == 'custom-title':
@@ -249,7 +249,7 @@ if last_snapshot != '—':
         cutoff = datetime.strptime(last_snapshot, '%Y-%m-%d').timestamp() + 86400
         newer = sum(1 for f in proj_meta_dir.glob('*.jsonl') if f.stat().st_mtime > cutoff)
         sessions_since = str(newer) if newer else '—'
-    except Exception:
+    except (OSError, ValueError):
         pass
 
 # Session-log metadata

@@ -159,7 +159,7 @@ def _scan() -> tuple[dict, float]:
             session_id = jsonl.stem
             try:
                 content = jsonl.read_text(encoding='utf-8', errors='replace')
-            except Exception as e:
+            except OSError as e:
                 print(f'warning: could not read {jsonl}: {e}', file=sys.stderr)
                 continue
             for line in content.splitlines():
@@ -167,7 +167,7 @@ def _scan() -> tuple[dict, float]:
                     continue
                 try:
                     obj = json.loads(line)
-                except Exception:
+                except json.JSONDecodeError:
                     continue
                 if obj.get('type') != 'assistant':
                     continue

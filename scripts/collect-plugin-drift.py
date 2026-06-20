@@ -8,7 +8,7 @@ cache_base = Path.home() / '.claude' / 'plugins' / 'cache'
 
 try:
     settings = json.loads(settings_path.read_text(encoding='utf-8'))
-except Exception:
+except (OSError, ValueError):
     print('SETTINGS_UNREADABLE')
     raise SystemExit(1)
 
