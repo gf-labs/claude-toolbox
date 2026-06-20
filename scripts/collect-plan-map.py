@@ -34,7 +34,7 @@ def _read_header_and_section() -> tuple[str, list[str]]:
     """Return (Plans-scanned value, lines inside ## Plans section)."""
     if not MAP_FILE.exists():
         return '', []
-    lines = MAP_FILE.read_text().splitlines()
+    lines = MAP_FILE.read_text(encoding='utf-8').splitlines()
     scanned = ''
     plan_lines = []
     in_plans = False
@@ -71,7 +71,7 @@ def _parse_plans_section() -> dict:
 
 def _write_plans_section(plans: dict, scanned_ts: str):
     """Rewrite ## Plans section; preserve ## Projects section and file header."""
-    existing_lines = MAP_FILE.read_text().splitlines() if MAP_FILE.exists() else []
+    existing_lines = MAP_FILE.read_text(encoding='utf-8').splitlines() if MAP_FILE.exists() else []
     kept = []
     in_plans = False
     for line in existing_lines:
@@ -112,7 +112,7 @@ def _write_plans_section(plans: dict, scanned_ts: str):
         plan_lines.append('')
 
     MAP_FILE.parent.mkdir(parents=True, exist_ok=True)
-    MAP_FILE.write_text('\n'.join(kept + plan_lines).strip() + '\n')
+    MAP_FILE.write_text('\n'.join(kept + plan_lines).strip() + '\n', encoding='utf-8')
 
 
 def _load_renames() -> dict:
@@ -121,7 +121,7 @@ def _load_renames() -> dict:
     if not renames_file.exists():
         return {}
     raw = {}
-    for line in renames_file.read_text().splitlines():
+    for line in renames_file.read_text(encoding='utf-8').splitlines():
         parts = line.strip().split('\t', 1)
         if len(parts) == 2 and parts[0] and parts[1]:
             raw[parts[0]] = parts[1]
@@ -158,7 +158,7 @@ def _scan() -> tuple[dict, float]:
                 newest_mtime = mtime
             session_id = jsonl.stem
             try:
-                content = jsonl.read_text(errors='replace')
+                content = jsonl.read_text(encoding='utf-8', errors='replace')
             except Exception as e:
                 print(f'warning: could not read {jsonl}: {e}', file=sys.stderr)
                 continue

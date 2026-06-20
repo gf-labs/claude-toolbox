@@ -7,7 +7,7 @@ settings_path = Path.home() / '.claude' / 'settings.json'
 cache_base = Path.home() / '.claude' / 'plugins' / 'cache'
 
 try:
-    settings = json.loads(settings_path.read_text())
+    settings = json.loads(settings_path.read_text(encoding='utf-8'))
 except Exception:
     print('SETTINGS_UNREADABLE')
     raise SystemExit(1)
@@ -37,7 +37,7 @@ for plugin_at_market in [k for k, v in enabled.items() if v]:
     marketplace_json = Path(source_dir) / '.claude-plugin' / 'marketplace.json'
     if marketplace_json.exists():
         try:
-            mdata = json.loads(marketplace_json.read_text())
+            mdata = json.loads(marketplace_json.read_text(encoding='utf-8'))
             for p in mdata.get('plugins', []):
                 if p.get('name') == plugin_name:
                     rel = p.get('source', './')

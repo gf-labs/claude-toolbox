@@ -21,7 +21,7 @@ def _log_info(proj_dir):
     log_file = proj_dir / 'memory' / 'session-log.md'
     if not log_file.exists():
         return '—', '—'
-    text = log_file.read_text()
+    text = log_file.read_text(encoding='utf-8')
     dates = re.findall(r'^## (\d{4}-\d{2}-\d{2})', text, re.MULTILINE)
     if not dates:
         return '—', '—'
@@ -32,7 +32,7 @@ def _snapshot_info(mem_file):
     """Return (last_snapshot_date, sessions_since) from MEMORY.md."""
     if not mem_file.exists():
         return '—', '—'
-    text = mem_file.read_text()
+    text = mem_file.read_text(encoding='utf-8')
     dates = re.findall(r'## Session snapshot — (\d{4}-\d{2}-\d{2})', text)
     last_date = dates[-1] if dates else '—'
     if last_date == '—':
@@ -86,7 +86,7 @@ def _emit_row(name, path, group, projects_dir):
     sessions = _session_count(proj_dir)
     mem_file = proj_dir / 'memory' / 'MEMORY.md'
     if mem_file.exists():
-        mem_lines = len(mem_file.read_text().splitlines())
+        mem_lines = len(mem_file.read_text(encoding='utf-8').splitlines())
         mem_status = 'WARN' if mem_lines >= 150 else ('OK' if mem_lines >= 50 else 'THIN')
         mem_str = f'{mem_lines}L'
     else:
@@ -97,7 +97,7 @@ def _emit_row(name, path, group, projects_dir):
     backlog_count = '—'
     if backlog_file.exists():
         try:
-            bl_lines = backlog_file.read_text().splitlines()[:50]
+            bl_lines = backlog_file.read_text(encoding='utf-8').splitlines()[:50]
             items = [ln for ln in bl_lines if ln.strip() and not ln.startswith('#')]
             backlog_count = str(len(items)) if items else '—'
         except Exception:

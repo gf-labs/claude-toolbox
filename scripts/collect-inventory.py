@@ -26,7 +26,7 @@ def main() -> None:
     scripts = len(list(ROOT.glob("scripts/*.py")))
 
     hooks_path = ROOT / "hooks" / "hooks.json"
-    hooks = _count_hook_commands(json.loads(hooks_path.read_text())) if hooks_path.exists() else 0
+    hooks = _count_hook_commands(json.loads(hooks_path.read_text(encoding='utf-8'))) if hooks_path.exists() else 0
 
     print(f"Commands: {commands} \u00b7 Agents: {agents} \u00b7 Hooks: {hooks} \u00b7 Scripts: {scripts}")
 

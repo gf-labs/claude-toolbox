@@ -35,7 +35,7 @@ CONVERSATION_TYPES = {
 
 def is_artifact_only(path):
     try:
-        for line in path.read_text().splitlines():
+        for line in path.read_text(encoding='utf-8').splitlines():
             obj = json.loads(line)
             t = obj.get('type', '')
             if t in CONVERSATION_TYPES:

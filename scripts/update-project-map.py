@@ -47,7 +47,7 @@ def parse_projects_section() -> dict:
     """Parse ## Projects section → {key: {name, first_session, refs: [str]}}"""
     if not MAP_FILE.exists():
         return {}
-    lines = MAP_FILE.read_text().splitlines()
+    lines = MAP_FILE.read_text(encoding='utf-8').splitlines()
     projects = {}
     current = None
     in_refs = False
@@ -85,7 +85,7 @@ def write_projects_section(projects: dict):
     today = date.today().isoformat()
 
     # Read existing file, strip Projects section and old Projects-updated header
-    existing_lines = MAP_FILE.read_text().splitlines() if MAP_FILE.exists() else []
+    existing_lines = MAP_FILE.read_text(encoding='utf-8').splitlines() if MAP_FILE.exists() else []
     kept = []
     in_projects = False
     for line in existing_lines:
@@ -129,7 +129,7 @@ def write_projects_section(projects: dict):
         proj_lines.append('')
 
     MAP_FILE.parent.mkdir(parents=True, exist_ok=True)
-    MAP_FILE.write_text('\n'.join(kept + proj_lines).strip() + '\n')
+    MAP_FILE.write_text('\n'.join(kept + proj_lines).strip() + '\n', encoding='utf-8')
 
 
 # --- Run collect-summarize if needed ---

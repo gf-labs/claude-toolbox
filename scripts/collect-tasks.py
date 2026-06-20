@@ -68,7 +68,7 @@ def derive_slug(repo_path: Path, repos_root: Path | None = None) -> str:
 def is_tombstoned(file_path: Path) -> bool:
     """Return True if file contains only the tombstone line."""
     try:
-        return file_path.read_text().strip().startswith(TOMBSTONE_PREFIX)
+        return file_path.read_text(encoding='utf-8').strip().startswith(TOMBSTONE_PREFIX)
     except OSError:
         return False
 
@@ -78,7 +78,7 @@ def load_tw_slugs(repo_path: Path) -> dict:
     config_path = repo_path / ".tw-slugs.json"
     if config_path.exists():
         try:
-            return json.loads(config_path.read_text())
+            return json.loads(config_path.read_text(encoding='utf-8'))
         except (json.JSONDecodeError, OSError):
             return {}
     return {}
@@ -225,7 +225,7 @@ def find_tracking_files(repo_path: Path) -> list[Path]:
     readme = repo_path / "README.md"
     if readme.exists() and readme not in candidates and not is_tombstoned(readme):
         try:
-            if has_planning_heading(readme.read_text()):
+            if has_planning_heading(readme.read_text(encoding='utf-8')):
                 candidates.append(readme)
         except OSError:
             pass
@@ -251,7 +251,7 @@ def find_tracking_files(repo_path: Path) -> list[Path]:
             if f.resolve() in resolved_candidates or is_tombstoned(f):
                 continue
             try:
-                if has_planning_heading(f.read_text()):
+                if has_planning_heading(f.read_text(encoding='utf-8')):
                     candidates.append(f)
                     resolved_candidates.add(f.resolve())
             except OSError:
@@ -268,7 +268,7 @@ def collect_markdown_items(
 ) -> list[dict]:
     """Extract all proposed items from a single tracking file."""
     try:
-        text = file_path.read_text()
+        text = file_path.read_text(encoding='utf-8')
     except OSError:
         return []
 

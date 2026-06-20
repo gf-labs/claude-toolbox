@@ -50,7 +50,7 @@ sid = current.stem
 
 last_title = ''
 first_slug = ''
-for line in current.read_text(errors='replace').splitlines():
+for line in current.read_text(encoding='utf-8', errors='replace').splitlines():
     if not line.strip():
         continue
     try:

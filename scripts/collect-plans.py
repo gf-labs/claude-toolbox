@@ -13,7 +13,7 @@ else:
     if cache.exists():
         in_plans = False
         current = None
-        for line in cache.read_text().splitlines():
+        for line in cache.read_text(encoding='utf-8').splitlines():
             if line.strip() == '## Plans':
                 in_plans = True
                 continue
@@ -30,7 +30,7 @@ else:
                     plan_map[current] = created[created.rfind('(') + 1:-1]
 
     for f in sorted(plans_dir.glob('*.md')):
-        text = f.read_text()
+        text = f.read_text(encoding='utf-8')
         file_lines = text.splitlines()
         line_count = len(file_lines)
         title = ''

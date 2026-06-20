@@ -39,7 +39,7 @@ def task_annotate(task_id: str, note: str) -> None:
 
 
 def tombstone_file(file_path: Path, slug: str) -> None:
-    file_path.write_text(TOMBSTONE_TEMPLATE.format(slug=slug))
+    file_path.write_text(TOMBSTONE_TEMPLATE.format(slug=slug), encoding='utf-8')
 
 
 def main() -> None:
@@ -48,7 +48,7 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
-        manifest = json.loads(Path(args.manifest).read_text())
+        manifest = json.loads(Path(args.manifest).read_text(encoding='utf-8'))
     except FileNotFoundError:
         print(f"ERROR: manifest not found: {args.manifest}", file=sys.stderr)
         sys.exit(1)
@@ -141,7 +141,7 @@ def main() -> None:
             tombstoned.append(rel)
 
     # Persist executed status so re-runs skip already-added items
-    manifest_path.write_text(json.dumps(manifest, indent=2))
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding='utf-8')
 
     # Report
     if executed:

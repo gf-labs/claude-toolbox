@@ -91,7 +91,7 @@ def _current_jsonl():
     if sessions_dir.exists():
         for sf in sessions_dir.iterdir():
             try:
-                obj = json.loads(sf.read_text())
+                obj = json.loads(sf.read_text(encoding='utf-8'))
             except Exception:
                 continue
             if obj.get('cwd') == str(project_dir) and obj.get('sessionId'):
@@ -119,7 +119,7 @@ if current is not None:
         _claude / 'file-history', _claude / 'debug',
         _claude / 'session-env', _claude / 'plugins',
     )
-    for line in current.read_text(errors='replace').splitlines():
+    for line in current.read_text(encoding='utf-8', errors='replace').splitlines():
         if not line.strip():
             continue
         try:
@@ -237,8 +237,8 @@ print()
 mem_file = memory_dir / 'MEMORY.md'
 log_file = memory_dir / 'session-log.md'
 
-mem_text = mem_file.read_text() if mem_file.exists() else ''
-log_text = log_file.read_text() if log_file.exists() else ''
+mem_text = mem_file.read_text(encoding='utf-8') if mem_file.exists() else ''
+log_text = log_file.read_text(encoding='utf-8') if log_file.exists() else ''
 
 # Snapshot info from MEMORY.md
 snap_dates = re.findall(r'## Session snapshot — (\d{4}-\d{2}-\d{2})', mem_text)
@@ -344,7 +344,7 @@ if not graph.exists():
     print('RAMP: no graph')
 else:
     try:
-        gtext = graph.read_text()
+        gtext = graph.read_text(encoding='utf-8')
         today = date.today().isoformat()
         due = [m for m in re.findall(r'next: (\d{4}-\d{2}-\d{2})', gtext) if m <= today]
         lvl = re.search(r'^level: (.+)$', gtext, re.MULTILINE)

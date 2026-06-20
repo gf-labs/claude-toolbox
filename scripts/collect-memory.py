@@ -23,7 +23,7 @@ for proj in sorted(projects_dir.iterdir()):
         continue
     mem = proj / 'memory' / 'MEMORY.md'
     if mem.exists():
-        lines = len(mem.read_text().splitlines())
+        lines = len(mem.read_text(encoding='utf-8').splitlines())
         if lines >= 150:
             status = 'WARN:NEAR-LIMIT'
         elif lines >= 50:

@@ -58,7 +58,7 @@ def _session_metadata(jsonl_path: Path) -> dict:
     first_user = ""
     last_prompt = ""
     try:
-        for line in jsonl_path.read_text(errors="replace").splitlines():
+        for line in jsonl_path.read_text(encoding="utf-8", errors="replace").splitlines():
             if not line.strip():
                 continue
             try:
@@ -96,7 +96,7 @@ def _read_session_log(proj_key: str, n_entries: int = 20) -> str:
     log = PROJECTS_DIR / proj_key / "memory" / "session-log.md"
     if not log.exists():
         return ""
-    text = log.read_text(errors="replace")
+    text = log.read_text(encoding="utf-8", errors="replace")
     blocks = re.split(r"^(## .+)$", text, flags=re.MULTILINE)
     # blocks alternates: [pre-header, header1, body1, header2, body2, ...]
     sections = []
@@ -184,7 +184,7 @@ def list_plans() -> str:
     if cache.exists():
         in_plans = False
         current_plan = ""
-        for line in cache.read_text().splitlines():
+        for line in cache.read_text(encoding='utf-8').splitlines():
             if line.strip() == "## Plans":
                 in_plans = True
                 continue
@@ -202,7 +202,7 @@ def list_plans() -> str:
     results = []
     for f in plan_files:
         try:
-            text = f.read_text(errors="replace")
+            text = f.read_text(encoding="utf-8", errors="replace")
             lines = text.splitlines()
             title = ""
             past_frontmatter = False

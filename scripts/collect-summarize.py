@@ -53,7 +53,7 @@ sessions_dir = Path.home() / '.claude' / 'sessions'
 if sessions_dir.exists():
     for sf in sessions_dir.iterdir():
         try:
-            obj = json.loads(sf.read_text())
+            obj = json.loads(sf.read_text(encoding='utf-8'))
             if obj.get('cwd') == str(cwd) and obj.get('sessionId'):
                 candidate = proj_dir / (obj['sessionId'] + '.jsonl')
                 started = obj.get('startedAt', 0)
@@ -76,7 +76,7 @@ bash_commands = []
 seen_files = set()
 seen_cross = set()
 
-for line in current.read_text(errors='replace').splitlines():
+for line in current.read_text(encoding='utf-8', errors='replace').splitlines():
     if not line.strip():
         continue
     try:

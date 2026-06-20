@@ -16,7 +16,7 @@ def _log_info(proj_dir):
     log_file = proj_dir / 'memory' / 'session-log.md'
     if not log_file.exists():
         return '—', '—', []
-    text = log_file.read_text()
+    text = log_file.read_text(encoding='utf-8')
     dates = re.findall(r'^## (\d{4}-\d{2}-\d{2})', text, re.MULTILINE)
     if not dates:
         return '—', '—', []

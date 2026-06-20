@@ -32,7 +32,7 @@ current = max(jsonl_files, key=lambda f: f.stat().st_mtime)
 session_prefix = current.stem[:8]
 
 session_log = proj_dir / "memory" / "session-log.md"
-if session_log.exists() and f"· {session_prefix}" in session_log.read_text():
+if session_log.exists() and f"· {session_prefix}" in session_log.read_text(encoding='utf-8'):
     sys.exit(0)  # Pin was run — allow compact
 
 print(

@@ -21,7 +21,7 @@ CONVERSATION_TYPES = {
 def _is_artifact(path: Path) -> bool:
     """True if JSONL has no human conversation turns."""
     try:
-        for line in path.read_text(errors='replace').splitlines():
+        for line in path.read_text(encoding='utf-8', errors='replace').splitlines():
             if not line.strip():
                 continue
             try:

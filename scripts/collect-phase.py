@@ -23,7 +23,7 @@ if doc is None:
     print('NOT_FOUND')
     raise SystemExit(0)
 
-text = doc.read_text()
+text = doc.read_text(encoding='utf-8')
 
 # Look for a current-phase marker: ## Phase N, ## Current, ## Now, ## In Progress
 phase_match = re.search(
