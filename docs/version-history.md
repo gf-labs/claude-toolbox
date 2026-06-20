@@ -1,8 +1,18 @@
 # claude-toolbox — Version History
 
 Milestones compiled from git log. Patch-level fixes and doc-only commits omitted.
+Curated through v0.5.x; see `git log` for newer patch-level detail.
 
 ---
+
+## v0.5.x — 2026-04 → 2026-06
+**Lifecycle redesign, orientation taxonomy, sit-rep, public-release hardening**
+- Session-tracking redesign — `collect-pin.py` single-pass collector; `post-save.py` canonical session-naming; `/tools:summarize` and `/tools:snapshot` retired (folded into `/tools:pin`)
+- Orientation command taxonomy — `brief` (cold start), `status` (warm pulse), `recap` (time-windowed), `overview` (planning)
+- `sit-rep` skill — narrative situation report (velocity, pivots, learnings, risks) with bundled scripts + references
+- TaskWarrior migration — `BACKLOG.md` retired; `/tools:backlog` + `/tools:consolidate-tasks` + `collect-inventory.py`
+- MCP server — `search_sessions`, `list_plans`, `get_session_log`; `setup-mcp.py` auto-registration
+- README overhaul to GFL family standard; public-release hardening pass (accuracy, privacy, install correctness)
 
 ## v0.4.24 — 2026-04-05
 **Commands: /aside, brief extension support, pin skip check**
@@ -33,7 +43,7 @@ Milestones compiled from git log. Patch-level fixes and doc-only commits omitted
 
 ## v0.4.3 — 2026-03-14
 **User-invocable session summarizer**
-- `/tools:summarize` command
+- `/tools:summarize` command *(later retired in v0.5.x — folded into `/tools:pin`)*
 
 ## v0.4.2 — 2026-03-14
 **Doctor command**

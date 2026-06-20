@@ -1,7 +1,7 @@
 # Context Hygiene — Reference Guide
 
 A durable reference for managing Claude Code context across sessions and projects.
-Run `/cleanup` to act on most of this automatically.
+Run `/tools:cleanup` to act on most of this automatically.
 
 ---
 
@@ -18,8 +18,8 @@ Run `/cleanup` to act on most of this automatically.
 
 | Store | Location | Loaded automatically? | You control it? |
 |-------|----------|-----------------------|-----------------|
-| MEMORY.md | `~/.claude/projects/[key]/memory/MEMORY.md` | Yes (auto-memory, 200-line limit) | Yes — `/tools:snapshot`, `/tools:cleanup` |
-| session-log.md | `~/.claude/projects/[key]/memory/session-log.md` | No | Yes — written by `/tools:summarize`, `/tools:wrap`, `/tools:cleanup` |
+| MEMORY.md | `~/.claude/projects/[key]/memory/MEMORY.md` | Yes (auto-memory, 200-line limit) | Yes — `/tools:pin`, `/tools:cleanup` |
+| session-log.md | `~/.claude/projects/[key]/memory/session-log.md` | No | Yes — written by `/tools:pin`, `/tools:wrap`, `/tools:cleanup` |
 | CLAUDE.md | `[repo]/CLAUDE.md` or `~/.claude/CLAUDE.md` | Yes (every session) | Yes — edit directly |
 | Plans | `~/.claude/plans/[name].md` | No (read on demand) | Yes — delete when done |
 | Reference docs | `~/.claude/docs/[topic].md` | No (reference on demand) | Yes |
@@ -43,8 +43,8 @@ Run `/cleanup` to act on most of this automatically.
 |------------|-------------|
 | How this project works (stable, permanent) | `CLAUDE.md` |
 | Project motivation, founding context, JDs | `CLAUDE.md` `## Background` section or `~/.claude/docs/` |
-| Stable patterns, preferences, architectural decisions | `MEMORY.md` (via `/tools:snapshot`) |
-| Session history — what was done and when | `session-log.md` (via `/tools:wrap` or `/tools:summarize`) |
+| Stable patterns, preferences, architectural decisions | `MEMORY.md` (via `/tools:pin`) |
+| Session history — what was done and when | `session-log.md` (via `/tools:pin` or `/tools:wrap`) |
 | In-flight design for a specific feature | Plan file (delete when done) |
 | Reference material you might re-inject | `~/.claude/docs/[topic].md` (global) or `docs/context/[name].md` (repo) |
 | Your demonstrated Claude Code skills | Knowledge graph (`~/.claude/knowledge-graphs/`) |
@@ -84,10 +84,9 @@ When a tangential issue comes up mid-session:
 | Frequency | Action |
 |-----------|--------|
 | End of each working session | `/tools:wrap` — session log + git check + plan cleanup + backlog + done marker |
-| On-demand (session log only) | `/tools:summarize` — append entry to session-log.md without full wrap ritual |
-| When stable patterns emerge | `/tools:snapshot` — distill architectural decisions and preferences into MEMORY.md |
+| Mid-session break (session log + memory) | `/tools:pin` — status + session-log entry + optional MEMORY.md update, in one step |
 | End of a feature/topic | Delete completed plan files (via `/tools:wrap` Step 3 or manually) |
-| When MEMORY.md hits ~150 lines | `/tools:snapshot` migration — move old snapshot entries to session-log.md; archive verbose sections to topic files |
+| When MEMORY.md hits ~150 lines | `/tools:pin` migration — move old snapshot entries to session-log.md; archive verbose sections to topic files |
 | Weekly (or when returning to a project) | `/tools:cleanup` — delete old sessions, extract context, surface memory warnings |
 | When a project is dormant | Extract key decisions to MEMORY.md, delete all sessions via `/tools:cleanup` |
 
