@@ -9,6 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from _scope import get_scope
 from session_index import read_registry
+from session_naming import read_title
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--days', type=int, default=30)
@@ -61,17 +62,7 @@ else:
             try:
                 stat = f.stat()
                 age = (time.time() - stat.st_mtime) / 86400
-                custom_title = ''
-                try:
-                    for line in f.read_text(errors='replace').splitlines():
-                        try:
-                            obj = json.loads(line)
-                            if obj.get('type') == 'custom-title':
-                                custom_title = obj.get('customTitle', '')  # take last
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
+                custom_title = read_title(f)
                 reg_entry = registry.get(f.stem, {})
                 reg_status = reg_entry.get('status')
                 if reg_status == 'artifact':

@@ -12,6 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from _scope import get_scope
 from session_index import get_status, set_status
+from session_naming import write_title
 
 parser = argparse.ArgumentParser(description='Mark current session done or keep.')
 parser.add_argument('--keep', action='store_true',
@@ -72,9 +73,7 @@ if existing_status in ('done', 'keep') and not args.force:
 # Write JSONL custom-title (backward compatibility)
 if 'delete-me' not in base:
     new_title = base + '-delete-me'
-    record = json.dumps({'type': 'custom-title', 'customTitle': new_title, 'sessionId': sid})
-    with open(current, 'a') as fh:
-        fh.write(record + '\n')
+    write_title(current, new_title)
     print(f'Marked for deletion: {new_title}')
 else:
     print(f'Already marked: {base}')

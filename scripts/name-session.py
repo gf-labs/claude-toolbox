@@ -9,12 +9,12 @@ Without --path: targets the current (most recent) session in scope.
 With --path: targets the specified JSONL file directly.
 Skips silently if session already has a custom-title (unless --force).
 """
-import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from _scope import get_scope
+from session_naming import read_title, write_title
 
 args = sys.argv[1:]
 force = '--force' in args
@@ -42,7 +42,6 @@ if explicit_path:
     if not current.exists():
         print(f'ERROR: {explicit_path} not found')
         sys.exit(1)
-    sid = current.stem
 else:
     mode, data, cwd = get_scope()
     projects_dir = Path.home() / '.claude' / 'projects'
@@ -62,26 +61,16 @@ else:
         sys.exit(1)
 
     current = max(jsonls, key=lambda f: f.stat().st_mtime)
-    sid = current.stem
 
 # Check for existing title
-existing = ''
-for line in current.read_text(errors='replace').splitlines():
-    try:
-        obj = json.loads(line)
-        if obj.get('type') == 'custom-title':
-            existing = obj.get('customTitle', '')
-    except Exception:
-        pass
+existing = read_title(current)
 
 if existing and not force:
     print(f'Already named: {existing} (use --force to override)')
     sys.exit(0)
 
-record = json.dumps({'type': 'custom-title', 'customTitle': name, 'sessionId': sid})
 try:
-    with open(current, 'a') as fh:
-        fh.write(record + '\n')
+    write_title(current, name)
     print(f'Session named: {name}')
 except Exception as e:
     print(f'warning: could not write session name: {e}', file=sys.stderr)

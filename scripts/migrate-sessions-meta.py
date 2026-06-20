@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from _scope import get_scope
 from session_index import get_status, set_status
+from session_naming import read_title
 
 CONVERSATION_TYPES = {
     'user', 'assistant', 'progress', 'system',
@@ -32,21 +33,6 @@ def _is_artifact(path: Path) -> bool:
         return True
     except OSError:
         return False
-
-
-def _get_last_title(path: Path) -> str:
-    title = ''
-    try:
-        for line in path.read_text(errors='replace').splitlines():
-            try:
-                obj = json.loads(line)
-                if obj.get('type') == 'custom-title':
-                    title = obj.get('customTitle', '')
-            except Exception:
-                pass
-    except Exception:
-        pass
-    return title
 
 
 if __name__ == '__main__':
@@ -79,7 +65,7 @@ if __name__ == '__main__':
             if get_status(project_key, uuid) is not None:
                 skipped_count += 1
                 continue
-            title = _get_last_title(f)
+            title = read_title(f)
             if 'delete-me' in title.lower():
                 # Strip delete-me marker (prefix, suffix, or standalone)
                 name = re.sub(r'(?:^delete-me-|-delete-me$|^delete-me$)', '', title.lower()).strip('-')
