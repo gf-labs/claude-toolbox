@@ -1,5 +1,6 @@
 ---
 description: Claude Code environment + project health check
+argument-hint: [--dry-run]
 allowed-tools: Bash, Read, Glob, Grep, Edit
 model: claude-sonnet-4-6
 ---

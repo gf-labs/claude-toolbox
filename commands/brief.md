@@ -1,7 +1,7 @@
 ---
 description: Cold-start session orientation — use when starting fresh or returning after a long absence (days or weeks). Scales depth to how long you've been away. Not for quick mid-session checks (use /tools:status) or planning (use /tools:overview).
 argument-hint: [session-id | --days N]
-allowed-tools: Bash
+allowed-tools: Bash, Read
 model: claude-haiku-4-5-20251001
 ---
 
