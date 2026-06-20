@@ -1,7 +1,3 @@
-<p align="center">
-  <!-- LOGO: drop a hosted banner/glyph here later, e.g. <img src="docs/assets/toolbox.png" width="120"> -->
-</p>
-
 <h1 align="center">claude-toolbox</h1>
 
 <p align="center"><em>Session lifecycle management for Claude Code — orient, checkpoint, close out, and never lose the thread between sessions.</em></p>
@@ -230,8 +226,6 @@ Restart the session. A SessionStart hook validates your setup; commands are now 
 /tools:doctor     # confirm the environment is healthy
 /tools:brief      # orient — even on a fresh repo this shows you what it sees
 ```
-
-<!-- DEMO GIF: /tools:brief on a returning repo, ~15s asciinema -->
 
 ---
 
