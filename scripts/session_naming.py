@@ -83,7 +83,7 @@ def extract_context(path: Path) -> tuple[str, str]:
                     first_user = content[:150]
                 if first_user:
                     break
-        except Exception:
+        except (json.JSONDecodeError, AttributeError, TypeError):
             pass
 
     commit = ''
@@ -103,7 +103,7 @@ def extract_context(path: Path) -> tuple[str, str]:
                                     if ln.startswith('[main') or ln.startswith('[master'):
                                         commit = ln
                                         break
-        except Exception:
+        except (json.JSONDecodeError, AttributeError, TypeError):
             pass
         if commit:
             break
@@ -120,7 +120,7 @@ def read_title(path: Path) -> str:
                 obj = json.loads(line)
                 if obj.get('type') == 'custom-title':
                     title = obj.get('customTitle', '')
-            except Exception:
+            except (json.JSONDecodeError, AttributeError):
                 pass
     except OSError:
         pass
