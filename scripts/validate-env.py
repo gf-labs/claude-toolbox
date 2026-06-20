@@ -22,7 +22,7 @@ elif not Path(ramp_root).is_dir():
 
 # Ensure data-policy.json is in place for tools plugin
 _plugin_root = Path(__file__).parent.parent
-_policy_src = _plugin_root / '.claude-plugin' / 'data-policy.json'
+_policy_src = _plugin_root / 'data-policy.json'
 _policy_dst = Path.home() / '.claude' / 'data' / 'tools' / 'data-policy.json'
 if _policy_src.exists() and not _policy_dst.exists():
     _policy_dst.parent.mkdir(parents=True, exist_ok=True)
