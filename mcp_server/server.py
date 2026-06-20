@@ -32,11 +32,25 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 try:
     from mcp.server.fastmcp import FastMCP
 except ImportError:
-    raise SystemExit(
-        "mcp package not found.\n"
-        "Install with: pip install mcp\n"
-        "Or: uv add mcp"
-    )
+    # mcp lives in mcp_server/.venv, which is not necessarily the interpreter
+    # running the tests. Fall back to a minimal stub so the tool *logic* stays
+    # importable and unit-testable. Actually serving still needs the real
+    # package, so .run() re-raises the install hint.
+    class FastMCP:  # type: ignore[no-redef]
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def tool(self, *args, **kwargs):
+            def decorator(fn):
+                return fn
+            return decorator
+
+        def run(self, *args, **kwargs):
+            raise SystemExit(
+                "mcp package not found.\n"
+                "Install with: pip install mcp\n"
+                "Or: uv add mcp"
+            )
 
 # ---------------------------------------------------------------------------
 # Configuration
