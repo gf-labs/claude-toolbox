@@ -192,23 +192,37 @@ Then point a config entry at the venv's python (or use `mcp_server/start.sh`, wh
 
 ### Install
 
-Commands resolve their scripts through the `CLAUDE_TOOLBOX_ROOT` environment variable, so the cleanest setup is a local clone plus one env var.
+The commands call helper scripts through the `CLAUDE_TOOLBOX_ROOT` environment variable, so
+whichever install path you pick, you also set that one env var to the repo's location.
 
-1. **Clone the repo:**
-   ```bash
-   git clone https://github.com/gf-labs/claude-toolbox ~/path/to/claude-toolbox
-   ```
-2. **Point `CLAUDE_TOOLBOX_ROOT` at it** in `~/.claude/settings.json`:
-   ```json
-   { "env": { "CLAUDE_TOOLBOX_ROOT": "/Users/you/path/to/claude-toolbox" } }
-   ```
-3. **Load the plugin** via `pluginDirs` in the same file:
-   ```json
-   { "pluginDirs": ["/Users/you/path/to/claude-toolbox/.claude-plugin"] }
-   ```
-4. **Restart the session.** A SessionStart hook validates your setup; commands are now available as `/tools:*`.
+**Option A — GFL marketplace (recommended):**
 
-> **Via the GFL marketplace.** `tools` is also published in the [`gf-labs/gfl-marketplace`](https://github.com/gf-labs/gfl-marketplace) catalog (`/plugin marketplace add gf-labs/gfl-marketplace` → `/plugin install tools@gfl-marketplace`). You still set `CLAUDE_TOOLBOX_ROOT` so the scripts can find themselves.
+```
+/plugin marketplace add gf-labs/gfl-marketplace
+/plugin install tools@gfl-marketplace
+```
+
+Then clone the repo somewhere and point `CLAUDE_TOOLBOX_ROOT` at it in `~/.claude/settings.json`
+so the command scripts resolve:
+
+```json
+{ "env": { "CLAUDE_TOOLBOX_ROOT": "/abs/path/to/claude-toolbox" } }
+```
+
+**Option B — local dev (run straight from a clone):**
+
+```bash
+git clone https://github.com/gf-labs/claude-toolbox ~/path/to/claude-toolbox
+```
+
+Set the same env var in `~/.claude/settings.json`, then launch Claude Code with `--plugin-dir`
+pointed at the **repo root** (the directory that contains `.claude-plugin/`, not `.claude-plugin/` itself):
+
+```bash
+claude --plugin-dir /abs/path/to/claude-toolbox
+```
+
+Restart the session. A SessionStart hook validates your setup; commands are now available as `/tools:*`.
 
 ### First run
 
@@ -241,10 +255,10 @@ claude-toolbox/
 
 `claude-toolbox` is itself a tour of Claude Code's extension model — there is no application runtime, only configuration and stdlib Python. If you're learning what a plugin can do, this repo is a worked example of every major surface:
 
-- **Slash commands** — 12 commands using `$ARGUMENTS`, `!bash` output injection, `@file` includes, and per-command `model` selection (Haiku for cheap/fast, Sonnet for reasoning)
+- **Slash commands** — 12 commands using `$ARGUMENTS`, `` !`bash` `` output injection, and per-command `model` selection (Haiku for cheap/fast, Sonnet for reasoning)
 - **Subagents** — 4 custom read-only agents in `agents/` for context-isolated work
 - **Skills** — `sit-rep`, a multi-step synthesis skill with bundled scripts and references
-- **Hooks** — 5 hooks across `SessionStart`, `PostToolUse`, and `PreCompact`, including a `blockOnFailure` gate
+- **Hooks** — 5 hooks across `SessionStart`, `PostToolUse`, and `PreCompact`, including a `PreCompact` gate that blocks compaction (exit 2) until you've checkpointed with `/tools:pin`
 - **MCP server** — a local stdio server exposing three session-query tools
 - **Plugin packaging** — a versioned `plugin.json` manifest, distributed through a marketplace catalog
 - **Settings hierarchy** — global / project / local `settings.json`, env vars, and permission scoping
