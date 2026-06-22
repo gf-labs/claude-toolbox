@@ -9,7 +9,7 @@ Quick setup:
   python3 -m venv mcp_server/.venv
   mcp_server/.venv/bin/pip install mcp
 
-Configure in .mcp.json (project-local) or ~/.claude/.mcp.json (global):
+Configure in .mcp.json (project-local) or ~/.claude.json (global):
   {
     "mcpServers": {
       "claude-toolbox": {
@@ -127,21 +127,24 @@ def _read_session_log(proj_key: str, n_entries: int = 20) -> str:
 
 
 @mcp.tool()
-def search_sessions(query: str, days: int = 90) -> str:
+def search_sessions(query: str, days: int = 0) -> str:
     """
-    Search session history by keyword across all projects.
+    Search session history by keyword across ALL projects.
 
-    Searches session title, first user message, and last prompt. Returns
-    matching sessions sorted by recency, limited to the given age window.
+    Unlike the scope-aware /tools:search-sessions command (which limits to the
+    in-scope projects and applies no age cap by default), this tool always
+    searches every project. Searches session title, first user message, and
+    last prompt; returns matches sorted by recency.
 
     Args:
         query: Keyword or phrase to search for (case-insensitive)
-        days:  How far back to search in days (default: 90)
+        days:  How far back to search, in days. 0 (the default) = no age limit,
+               matching the command's default.
     """
     if not PROJECTS_DIR.exists():
         return json.dumps([])
 
-    cutoff = time.time() - days * 86400
+    cutoff = 0 if days <= 0 else time.time() - days * 86400
     pattern = query.lower()
     results = []
 

@@ -12,7 +12,7 @@ A reference for where Claude Code discovers and loads different artifact types, 
 | `scripts/` | ✓ via `CLAUDE_TOOLBOX_ROOT` | `~/.claude/scripts/` | `.claude/scripts/` | Not auto-discovered; called via `!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/foo.py` |
 | `docs/` | ✓ via reference | `~/.claude/docs/` | `.claude/docs/` | Not auto-discovered; `@`-included or linked in CLAUDE.md |
 | `hooks/hooks.json` | ✓ auto-registered | via `settings.json` | via `.claude/settings.json` | Auto-registered on `/plugin install` |
-| `mcp_server/server.py` | ✓ | via `~/.mcp.json` | via `.mcp.json` | Must be manually registered (or auto-registered by `setup-mcp.py`) |
+| `mcp_server/server.py` | ✓ | via `~/.claude.json` | via `.mcp.json` | Must be manually registered (or auto-registered by `setup-mcp.py`) |
 | `settings.json` | ✗ | personal (dotfiles) | personal | Not plugin-managed |
 | `CLAUDE.md` | ✗ | personal (dotfiles) | personal | Not plugin-managed |
 
