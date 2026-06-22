@@ -50,14 +50,21 @@ COMPLETION_MARKERS = {"~~", "**done", "**completed", "**shipped", "**removed",
 
 
 def derive_slug(repo_path: Path, repos_root: Path | None = None) -> str:
-    """Derive TW project slug from repo path under ~/Repos."""
+    """Derive TW project slug (``domain.repo``) from a repo path under ~/Repos.
+
+    domain = first path component under ~/Repos; repo = the basename. Container
+    dirs between them (e.g. ``business/_claude-plugins/ramp``) are skipped, so the
+    slug matches the read-path TW_PROJECT in the commands and collect-pin.py —
+    using ``parts[1]`` here instead would file tasks under the container and
+    orphan them from every query.
+    """
     if repos_root is None:
         repos_root = Path.home() / "Repos"
     try:
         rel = repo_path.resolve().relative_to(repos_root.resolve())
         parts = list(rel.parts)
         if len(parts) >= 2:
-            return f"{parts[0]}.{parts[1]}"
+            return f"{parts[0]}.{parts[-1]}"
         if len(parts) == 1:
             return parts[0]
     except ValueError:

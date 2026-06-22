@@ -29,6 +29,16 @@ def test_derive_slug_two_levels(tmp_path, m):
     assert m.derive_slug(repo, repos_root=repos) == "business.toolbox"
 
 
+def test_derive_slug_three_levels_container(tmp_path, m):
+    # A `_container/` between domain and repo (e.g. business/_claude-plugins/gfl-marketplace)
+    # must still slug as domain.repo (basename) — matching the read-path TW_PROJECT used by
+    # the commands and collect-pin.py. domain.container orphans tasks (TBX-I-9).
+    repos = tmp_path / "Repos"
+    repo = repos / "business" / "_claude-plugins" / "gfl-marketplace"
+    repo.mkdir(parents=True)
+    assert m.derive_slug(repo, repos_root=repos) == "business.gfl-marketplace"
+
+
 def test_derive_slug_one_level(tmp_path, m):
     repos = tmp_path / "Repos"
     repo = repos / "toolbox"
