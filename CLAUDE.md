@@ -68,27 +68,15 @@ Plugin delivers it automatically on next install.
 - **`shutil.which()` not `command -v`** — macOS shell builtins have no standalone binary; use Python's `shutil.which()` to check tool availability in scripts.
 - **Session scope key**: `~/.claude/projects/` uses path-based keys (slashes → hyphens). `_scope.py` handles derivation.
 
-## Plan file naming
+## Plan file tracking
 
-When a plan file is written to `~/.claude/plans/`, if the filename is a random slug
-(pattern: three common words joined by hyphens, e.g. `buzzing-jumping-taco.md`), rename it
-to a descriptive kebab-case slug derived from the plan's `# ` title before calling ExitPlanMode.
+`scripts/collect-plan-map.py` refreshes `.project-map` so renamed or newly-added plans in
+`~/.claude/plans/` resolve in `/tools:*` output:
+`python3 $CLAUDE_TOOLBOX_ROOT/scripts/collect-plan-map.py > /dev/null`
 
-Steps:
-1. Read the plan file to find its `# Title` header.
-2. Determine the current project name:
-   `Bash: git rev-parse --show-toplevel 2>/dev/null | xargs basename 2>/dev/null || echo ""`
-   If the command returns a non-empty value, use it as the prefix (e.g. `claude-toolbox`).
-   If empty (not in a git repo), omit the prefix.
-3. Convert title to kebab-case: lowercase, spaces→hyphens, strip punctuation, max 6 words.
-4. Final filename: `[project]-[title-slug].md` (or just `[title-slug].md` if no project).
-5. `Bash: mv ~/.claude/plans/old-name.md ~/.claude/plans/new-name.md`
-5b. Record the rename so `.project-map` can resolve JSONL references to the old name:
-   `Bash: python3 -c "from pathlib import Path; open(Path.home()/'.claude'/'plans'/'.renames','a').write('old-name.md\tnew-name.md\n')"`
-   (Replace `old-name.md` and `new-name.md` with the actual filenames.)
-6. Reference the new path going forward.
-7. Update `.project-map` so the new plan is tracked immediately:
-   `Bash: python3 $CLAUDE_TOOLBOX_ROOT/scripts/collect-plan-map.py > /dev/null`
+(The plan-file *naming* convention — renaming random three-word slugs to a title-derived
+kebab-case name — is a personal workflow and lives in the global `~/.claude/CLAUDE.md`, not in
+this published repo.)
 
 ## Working in this repo
 
