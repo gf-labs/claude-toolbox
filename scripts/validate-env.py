@@ -20,11 +20,15 @@ if not ramp_root:
 elif not Path(ramp_root).is_dir():
     print(f'⚠ RAMP_ROOT={ramp_root!r} does not exist — /ramp:* hooks may fail.', file=sys.stderr)
 
-# Ensure data-policy.json is in place for tools plugin
+# Deploy data-policy.json for the tools plugin. Refresh when the canonical file
+# changes — a plain `if not dst.exists()` left the deployed copy stale forever.
 _plugin_root = Path(__file__).parent.parent
 _policy_src = _plugin_root / 'data-policy.json'
 _policy_dst = Path.home() / '.claude' / 'data' / 'tools' / 'data-policy.json'
-if _policy_src.exists() and not _policy_dst.exists():
-    _policy_dst.parent.mkdir(parents=True, exist_ok=True)
-    import shutil as _shutil
-    _shutil.copy2(_policy_src, _policy_dst)
+if _policy_src.exists():
+    _stale = (not _policy_dst.exists()
+              or _policy_dst.read_bytes() != _policy_src.read_bytes())
+    if _stale:
+        _policy_dst.parent.mkdir(parents=True, exist_ok=True)
+        import shutil as _shutil
+        _shutil.copy2(_policy_src, _policy_dst)

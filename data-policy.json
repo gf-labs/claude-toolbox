@@ -1,6 +1,6 @@
 {
   "plugin": "tools",
-  "version": "1",
+  "_comment": "Display-only manifest: /cleanup renders these dirs as an inventory of what the tools plugin owns. Nothing here is machine-enforced — cleanup/archive actions are decided interactively by the /cleanup command, not driven by this file.",
   "dirs": [
     {
       "path": "sessions-meta.json",
@@ -9,9 +9,8 @@
     },
     {
       "path": "plans/",
-      "description": "Plan files (active)",
-      "cleanup": "archive",
-      "archive_to": "plans/archive/"
+      "description": "Plan files (active); archived to plans/archive/ on cleanup",
+      "cleanup": "archive"
     },
     {
       "path": "plans/archive/",
