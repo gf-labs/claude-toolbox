@@ -11,6 +11,21 @@ Commands call scripts via `!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/foo.py`. The 
 `CLAUDE_TOOLBOX_ROOT` must be set in `~/.claude/settings.json`. It points to this repo's
 absolute path.
 
+## TaskWarrior project slug (`scripts/_slug.py`)
+
+`scripts/_slug.py` is the single source of truth for mapping a repo path → TaskWarrior
+project slug. `collect-pin.py`, `collect-tasks.py`, and the `/tools:*` command markdown all
+go through it (the markdown invokes it as `python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/_slug.py`).
+
+- **Default (mechanism): `slug = repo basename`** — no assumption about where repos live.
+- **Opt-in (policy), via `~/.claude/settings.json` `env`:**
+  - `CLAUDE_TOOLBOX_REPOS_ROOT` — anchor dir repos live under (also the `--discover` default).
+  - `CLAUDE_TOOLBOX_SLUG_STRATEGY` — `basename` (default) or `domain.repo` (`<first-component-under-root>.<basename>`, skipping any `_container/` in between).
+
+This keeps the published plugin generic; a personal config (e.g. dot-configs) sets the env
+to restore the `~/Repos/<domain>/<repo>` → `domain.repo` convention. `--discover` walks
+`_name/` containers without spending a depth level and skips `.name/` dormant dirs.
+
 ## How to add a new command
 
 1. Create `commands/[name].md` with standard frontmatter

@@ -11,7 +11,7 @@ here removes the duplication and — because the originals lived inside
 scripts that run get_scope() at import time — makes it testable.
 
 Scope note: this module owns *session display names* only. The unrelated
-TaskWarrior project slug (``domain.repo``) lives in collect-tasks.derive_slug.
+TaskWarrior project slug lives in _slug.derive_slug (imported by collect-tasks).
 """
 from __future__ import annotations
 

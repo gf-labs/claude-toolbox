@@ -26,6 +26,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 from _scope import get_scope, project_key  # noqa: E402
+from _slug import derive_slug  # noqa: E402
 
 HOME = Path.home()
 PROJECTS_DIR = HOME / '.claude' / 'projects'
@@ -64,12 +65,9 @@ proj_meta_dir = PROJECTS_DIR / proj_key
 memory_dir = proj_meta_dir / 'memory'
 
 repo = project_dir.name
-# Domain = first path component under ~/Repos (matches pin.md slug derivation)
-domain = ''
-pd_str = str(project_dir)
-if '/Repos/' in pd_str:
-    domain = pd_str.split('/Repos/', 1)[1].split('/')[0]
-tw_project = f'{domain}.{repo}' if domain else repo
+# TW slug via the shared helper (basename by default; domain.repo when the
+# CLAUDE_TOOLBOX_* env policy is set). Single source of truth = _slug.py.
+tw_project = derive_slug(project_dir)
 
 print('=== SCOPE ===')
 print(f'MODE: {mode}')

@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -10,6 +11,10 @@ import uuid
 from datetime import datetime
 from fnmatch import fnmatch
 from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
+from _slug import derive_slug  # noqa: E402  — single source of truth for repo→slug
 
 SKIP_SECTIONS = {"done", "completed", "shipped", "archived", "history",
                  "changelog", "released", "removed", "superseded"}
@@ -47,29 +52,6 @@ SIZE_KEYWORDS: dict[str, set[str]] = {
 
 COMPLETION_MARKERS = {"~~", "**done", "**completed", "**shipped", "**removed",
                       "**superseded", "**retired", "**cancelled", "**redundant"}
-
-
-def derive_slug(repo_path: Path, repos_root: Path | None = None) -> str:
-    """Derive TW project slug (``domain.repo``) from a repo path under ~/Repos.
-
-    domain = first path component under ~/Repos; repo = the basename. Container
-    dirs between them (e.g. ``business/_claude-plugins/ramp``) are skipped, so the
-    slug matches the read-path TW_PROJECT in the commands and collect-pin.py —
-    using ``parts[1]`` here instead would file tasks under the container and
-    orphan them from every query.
-    """
-    if repos_root is None:
-        repos_root = Path.home() / "Repos"
-    try:
-        rel = repo_path.resolve().relative_to(repos_root.resolve())
-        parts = list(rel.parts)
-        if len(parts) >= 2:
-            return f"{parts[0]}.{parts[-1]}"
-        if len(parts) == 1:
-            return parts[0]
-    except ValueError:
-        pass
-    return repo_path.name
 
 
 def is_tombstoned(file_path: Path) -> bool:
@@ -404,8 +386,15 @@ def find_git_repos(root: Path) -> list[Path]:
             return
         try:
             for child in sorted(path.iterdir()):
-                if child.is_dir() and child.name not in DISCOVER_SKIP_DIRS:
-                    walk(child, depth - 1)
+                if not child.is_dir() or child.name in DISCOVER_SKIP_DIRS:
+                    continue
+                if child.name.startswith("."):
+                    continue  # `.name/` = dormant/hidden (repos-taxonomy convention)
+                # `_name/` containers are a grouping layer, not a repo — descend
+                # through them without spending a depth level so their member
+                # repos (e.g. business/_claude-plugins/ramp) stay reachable.
+                next_depth = depth if child.name.startswith("_") else depth - 1
+                walk(child, next_depth)
         except PermissionError:
             pass
 
@@ -455,9 +444,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--discover", nargs="?",
-        const=str(Path.home() / "Repos"),
+        const=os.environ.get("CLAUDE_TOOLBOX_REPOS_ROOT") or str(Path.home() / "Repos"),
         metavar="PATH",
-        help="Walk all git repos under PATH (default: ~/Repos)",
+        help="Walk all git repos under PATH "
+             "(default: $CLAUDE_TOOLBOX_REPOS_ROOT, else ~/Repos)",
     )
     args = parser.parse_args()
 

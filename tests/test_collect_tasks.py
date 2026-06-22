@@ -21,12 +21,35 @@ def m():
 
 
 # ── derive_slug ─────────────────────────────────────────────────────────────
+# Mechanism (public) default = basename; the `domain.repo` strategy is opt-in
+# policy, supplied either by explicit arg or by the CLAUDE_TOOLBOX_* env vars.
+
+def test_derive_slug_default_is_basename(tmp_path, m, monkeypatch):
+    # Even with a repos_root, the default strategy is basename — no assumption
+    # that tasks should be filed under <domain>.<repo>.
+    monkeypatch.delenv("CLAUDE_TOOLBOX_SLUG_STRATEGY", raising=False)
+    monkeypatch.delenv("CLAUDE_TOOLBOX_REPOS_ROOT", raising=False)
+    repos = tmp_path / "Repos"
+    repo = repos / "business" / "toolbox"
+    repo.mkdir(parents=True)
+    assert m.derive_slug(repo, repos_root=repos) == "toolbox"
+
+
+def test_derive_slug_env_policy(tmp_path, m, monkeypatch):
+    # Policy via env: strategy + repos_root from the environment → domain.repo.
+    repos = tmp_path / "Repos"
+    repo = repos / "business" / "toolbox"
+    repo.mkdir(parents=True)
+    monkeypatch.setenv("CLAUDE_TOOLBOX_SLUG_STRATEGY", "domain.repo")
+    monkeypatch.setenv("CLAUDE_TOOLBOX_REPOS_ROOT", str(repos))
+    assert m.derive_slug(repo) == "business.toolbox"
+
 
 def test_derive_slug_two_levels(tmp_path, m):
     repos = tmp_path / "Repos"
     repo = repos / "business" / "toolbox"
     repo.mkdir(parents=True)
-    assert m.derive_slug(repo, repos_root=repos) == "business.toolbox"
+    assert m.derive_slug(repo, repos_root=repos, strategy="domain.repo") == "business.toolbox"
 
 
 def test_derive_slug_three_levels_container(tmp_path, m):
@@ -36,21 +59,45 @@ def test_derive_slug_three_levels_container(tmp_path, m):
     repos = tmp_path / "Repos"
     repo = repos / "business" / "_claude-plugins" / "gfl-marketplace"
     repo.mkdir(parents=True)
-    assert m.derive_slug(repo, repos_root=repos) == "business.gfl-marketplace"
+    assert m.derive_slug(repo, repos_root=repos, strategy="domain.repo") == "business.gfl-marketplace"
 
 
 def test_derive_slug_one_level(tmp_path, m):
     repos = tmp_path / "Repos"
     repo = repos / "toolbox"
     repo.mkdir(parents=True)
-    assert m.derive_slug(repo, repos_root=repos) == "toolbox"
+    assert m.derive_slug(repo, repos_root=repos, strategy="domain.repo") == "toolbox"
 
 
 def test_derive_slug_outside_repos(tmp_path, m):
     repo = tmp_path / "some" / "other" / "path"
     repo.mkdir(parents=True)
-    # Falls back to repo name when not under repos_root
-    assert m.derive_slug(repo, repos_root=tmp_path / "Repos") == "path"
+    # Falls back to repo name when not under repos_root, even with the strategy on.
+    assert m.derive_slug(repo, repos_root=tmp_path / "Repos", strategy="domain.repo") == "path"
+
+
+# ── find_git_repos ───────────────────────────────────────────────────────────
+
+def test_find_git_repos_descends_containers(tmp_path, m):
+    # `_name/` containers must NOT consume a depth level — a plugin repo nested
+    # at domain/_container/repo (depth 3) stays discoverable. Regression guard for
+    # the business/_claude-plugins/ collapse.
+    root = tmp_path / "Repos"
+    plain = root / "learn" / "course"                       # depth 2, plain
+    nested = root / "business" / "_claude-plugins" / "ramp"  # depth 3, via container
+    for r in (plain, nested):
+        (r / ".git").mkdir(parents=True)
+    found = {p.name for p in m.find_git_repos(root)}
+    assert found == {"course", "ramp"}
+
+
+def test_find_git_repos_skips_dot_dirs(tmp_path, m):
+    # `.name/` dormant dirs are skipped entirely (taxonomy hidden convention).
+    root = tmp_path / "Repos"
+    (root / ".archive" / "dead-repo" / ".git").mkdir(parents=True)
+    (root / "live" / ".git").mkdir(parents=True)
+    found = {p.name for p in m.find_git_repos(root)}
+    assert found == {"live"}
 
 
 # ── is_tombstoned ────────────────────────────────────────────────────────────
