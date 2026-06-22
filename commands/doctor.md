@@ -91,23 +91,18 @@ echo "${ARGUMENTS:-}"
 **Scope**:
 ```bash
 python3 -c "
-import os, subprocess
-from pathlib import Path
-cwd = Path(os.getcwd())
-cwd_key = str(cwd).replace('/', '-')
-projects_dir = Path.home() / '.claude' / 'projects'
-if (projects_dir / cwd_key).exists():
-    print(f'SINGLE {cwd.name} ({cwd_key})')
+import os, sys
+sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
+from _scope import get_scope
+mode, data, cwd = get_scope()
+if mode == 'single':
+    print(f'SINGLE {cwd.name} ({data})')
+elif mode == 'parent':
+    print(f'PARENT {cwd} — {len(data)} child projects:')
+    for _key, path in data:
+        print(f'  {path}')
 else:
-    try:
-        git_root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], stderr=subprocess.DEVNULL, text=True).strip()
-        git_key = git_root.replace('/', '-')
-        if (projects_dir / git_key).exists():
-            print(f'SINGLE {Path(git_root).name} ({git_key})')
-        else:
-            print('GLOBAL')
-    except Exception:
-        print('GLOBAL')
+    print('GLOBAL')
 " 2>/dev/null || echo "GLOBAL"
 ```
 
