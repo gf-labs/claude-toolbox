@@ -28,7 +28,7 @@ Skip this skill for: simple status questions, single-session recaps, point-in-ti
 
 **Environment-variable fallbacks.** The skill references two distinct roots:
 
-- `CLAUDE_TOOLBOX_ROOT` — the claude-toolbox repo (provides `_scope.py`, `collect-plans.py`). If unset, default to `~/Repos/claude-toolbox`, or shell out to `git rev-parse --show-toplevel` from within the repo.
+- `CLAUDE_TOOLBOX_ROOT` — the claude-toolbox repo (provides `_scope.py`, `collect-plans.py`). Normally set in `~/.claude/settings.json` (`env` block). If unset, derive it from this skill file's own location — the skill ships inside the repo at `skills/sit-rep/`, so the repo root is two levels up.
 - `CLAUDE_PLUGIN_ROOT` — the active plugin install location (provides this skill's bundled `scripts/collect-velocity.sh`). If unset, fall back to `${CLAUDE_TOOLBOX_ROOT}/skills/sit-rep` since the skill ships from claude-toolbox.
 
 **Optional first positional argument: topic filter.** When set, exclude commits, files, milestones, pivots, and learnings unrelated to that topic. Multi-word filters are space-separated and treated as an OR (e.g. `search index ranking` includes commits matching any of those terms).
@@ -60,9 +60,7 @@ If `CLAUDE_PLUGIN_ROOT` is unset, invoke the script via its absolute path under 
 
 **Backlog (TaskWarrior):**
 ```bash
-REPO=$(git rev-parse --show-toplevel | xargs basename)
-DOMAIN=$(git rev-parse --show-toplevel | sed 's|.*/Repos/||' | cut -d'/' -f1)
-TW_PROJECT="${DOMAIN}.${REPO}"
+TW_PROJECT=$(python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/_slug.py)
 task rc.verbose=nothing project:${TW_PROJECT} status:pending list 2>/dev/null
 task rc.verbose=nothing project:${TW_PROJECT} status:completed end.after:today-21d list 2>/dev/null
 

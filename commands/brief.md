@@ -82,9 +82,7 @@ echo "CHANGES:" && (git status --short 2>/dev/null || echo "clean")
 echo "COMMITS:" && (git log --oneline -5 2>/dev/null || echo "none")
 echo "STASH:" && (git stash list 2>/dev/null || echo "empty")
 echo "CLAUDE_MD:" && (test -f CLAUDE.md && echo "present" || echo "MISSING")
-REPO=$(git rev-parse --show-toplevel 2>/dev/null | xargs basename 2>/dev/null)
-DOMAIN=$(git rev-parse --show-toplevel 2>/dev/null | sed 's|.*/Repos/||' | cut -d'/' -f1)
-TW_PROJECT="${DOMAIN}.${REPO}"
+TW_PROJECT=$(python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/_slug.py)
 echo "IN_PROGRESS:" && (task rc.verbose=nothing project:${TW_PROJECT} +ACTIVE list 2>/dev/null || echo "(none)")
 echo "UP_NEXT:" && (task rc.verbose=nothing project:${TW_PROJECT} limit:3 list 2>/dev/null || echo "(none)")
 echo "DATE:" && date +%Y-%m-%d

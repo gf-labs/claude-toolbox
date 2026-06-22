@@ -20,9 +20,7 @@ Add a new task to TaskWarrior for the current project.
 
 **Step 1 — Determine project slug:**
 ```bash
-REPO=$(git rev-parse --show-toplevel 2>/dev/null | xargs basename 2>/dev/null || echo "")
-DOMAIN=$(git rev-parse --show-toplevel 2>/dev/null | sed 's|.*/Repos/||' | cut -d'/' -f1 2>/dev/null || echo "")
-echo "SLUG: ${DOMAIN}.${REPO}"
+echo "SLUG: $(python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/_slug.py)"
 ```
 If not in a git repo: ask the user for the project slug (format: `domain.reponame`).
 

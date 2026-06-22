@@ -56,9 +56,7 @@ print(log.read_text() if log.exists() else 'MISSING — will be created on first
 echo "GIT_DIFF_STAT:" && (git diff HEAD --stat 2>/dev/null || echo "none")
 echo "GIT_STATE:" && (git status --short 2>/dev/null || echo "clean")
 echo "UNPUSHED:" && (git log @{u}.. --oneline 2>/dev/null || echo "none (or no remote)")
-REPO=$(git rev-parse --show-toplevel 2>/dev/null | xargs basename 2>/dev/null)
-DOMAIN=$(git rev-parse --show-toplevel 2>/dev/null | sed 's|.*/Repos/||' | cut -d'/' -f1)
-TW_PROJECT="${DOMAIN}.${REPO}"
+TW_PROJECT=$(python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/_slug.py)
 echo "IN_PROGRESS:" && (task rc.verbose=nothing project:${TW_PROJECT} +ACTIVE list 2>/dev/null || echo "(none)")
 echo "UP_NEXT:" && (task rc.verbose=nothing project:${TW_PROJECT} limit:3 list 2>/dev/null || echo "(none)")
 echo "DATE:" && date +%Y-%m-%d
