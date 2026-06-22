@@ -158,6 +158,6 @@ This is not a status report — it's a re-orientation aid. Lead with what matter
 
 **Files touched** — session mode: FILES_TOUCHED from collect-summarize.py, comma-separated. Time-window mode: from git log. Omit generated/cache files. If none: "(none)".
 
-**Session notes** — bullets extracted from session log entries. Focus on decisions, open threads, and resume points. Skip mechanics.
+**Session notes** — bullets extracted from session log entries. Focus on decisions, open threads, and resume points. Skip mechanics. (Session-log entries are date-stamped, not timestamped, so an `--hours` window still includes the full current day's notes — commits/files honor the sub-day window, notes are day-resolution.)
 
 **Pick up here** — one sentence: the most actionable next step based on the evidence above. If there are open threads in the session log, surface the most recent one.

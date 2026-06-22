@@ -39,7 +39,7 @@ Plugin delivers it automatically on next install.
 | File | Role |
 |------|------|
 | `.claude-plugin/plugin.json` | Plugin manifest — bump version on every release |
-| `hooks/hooks.json` | Plugin-registered hooks (SessionStart, PostToolUse) |
+| `hooks/hooks.json` | Plugin-registered hooks (SessionStart, PostToolUse, PreCompact) |
 | `scripts/collect-*.py` | Data collection scripts called by commands |
 | `scripts/validate-env.py` | SessionStart hook — validates CLAUDE_TOOLBOX_ROOT |
 | `scripts/_scope.py` | Scope detection — returns `single`, `parent`, or `global` mode |
