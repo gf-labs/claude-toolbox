@@ -136,9 +136,9 @@ printenv CLAUDE_TOOLBOX_ROOT 2>/dev/null && echo "(set)" || echo "NOT SET"
 python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plugin-drift.py 2>/dev/null || echo "unavailable"
 ```
 
-**Auto-rename unnamed sessions**:
+**Unnamed sessions** (dry-run — proposes names, writes nothing):
 ```bash
-python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/rename-unnamed.py
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/rename-unnamed.py --dry-run
 ```
 
 **Project extension**:
@@ -247,7 +247,7 @@ MEMORY.md: [NL OK / THIN / WARN / MISSING]
 
 Ramp: [N] nodes due  |  [Level]  |  [XP] XP  (run /tools:status for full detail)
 Toolbox: CLAUDE_TOOLBOX_ROOT [set / NOT SET] · plugins: [in sync / N stale / N missing / unavailable]
-Renamed: [id→name, id→name] (omit line entirely if NONE)
+Unnamed sessions (proposals — /tools:pin applies): [id8 → name, one per "PROPOSAL:" line] (omit line entirely if NONE)
 
 ---
 
