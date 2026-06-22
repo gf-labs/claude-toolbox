@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _scope import get_scope
+from _scope import get_scope, project_key
 
 mode, data, cwd = get_scope()
 
@@ -29,7 +29,7 @@ else:
             stderr=subprocess.DEVNULL,
             text=True,
         ).strip()
-        proj_dir = projects_dir / git_root.replace("/", "-")
+        proj_dir = projects_dir / project_key(git_root, projects_dir)
     except Exception:
         sys.exit(0)  # Can't determine project — allow compact
 

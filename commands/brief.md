@@ -26,7 +26,7 @@ import os, re, sys
 from datetime import datetime
 from pathlib import Path
 sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
-from _scope import get_scope
+from _scope import get_scope, project_key
 mode, data, cwd = get_scope()
 projects_dir = Path.home() / '.claude' / 'projects'
 if mode == 'single':
@@ -35,7 +35,7 @@ else:
     import subprocess
     try:
         git_root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], stderr=subprocess.DEVNULL, text=True).strip()
-        key = git_root.replace('/', '-')
+        key = project_key(git_root, projects_dir)
     except Exception:
         print('ABSENCE_DAYS: unknown')
         sys.exit(0)

@@ -31,7 +31,7 @@ python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-session-log.py
 python3 -c "
 import os, sys
 sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
-from _scope import get_scope
+from _scope import get_scope, project_key
 from pathlib import Path
 mode, data, cwd = get_scope()
 projects_dir = Path.home() / '.claude' / 'projects'
@@ -41,7 +41,7 @@ else:
     import subprocess
     try:
         git_root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], stderr=subprocess.DEVNULL, text=True).strip()
-        key = git_root.replace('/', '-')
+        key = project_key(git_root, projects_dir)
     except Exception:
         print('SESSION_LOG: unavailable')
         exit(0)
@@ -74,7 +74,7 @@ python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/collect-plans.py
 python3 -c "
 import os, sys
 sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
-from _scope import get_scope
+from _scope import get_scope, project_key
 mode, data, cwd = get_scope()
 from pathlib import Path
 projects_dir = Path.home() / '.claude' / 'projects'
@@ -87,7 +87,7 @@ elif mode == 'parent':
 else:
     import subprocess
     git_root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], stderr=subprocess.DEVNULL, text=True).strip()
-    key = git_root.replace('/', '-')
+    key = project_key(git_root, projects_dir)
     mem = projects_dir / key / 'memory' / 'MEMORY.md'
     print(f'PATH: {mem}')
     print(mem.read_text() if mem.exists() else 'MISSING')
