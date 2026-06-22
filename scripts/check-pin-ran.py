@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-"""PreCompact hook: block /compact if /tools:pin hasn't been run this session."""
+"""PreCompact hook: block /compact if /tools:pin hasn't been run this session.
+
+Claude Code pipes the hook payload (including the authoritative ``session_id``)
+to this script on stdin, so the current session is read from there rather than
+guessed by file mtime — an unrelated JSONL touched more recently (a title edit,
+a second session) would otherwise misselect and either false-block a pinned
+session or fail open on an unpinned one. Newest-mtime survives only as a
+fallback for stdin-less manual invocation.
+"""
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -24,12 +33,21 @@ else:
     except Exception:
         sys.exit(0)  # Can't determine project — allow compact
 
-jsonl_files = list(proj_dir.glob("*.jsonl"))
-if not jsonl_files:
-    sys.exit(0)  # No sessions — allow compact
+# Identify the current session. Prefer the session_id from the hook's stdin
+# payload (authoritative); fall back to newest-mtime for stdin-less runs.
+session_prefix = None
+if not sys.stdin.isatty():
+    try:
+        payload = json.loads(sys.stdin.read() or "{}")
+        session_prefix = (payload.get("session_id") or "")[:8] or None
+    except Exception:
+        session_prefix = None
 
-current = max(jsonl_files, key=lambda f: f.stat().st_mtime)
-session_prefix = current.stem[:8]
+if session_prefix is None:
+    jsonl_files = list(proj_dir.glob("*.jsonl"))
+    if not jsonl_files:
+        sys.exit(0)  # No sessions — allow compact
+    session_prefix = max(jsonl_files, key=lambda f: f.stat().st_mtime).stem[:8]
 
 session_log = proj_dir / "memory" / "session-log.md"
 if session_log.exists() and f"· {session_prefix}" in session_log.read_text(encoding='utf-8'):
