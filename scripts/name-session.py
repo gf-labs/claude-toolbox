@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _scope import get_scope
+from _scope import get_scope, project_key
 from session_naming import read_title, write_title
 
 args = sys.argv[1:]
@@ -49,7 +49,7 @@ else:
     if mode == 'single':
         cwd_key = data
     elif cwd:
-        cwd_key = str(cwd).replace('/', '-')
+        cwd_key = project_key(cwd, projects_dir)
     else:
         print('ERROR: cannot determine project key')
         sys.exit(1)

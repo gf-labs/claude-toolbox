@@ -25,7 +25,7 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-from _scope import get_scope  # noqa: E402
+from _scope import get_scope, project_key  # noqa: E402
 
 HOME = Path.home()
 PROJECTS_DIR = HOME / '.claude' / 'projects'
@@ -49,18 +49,18 @@ mode, data, cwd = get_scope()
 git_root = _run(['git', 'rev-parse', '--show-toplevel'])
 
 if mode == 'single':
-    project_key = data
+    proj_key = data
     project_dir = cwd
 elif git_root:
     project_dir = Path(git_root)
-    project_key = git_root.replace('/', '-')
+    proj_key = project_key(git_root, PROJECTS_DIR)
 else:
     print('=== SCOPE ===')
     print('MODE: global')
     print('ERROR: No project detected. Pin is project-scoped — run from within a repo.')
     sys.exit(0)
 
-proj_meta_dir = PROJECTS_DIR / project_key
+proj_meta_dir = PROJECTS_DIR / proj_key
 memory_dir = proj_meta_dir / 'memory'
 
 repo = project_dir.name
@@ -73,7 +73,7 @@ tw_project = f'{domain}.{repo}' if domain else repo
 
 print('=== SCOPE ===')
 print(f'MODE: {mode}')
-print(f'PROJECT_KEY: {project_key}')
+print(f'PROJECT_KEY: {proj_key}')
 print(f'PROJECT_DIR: {project_dir}')
 print(f'REPO: {repo}')
 print(f'TW_PROJECT: {tw_project}')

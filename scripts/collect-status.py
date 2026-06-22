@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _scope import _reconstruct, get_scope
+from _scope import _reconstruct, get_scope, project_key
 
 
 def _run(cmd):
@@ -81,7 +81,7 @@ def _emit_row(name, path, group, projects_dir):
         last_commit = _run(['git', '-C', str(path), 'log', '--oneline', '-1']) or '?'
         last_hash = last_commit.split()[0] if last_commit.split() else '?'
 
-    proj_key = str(path).replace('/', '-')
+    proj_key = project_key(path, projects_dir)
     proj_dir = projects_dir / proj_key
     sessions = _session_count(proj_dir)
     mem_file = proj_dir / 'memory' / 'MEMORY.md'
@@ -114,7 +114,7 @@ projects_dir = Path.home() / '.claude' / 'projects'
 
 # --- Single mode ---
 if mode == 'single':
-    proj_key = str(cwd).replace('/', '-')
+    proj_key = data
     mem_file = projects_dir / proj_key / 'memory' / 'MEMORY.md'
     last_snap, sessions_since = _snapshot_info(mem_file)
     print(f'SINGLE {cwd}')

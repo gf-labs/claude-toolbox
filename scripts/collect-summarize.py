@@ -5,14 +5,15 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _scope import get_scope
+from _scope import get_scope, project_key, resolve_key
 
+projects_dir = Path.home() / '.claude' / 'projects'
 mode, data, cwd = get_scope()
 
 if mode == 'single':
     cwd_key = data
 elif cwd is not None:
-    cwd_key = str(cwd).replace('/', '-')
+    cwd_key = project_key(cwd, projects_dir)
 else:
     try:
         import subprocess
@@ -21,15 +22,17 @@ else:
             stderr=subprocess.DEVNULL, text=True
         ).strip()
         cwd = Path(git_root)
-        cwd_key = str(cwd).replace('/', '-')
+        cwd_key = project_key(cwd, projects_dir)
     except (OSError, subprocess.SubprocessError):
         print('ERROR: Could not determine project directory')
         sys.exit(1)
 
 if cwd is None:
-    cwd = Path('/' + cwd_key[1:].replace('-', '/'))
+    cwd = resolve_key(cwd_key)
+    if cwd is None:
+        print('ERROR: Could not determine project directory')
+        sys.exit(1)
 
-projects_dir = Path.home() / '.claude' / 'projects'
 proj_dir = projects_dir / cwd_key
 
 jsonl_files = list(proj_dir.glob('*.jsonl'))

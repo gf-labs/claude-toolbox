@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _scope import get_scope
+from _scope import get_scope, project_key, resolve_key
 
 MAX_ENTRIES = 5
 MAX_ENTRY_LEN = 90
@@ -59,15 +59,15 @@ else:
     for proj_key in sorted(projects_dir.iterdir()):
         if not proj_key.is_dir():
             continue
-        reconstructed = Path('/' + proj_key.name[1:].replace('-', '/'))
-        if reconstructed.is_dir():
+        reconstructed = resolve_key(proj_key.name)
+        if reconstructed is not None:
             projects.append((reconstructed.name, reconstructed))
 
 print('PROJECT\tLAST_LOG\tLOG_ENTRIES')
 
 entries_blocks = []
 for name, path in projects:
-    cwd_key = str(path).replace('/', '-')
+    cwd_key = project_key(path, projects_dir)
     last_log, count, entries = _log_info(projects_dir / cwd_key)
     print(f'{name}\t{last_log}\t{count}')
     if entries:

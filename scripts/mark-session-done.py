@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _scope import get_scope
+from _scope import get_scope, project_key
 from session_index import get_status, set_status
 from session_naming import write_title
 
@@ -34,7 +34,7 @@ else:
             ['git', 'rev-parse', '--show-toplevel'],
             stderr=subprocess.DEVNULL, text=True
         ).strip()
-        proj_dir = projects_dir / git_root.replace('/', '-')
+        proj_dir = projects_dir / project_key(git_root, projects_dir)
     except Exception:
         print('ERROR: Could not determine project key', file=sys.stderr)
         sys.exit(1)

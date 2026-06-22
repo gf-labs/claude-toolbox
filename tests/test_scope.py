@@ -71,6 +71,79 @@ def test_reconstruct_excludes_cwd_itself(tmp_path):
 
 
 # --------------------------------------------------------------------------
+# resolve_key — reverse a project key to its single best existing path
+# --------------------------------------------------------------------------
+
+def test_resolve_key_returns_existing_hyphenated_dir(tmp_path):
+    # The naive '-'->'/' reverse would yield .../Repos/my/project (missing);
+    # resolve_key disambiguates against disk and returns the real hyphenated dir.
+    proj = tmp_path / "Repos" / "my-project"
+    proj.mkdir(parents=True)
+    assert _scope.resolve_key(_key(proj)) == proj
+
+
+def test_resolve_key_none_when_no_existing_dir(tmp_path):
+    ghost = tmp_path / "nope" / "missing"
+    assert _scope.resolve_key(_key(ghost)) is None
+
+
+# --------------------------------------------------------------------------
+# project_key — forward encoding (path -> ~/.claude/projects/ dir name)
+# --------------------------------------------------------------------------
+# Claude Code encodes a project's cwd into a directory name by replacing every
+# non-alphanumeric character with '-'. That rule has changed across versions
+# (older builds only replaced '/'), so on one machine the same path can have
+# dirs under more than one encoding. project_key probes disk and returns the
+# encoding that actually exists, preferring the current rule.
+
+def test_project_key_pure_collapses_all_nonalnum():
+    # No projects_dir to probe -> return the current Claude Code encoding:
+    # '/', '_', '.', '@', space all collapse to '-'.
+    assert _scope.project_key("/Users/x/business/_claude-plugins/ramp") == \
+        "-Users-x-business--claude-plugins-ramp"
+    assert _scope.project_key("/U/user@example.com/My Drive/.X") == \
+        "-U-user-example-com-My-Drive--X"
+
+
+def test_project_key_resolves_current_encoding_dir(tmp_path):
+    # The '_'-collapsing (current) encoding is what exists on disk -> return it.
+    projects = tmp_path / "projects"
+    real = projects / "-Users-x-business--claude-plugins-ramp"
+    real.mkdir(parents=True)
+    key = _scope.project_key("/Users/x/business/_claude-plugins/ramp", projects)
+    assert key == "-Users-x-business--claude-plugins-ramp"
+    assert (projects / key).is_dir()
+
+
+def test_project_key_falls_back_to_legacy_underscore_dir(tmp_path):
+    # Regression guard: a dir created by an older Claude Code (which preserved
+    # '_') must still resolve, even though the current rule would collapse it.
+    projects = tmp_path / "projects"
+    legacy = projects / "-Users-x-business-_claude-plugins-toolbox"
+    legacy.mkdir(parents=True)
+    key = _scope.project_key("/Users/x/business/_claude-plugins/toolbox", projects)
+    assert key == "-Users-x-business-_claude-plugins-toolbox"
+
+
+def test_project_key_prefers_current_when_both_exist(tmp_path):
+    # Same path opened under both encodings -> the current (collapsed) one wins,
+    # matching the dir the live session actually uses.
+    projects = tmp_path / "projects"
+    (projects / "-Users-x-business-_claude-plugins-gfl").mkdir(parents=True)
+    (projects / "-Users-x-business--claude-plugins-gfl").mkdir(parents=True)
+    key = _scope.project_key("/Users/x/business/_claude-plugins/gfl", projects)
+    assert key == "-Users-x-business--claude-plugins-gfl"
+
+
+def test_project_key_defaults_to_current_when_none_exist(tmp_path):
+    # Brand-new project not yet on disk -> current encoding (CC will create it).
+    projects = tmp_path / "projects"
+    projects.mkdir()
+    key = _scope.project_key("/Users/x/business/_claude-plugins/new", projects)
+    assert key == "-Users-x-business--claude-plugins-new"
+
+
+# --------------------------------------------------------------------------
 # get_scope
 # --------------------------------------------------------------------------
 
@@ -83,6 +156,22 @@ def test_get_scope_single(tmp_path, monkeypatch):
     mode, data, c = _scope.get_scope(str(cwd))
     assert mode == "single"
     assert data == _key(cwd)
+    assert c == cwd
+
+
+def test_get_scope_single_resolves_collapsed_special_char_dir(tmp_path, monkeypatch):
+    # cwd contains '_'; only the current-encoding (collapsed) project dir exists.
+    # The old naive key (str(cwd).replace('/','-')) preserves '_' and misses it,
+    # so it would fall through to 'global'. project_key must resolve it to single.
+    home = tmp_path / "home"
+    cwd = tmp_path / "Repos" / "_acme" / "svc"
+    cwd.mkdir(parents=True)
+    collapsed = _scope.project_key(str(cwd))  # current rule: '_' -> '-'
+    (home / ".claude" / "projects" / collapsed).mkdir(parents=True)
+    monkeypatch.setenv("HOME", str(home))
+    mode, data, c = _scope.get_scope(str(cwd))
+    assert mode == "single"
+    assert data == collapsed
     assert c == cwd
 
 

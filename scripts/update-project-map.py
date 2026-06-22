@@ -15,7 +15,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _scope import _reconstruct
+from _scope import project_key, resolve_key
 
 MAP_FILE = Path.home() / '.claude' / 'plans' / '.project-map'
 PROJECTS_DIR = Path.home() / '.claude' / 'projects'
@@ -37,7 +37,7 @@ def find_project_for_path(abs_path_str: str) -> tuple[str, str] | None:
     """Walk parent dirs to find which project key owns this path."""
     p = Path(abs_path_str)
     for parent in list(p.parents):
-        key = str(parent).replace('/', '-')
+        key = project_key(parent, PROJECTS_DIR)
         if (PROJECTS_DIR / key).exists():
             return key, parent.name
     return None, None
@@ -169,17 +169,17 @@ if not session_id or not source_key:
     sys.exit(1)
 
 # Derive source project name from actual path on disk
-_source_candidates = list(_reconstruct(source_key, None))
-source_name = _source_candidates[0].name if _source_candidates else source_key.split('-')[-1]
+_source = resolve_key(source_key)
+source_name = _source.name if _source else source_key.split('-')[-1]
 
 # Group cross_files by target project key
 targets: dict[str, dict] = {}
 for f in cross_files:
     key, name = find_project_for_path(f)
     if key and key != source_key:
-        proj_path = Path('/' + key.lstrip('-').replace('-', '/'))
+        proj_path = resolve_key(key)
         try:
-            rel = str(Path(f).relative_to(proj_path))
+            rel = str(Path(f).relative_to(proj_path)) if proj_path else Path(f).name
         except ValueError:
             rel = Path(f).name
         if key not in targets:
@@ -206,8 +206,8 @@ if source_key not in projects:
 # Add refs to each target project
 for tkey, tinfo in targets.items():
     if tkey not in projects:
-        _t_candidates = list(_reconstruct(tkey, None))
-        _t_name = _t_candidates[0].name if _t_candidates else (tinfo['name'] or tkey.split('-')[-1])
+        _t = resolve_key(tkey)
+        _t_name = _t.name if _t else (tinfo['name'] or tkey.split('-')[-1])
         projects[tkey] = {
             'name': _t_name,
             'first_session': get_first_session(tkey),
