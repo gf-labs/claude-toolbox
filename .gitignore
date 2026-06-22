@@ -1,17 +1,27 @@
-__pycache__/
-*.pyc
-venv/
-.venv/
-.env
+# OS / editor cruft
 .DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Local env & secrets
+.env
+.venv/
+venv/
 .mcp.json
+
+# Logs
+*.log
+
+# Local Claude Code settings (never commit personal config/permissions)
+.claude/settings.local.json
 .claude/knowledge-graphs/
 .claude/worktrees/
-*.log
 .worktrees/
 
 # Local TaskWarrior slug-mapping config (commit .tw-slugs.json.example instead)
 .tw-slugs.json
 
-# Working notes — implementation plans & specs (never ship publicly)
+# Internal working notes — brainstorms, specs, audits — kept out of the public repo
 docs/superpowers/
