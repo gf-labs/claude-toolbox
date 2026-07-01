@@ -21,7 +21,6 @@ sys.path.insert(0, str(Path(__file__).parent))
 from _scope import get_scope
 from session_naming import derive_name, extract_context, read_title, write_title
 
-
 # --- Parse args ---
 args = sys.argv[1:]
 

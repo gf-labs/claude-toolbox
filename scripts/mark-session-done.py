@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Mark the current session for deletion and clean up associated artifacts."""
 from __future__ import annotations
+
 import argparse
 import json
 import shutil
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -79,7 +80,7 @@ else:
     print(f'Already marked: {base}')
 
 # Write registry (authoritative)
-now = datetime.now(timezone.utc).isoformat()
+now = datetime.now(UTC).isoformat()
 kwargs: dict = {'name': base, 'done_at': now}
 if args.force and existing_status:
     kwargs['forced_at'] = now

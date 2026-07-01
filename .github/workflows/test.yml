@@ -2,8 +2,8 @@ name: test
 
 # Lint + test gate, plus a manifest<->tag drift guard on main. Runs on PRs into
 # main (the consumer-facing boundary) and on pushes to develop/main.
-# Currently pytest-only: the repo is not yet ruff-clean, so the lint step is
-# deferred (see the ruff-cleanup task) to keep CI green from the first run.
+# The repo is ruff-clean; `ruff check .` runs before pytest and fails the gate
+# on any lint regression (config in pyproject.toml [tool.ruff]).
 on:
   pull_request:
     branches: [main]
@@ -29,8 +29,10 @@ jobs:
       # The suite is deliberately stdlib-only (scripts loaded by path via
       # importlib); pyproject is tooling config, not an installable package —
       # so we install pytest directly rather than `pip install -e '.[dev]'`.
-      - name: Install pytest
-        run: python3 -m pip install 'pytest>=8'
+      - name: Install pytest + ruff
+        run: python3 -m pip install 'pytest>=8' 'ruff>=0.6'
+      - name: Lint
+        run: ruff check .
       - name: Test
         run: python3 -m pytest tests/ -q
 

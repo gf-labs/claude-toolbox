@@ -17,9 +17,12 @@ sys.path.insert(0, str(Path(__file__).parent))
 from _scope import get_scope
 from session_index import get_status as _get_registry_status
 from session_naming import (
-    derive_name, extract_context, plan_fork_relabels, read_title, write_title,
+    derive_name,
+    extract_context,
+    plan_fork_relabels,
+    read_title,
+    write_title,
 )
-
 
 mode, data, cwd = get_scope()
 projects_dir = Path.home() / '.claude' / 'projects'

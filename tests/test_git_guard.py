@@ -1,4 +1,7 @@
 import importlib.util
+import json
+import subprocess
+import sys
 from pathlib import Path
 
 _spec = importlib.util.spec_from_file_location(
@@ -61,10 +64,6 @@ def test_allow_cases():
         v = classify(cmd)
         assert v["action"] == "allow", f"expected allow for {cmd!r}, got {v}"
 
-
-import json
-import subprocess
-import sys
 
 SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "git-guard.py"
 

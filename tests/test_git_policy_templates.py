@@ -49,7 +49,7 @@ def test_each_workflow_declares_permissions():
 def _extract_changelog_code() -> str:
     """Pull the CHANGELOG-notes extraction heredoc out of release.yml verbatim."""
     lines = RELEASE_YML.read_text(encoding="utf-8").splitlines()
-    starts = [i for i, l in enumerate(lines) if "<<'PY'" in l]
+    starts = [i for i, line in enumerate(lines) if "<<'PY'" in line]
     assert starts, "release.yml no longer contains the <<'PY' heredoc"
     start = starts[0]
     ends = [i for i in range(start + 1, len(lines)) if lines[i].strip() == "PY"]

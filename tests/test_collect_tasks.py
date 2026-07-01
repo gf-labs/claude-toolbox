@@ -1,6 +1,4 @@
 import importlib.util
-import json
-import sys
 from pathlib import Path
 
 import pytest
@@ -355,7 +353,7 @@ def test_collect_markdown_items_fields(tmp_path, m):
     assert "id" in item  # uuid present
 
 
-def test_collect_markdown_items_outside_repo(tmp_path, m):
+def test_collect_markdown_items_outside_repo_extracts(tmp_path, m):
     """collect_markdown_items handles files outside repo_path without crashing."""
     other = tmp_path / "other"
     other.mkdir()
@@ -398,7 +396,7 @@ def test_find_tracking_files_respects_exclude(tmp_path, m):
     assert "handoff-notes.md" not in paths
 
 
-def test_collect_markdown_items_outside_repo(tmp_path, m):
+def test_collect_markdown_items_outside_repo_absolute_fallback(tmp_path, m):
     """collect_markdown_items falls back to absolute path if file is outside repo_path."""
     repo = tmp_path / "repo"
     repo.mkdir()
