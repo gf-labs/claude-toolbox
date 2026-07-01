@@ -16,7 +16,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from _scope import get_scope
 from session_index import get_status as _get_registry_status
-from session_naming import derive_name, extract_context, read_title, write_title
+from session_naming import (
+    derive_name, extract_context, plan_fork_relabels, read_title, write_title,
+)
 
 
 mode, data, cwd = get_scope()
@@ -31,6 +33,7 @@ else:
 
 named_current = ''
 renamed = []
+relabeled = []
 
 for proj_dir in proj_dirs:
     if not proj_dir.exists():
@@ -65,12 +68,22 @@ for proj_dir in proj_dirs:
         write_title(f, name)
         renamed.append(f'{f.stem[:8]}→{name}')
 
+    # Disambiguate same-named forks (compact continuations) in this project.
+    # Skipped in global mode — it would full-scan every project's sessions.
+    if mode != 'global':
+        for a in plan_fork_relabels(proj_dir):
+            if write_title(a['path'], a['proposed']):
+                relabeled.append(f'{a["sid"]}→{a["proposed"]}')
+
 did_something = False
 if named_current:
     print(f'Named: {named_current}')
     did_something = True
 if renamed:
     print(f'Renamed: {", ".join(renamed)}')
+    did_something = True
+if relabeled:
+    print(f'Relabeled forks: {", ".join(relabeled)}')
     did_something = True
 if not did_something:
     print('NONE')

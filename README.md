@@ -69,6 +69,8 @@ The commands map onto the natural arc of a working session. You rarely need all 
 
 Twelve commands plus one skill, grouped by when you reach for them. Cheap, high-frequency commands run on Haiku; reasoning-heavy ones run on Sonnet.
 
+> For the complete surface in one place — every command, skill, agent, MCP tool, hook, and script — see [`LIBRARY.md`](LIBRARY.md).
+
 ### Orientation — *"where am I?"*
 
 Four commands answer different re-entry questions. Pick by how long you've been away and what you need.

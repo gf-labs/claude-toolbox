@@ -1,0 +1,45 @@
+name: release
+
+# Fires when a version tag is pushed: assert the manifest matches the tag, then
+# cut a GitHub Release from the matching CHANGELOG.md section. No build/publish —
+# distribution is "clone main".
+on:
+  push:
+    tags:
+      - "v*"
+
+# Single-job workflow; only it needs write, and only to create the Release.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+      - name: Assert manifest matches the pushed tag
+        # In claude-toolbox the checker lives at scripts/; elsewhere it is
+        # vendored to .github/scripts/. Adjust this path on stamp.
+        run: python3 .github/scripts/check-manifest-tag.py --tag "${GITHUB_REF_NAME}"
+      - name: Extract release notes from CHANGELOG
+        run: |
+          python3 - "$GITHUB_REF_NAME" > RELEASE_NOTES.md <<'PY'
+          import re, sys
+          from pathlib import Path
+          ver = sys.argv[1].lstrip("v")
+          blocks = re.split(r"(?m)^## ", Path("CHANGELOG.md").read_text(encoding="utf-8"))
+          note = next((b for b in blocks if b.lstrip().startswith(f"[{ver}]")
+                       or b.lstrip().startswith(ver)), "")
+          sys.stdout.write(("## " + note) if note else f"Release {ver}")
+          PY
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=""
+          case "$GITHUB_REF_NAME" in *-alpha*|*-beta*|*-rc*) prerelease="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" \
+            --notes-file RELEASE_NOTES.md $prerelease

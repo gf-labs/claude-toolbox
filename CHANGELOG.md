@@ -3,6 +3,16 @@
 All notable changes to the `tools` plugin (`claude-toolbox`) are documented here.
 This project follows [Semantic Versioning](https://semver.org).
 
+## [0.5.2] — 2026-06-30
+
+### Added
+- `git-policy-auditor` agent + `collect-git-policy.py` + `check-manifest-tag.py` + hardened CI templates + a generic default policy: audit any repo against a git policy and emit a migration plan.
+- Session fork disambiguation — `scripts/relabel-forks.py` and `session_naming.py` helpers relabel same-named forks (auto-compact continuations) so the `/resume` picker stays unambiguous; `post-save.py` self-heals current-scope forks on every pin/wrap.
+- `LIBRARY.md` — a full-surface map of the plugin (commands · skill · agents · MCP tools · hooks · scripts), linked from the README.
+
+### Fixed
+- `/tools:status` — describe the inline bang-backtick syntax in prose instead of showing it literally, which the renderer would execute at render time (caused a `command not found` crash).
+
 ## [0.5.1] — 2026-06-17
 
 First public release under `gf-labs`. Session-lifecycle management for Claude Code,
