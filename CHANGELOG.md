@@ -3,6 +3,11 @@
 All notable changes to the `tools` plugin (`claude-toolbox`) are documented here.
 This project follows [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Added
+- `git-policy-auditor` agent + `collect-git-policy.py` + `check-manifest-tag.py` + hardened CI templates + a generic default policy: audit any repo against a git policy and emit a migration plan.
+
 ## [0.5.1] — 2026-06-17
 
 First public release under `gf-labs`. Session-lifecycle management for Claude Code,

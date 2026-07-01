@@ -76,6 +76,7 @@ slash commands. All read-only except where noted.
 | `tools:plan` | Implementation planner — reads codebase, returns a phase-by-phase plan (no writes) |
 | `tools:review` | Structured code review — diff analysis, readability, correctness, security (read-only) |
 | `tools:summarize` | Session summarizer — given a JSONL session path, returns a concise summary |
+| `tools:git-policy-auditor` | Read-only audit of a repo against a git policy (or the bundled default) — emits a compliance report + migration plan |
 
 ---
 
@@ -108,7 +109,7 @@ Auto-fire handlers registered in `hooks/hooks.json`.
 
 ## Scripts (infrastructure)
 
-~33 files in `scripts/` — called by the commands/hooks above, not invoked directly. The
+~35 files in `scripts/` — called by the commands/hooks above, not invoked directly. The
 load-bearing ones:
 
 | Script(s) | Role |
@@ -116,6 +117,8 @@ load-bearing ones:
 | `_scope.py` | Scope detection + project-key encoding — **single source of truth** |
 | `_slug.py` | Repo path → TaskWarrior project slug — **single source of truth** |
 | `collect-*.py` (≈18) | Data collectors feeding the commands (pin, summarize, tasks, drift, history, memory…) |
+| `collect-git-policy.py` | Deterministic git-policy facts (branches, tags, workflows, dependabot/CHANGELOG, manifest↔tag) for `tools:git-policy-auditor` to render |
+| `check-manifest-tag.py` | Assert a repo's manifest version equals its latest release tag — collector/audit + CI gate (stdlib, exit 0/1/2) |
 | `post-save.py`, `session_naming.py`, `relabel-forks.py`, `name-session.py`, `rename-unnamed.py` | Session naming + fork disambiguation |
 | `update-project-map.py`, `collect-plan-map.py` | Keep `.project-map` current |
 | `session_index.py`, `mark-session-done.py`, `add-tasks.py`, `lint-py.py`, `setup-mcp.py`, `validate-env.py` | Supporting utilities + hook bodies |
@@ -124,5 +127,5 @@ load-bearing ones:
 
 ## At a glance
 
-**12 commands · 1 skill · 4 agents · 3 MCP tools · 5 hook handlers · ~33 scripts** — all
+**12 commands · 1 skill · 5 agents · 3 MCP tools · 5 hook handlers · ~35 scripts** — all
 user-facing surfaces namespaced `tools:`. Plugin manifest: `.claude-plugin/plugin.json`.

@@ -11,6 +11,9 @@ Commands call scripts via `!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/foo.py`. The 
 `CLAUDE_TOOLBOX_ROOT` must be set in `~/.claude/settings.json`. It points to this repo's
 absolute path.
 
+The `git-policy-auditor` agent reads the policy path from `CLAUDE_TOOLBOX_GIT_POLICY` (set in
+`~/.claude/settings.json` `env`); unset falls back to `templates/git-policy/default-policy.md`.
+
 ## TaskWarrior project slug (`scripts/_slug.py`)
 
 `scripts/_slug.py` is the single source of truth for mapping a repo path → TaskWarrior
@@ -60,6 +63,7 @@ Plugin delivers it automatically on next install.
 | `scripts/_scope.py` | Scope detection — returns `single`, `parent`, or `global` mode |
 | `scripts/post-save.py` | Names current session + renames unnamed sessions in scope |
 | `docs/claude-directory-reference.md` | Claude Code directory discovery reference |
+| `agents/git-policy-auditor.md` | Read-only agent auditing a repo against the git policy at `$CLAUDE_TOOLBOX_GIT_POLICY` (unset → bundled default) |
 
 ## Gotchas
 
