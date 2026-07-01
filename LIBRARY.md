@@ -99,6 +99,7 @@ Auto-fire handlers registered in `hooks/hooks.json`.
 
 | Event | Handler | Purpose |
 |-------|---------|---------|
+| PreToolUse (Bash) | `git-guard.py` | Denies local irreversible git ops (`reset --hard`, `clean -f*`, `branch -D`, `checkout`/`restore` discards) on Claude's calls. Fail-open; user `!git` bypasses |
 | SessionStart | `validate-env.py` | Verifies `CLAUDE_TOOLBOX_ROOT` is set |
 | SessionStart | `setup-mcp.py` | Idempotently registers the MCP server (`claude mcp add -s user`) |
 | PostToolUse | `collect-plan-map.py` | Refreshes `.project-map` plan index |
