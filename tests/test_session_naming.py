@@ -197,3 +197,158 @@ def test_write_title_is_append_only(tmp_path):
     lines = [ln for ln in p.read_text(encoding="utf-8").splitlines() if ln.strip()]
     assert len(lines) == 2
     assert json.loads(lines[0])["message"]["content"] == "keep me"
+
+
+# --------------------------------------------------------------------------
+# write_title idempotency (the write-amplification fix)
+# --------------------------------------------------------------------------
+
+def test_write_title_returns_true_on_write(tmp_path):
+    p = tmp_path / "s.jsonl"
+    p.write_text("", encoding="utf-8")
+    assert session_naming.write_title(p, "name") is True
+
+
+def test_write_title_noop_when_unchanged(tmp_path):
+    p = tmp_path / "s.jsonl"
+    p.write_text("", encoding="utf-8")
+    session_naming.write_title(p, "same-name")
+    # second write with an identical title must NOT append a redundant record
+    wrote = session_naming.write_title(p, "same-name")
+    assert wrote is False
+    lines = [ln for ln in p.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    assert len(lines) == 1
+
+
+def test_write_title_writes_when_name_changes(tmp_path):
+    p = tmp_path / "s.jsonl"
+    p.write_text("", encoding="utf-8")
+    session_naming.write_title(p, "first")
+    assert session_naming.write_title(p, "second") is True
+    assert session_naming.read_title(p) == "second"
+
+
+def test_write_title_force_appends_even_when_unchanged(tmp_path):
+    p = tmp_path / "s.jsonl"
+    p.write_text("", encoding="utf-8")
+    session_naming.write_title(p, "n")
+    assert session_naming.write_title(p, "n", force=True) is True
+    lines = [ln for ln in p.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    assert len(lines) == 2
+
+
+# --------------------------------------------------------------------------
+# base_title
+# --------------------------------------------------------------------------
+
+def test_base_title_strips_date_suffix():
+    assert session_naming.base_title("job-search-main~06-27") == "job-search-main"
+
+
+def test_base_title_strips_date_and_sid_suffix():
+    assert session_naming.base_title("job-search-main~06-27-1a2b") == "job-search-main"
+
+
+def test_base_title_leaves_clean_name_untouched():
+    assert session_naming.base_title("job-search-main") == "job-search-main"
+
+
+def test_base_title_ignores_non_marker_tilde():
+    # `~bad` is not a MM-DD marker, so it must be preserved
+    assert session_naming.base_title("weird~name") == "weird~name"
+
+
+# --------------------------------------------------------------------------
+# scan_title_and_ts
+# --------------------------------------------------------------------------
+
+def test_scan_title_and_ts_returns_last_of_each(tmp_path):
+    p = tmp_path / "s.jsonl"
+    _write_jsonl(p, [
+        {"type": "user", "message": {"content": "hi"}, "timestamp": "2026-06-01T00:00:00Z"},
+        {"type": "custom-title", "customTitle": "old", "sessionId": "s"},
+        {"type": "assistant", "message": {"content": []}, "timestamp": "2026-06-02T10:00:00Z"},
+        {"type": "custom-title", "customTitle": "new", "sessionId": "s"},
+    ])
+    title, ts = session_naming.scan_title_and_ts(p)
+    assert title == "new"
+    assert ts == "2026-06-02T10:00:00Z"
+
+
+def test_scan_title_and_ts_no_title(tmp_path):
+    p = tmp_path / "s.jsonl"
+    _write_jsonl(p, [{"type": "user", "message": {"content": "hi"}, "timestamp": "2026-06-01T00:00:00Z"}])
+    title, ts = session_naming.scan_title_and_ts(p)
+    assert title == ""
+    assert ts == "2026-06-01T00:00:00Z"
+
+
+# --------------------------------------------------------------------------
+# plan_fork_relabels
+# --------------------------------------------------------------------------
+
+def _fork_session(proj: Path, stem: str, title: str, last_ts: str) -> None:
+    """Write a minimal named session with a last-event timestamp."""
+    _write_jsonl(proj / f"{stem}.jsonl", [
+        {"type": "user", "message": {"content": "hi"}, "timestamp": "2026-06-01T00:00:00Z"},
+        {"type": "assistant", "message": {"content": []}, "timestamp": last_ts},
+        {"type": "custom-title", "customTitle": title, "sessionId": stem},
+    ])
+
+
+def test_plan_fork_relabels_demotes_older_collision(tmp_path):
+    _fork_session(tmp_path, "live1111-aaaa", "job-search-main", "2026-06-28T12:00:00Z")
+    _fork_session(tmp_path, "stale222-bbbb", "job-search-main", "2026-06-27T09:00:00Z")
+    actions = session_naming.plan_fork_relabels(tmp_path)
+    # live already has the clean name -> only the stale fork is relabeled
+    assert len(actions) == 1
+    a = actions[0]
+    assert a["sid"] == "stale222"
+    assert a["current"] == "job-search-main"
+    assert a["proposed"] == "job-search-main~06-27"
+
+
+def test_plan_fork_relabels_promotes_live_to_clean_name(tmp_path):
+    # neither fork holds the clean base name -> the newer one is promoted to it
+    _fork_session(tmp_path, "live1111-aaaa", "job-search-main~06-28", "2026-06-28T12:00:00Z")
+    _fork_session(tmp_path, "stale222-bbbb", "job-search-main~06-27", "2026-06-27T09:00:00Z")
+    actions = session_naming.plan_fork_relabels(tmp_path)
+    proposals = {a["sid"]: a["proposed"] for a in actions}
+    assert proposals["live1111"] == "job-search-main"  # promoted
+    assert "stale222" not in proposals  # already correctly marked -> no-op
+
+
+def test_plan_fork_relabels_no_collision(tmp_path):
+    _fork_session(tmp_path, "a1111111-aaaa", "configs-main", "2026-06-28T12:00:00Z")
+    _fork_session(tmp_path, "b2222222-bbbb", "configs-scratch", "2026-06-27T09:00:00Z")
+    assert session_naming.plan_fork_relabels(tmp_path) == []
+
+
+def test_plan_fork_relabels_single_session(tmp_path):
+    _fork_session(tmp_path, "solo1111-aaaa", "configs-main", "2026-06-28T12:00:00Z")
+    assert session_naming.plan_fork_relabels(tmp_path) == []
+
+
+def test_plan_fork_relabels_idempotent_when_already_marked(tmp_path):
+    _fork_session(tmp_path, "live1111-aaaa", "job-search-main", "2026-06-28T12:00:00Z")
+    _fork_session(tmp_path, "stale222-bbbb", "job-search-main~06-27", "2026-06-27T09:00:00Z")
+    assert session_naming.plan_fork_relabels(tmp_path) == []
+
+
+def test_plan_fork_relabels_same_date_tiebreaker(tmp_path):
+    # two stale forks on the same day -> the second gets a sid tiebreaker suffix
+    _fork_session(tmp_path, "live1111-zzzz", "job-search-main", "2026-06-28T12:00:00Z")
+    _fork_session(tmp_path, "aaaa1111-bbbb", "job-search-main", "2026-06-27T09:00:00Z")
+    _fork_session(tmp_path, "cccc2222-dddd", "job-search-main", "2026-06-27T08:00:00Z")
+    proposals = sorted(a["proposed"] for a in session_naming.plan_fork_relabels(tmp_path))
+    # newest stale keeps the bare date marker; the next collides and gets its sid appended
+    assert proposals == ["job-search-main~06-27", "job-search-main~06-27-cccc"]
+
+
+def test_plan_fork_relabels_ignores_unnamed_sessions(tmp_path):
+    _fork_session(tmp_path, "named111-aaaa", "configs-main", "2026-06-28T12:00:00Z")
+    # an unnamed session (no custom-title) must not participate
+    _write_jsonl(tmp_path / "unnamed2-bbbb.jsonl", [
+        {"type": "user", "message": {"content": "hi"}, "timestamp": "2026-06-28T13:00:00Z"},
+    ])
+    assert session_naming.plan_fork_relabels(tmp_path) == []
