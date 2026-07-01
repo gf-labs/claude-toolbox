@@ -6,8 +6,9 @@ model: claude-haiku-4-5-20251001
 
 ## Collect context
 
-The deterministic git/system context below is **injected automatically** via `` !`…` `` —
-it runs at command-render time and lands in your context before you respond, with no tool
+The deterministic git/system context below is **injected automatically** via inline
+bang-backtick command syntax — it runs at command-render time and lands in your context
+before you respond, with no tool
 calls. The multi-line Python blocks further down are too involved to inline, so run those as
 bash before producing output. Store all results mentally.
 
