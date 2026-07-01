@@ -26,8 +26,11 @@ jobs:
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.11"
-      - name: Install dev deps
-        run: python3 -m pip install -e '.[dev]'
+      # The suite is deliberately stdlib-only (scripts loaded by path via
+      # importlib); pyproject is tooling config, not an installable package —
+      # so we install pytest directly rather than `pip install -e '.[dev]'`.
+      - name: Install pytest
+        run: python3 -m pip install 'pytest>=8'
       - name: Test
         run: python3 -m pytest tests/ -q
 
