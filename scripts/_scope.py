@@ -21,7 +21,7 @@ def project_key(path: str | Path, projects_dir: str | Path | None = None) -> str
     non-trivial path<->key encoding has exactly one home.
     """
     s = str(path)
-    current = re.sub(r'[^A-Za-z0-9]', '-', s)   # current CC: every non-alnum -> '-'
+    current = _encode(s)                         # current CC: every non-alnum -> '-'
     if projects_dir is None:
         return current
     legacy = s.replace('/', '-')                # older CC: only '/' -> '-'
@@ -31,41 +31,66 @@ def project_key(path: str | Path, projects_dir: str | Path | None = None) -> str
     return current
 
 
-def _reconstruct(key: str, cwd_str: str | None = None) -> Iterator[Path]:
-    """Yield all existing dirs that could match this project key.
+def _encode(s: str) -> str:
+    """Forward path->key character map: every non-alphanumeric char becomes '-'.
 
-    Project keys encode paths as '-'-joined components, but directory names
-    may also contain hyphens, making naive replacement ambiguous. This function
-    backtracks: at each '-', it tries treating it as a path separator OR as a
-    literal hyphen in the current directory name.
-
-    Pruning: when trying a path separator, we only recurse if the path built
-    so far is an existing directory — this eliminates bad branches early.
-
-    cwd_str: if given, only yield paths that are descendants of this dir.
-             If None, yield any existing directory (global mode).
+    This is the *current* Claude Code encoding. project_key applies it; keys on
+    disk may also use an older '/'-only encoding, which _key_char_match tolerates.
     """
-    parts = key.lstrip('-').split('-')
+    return re.sub(r'[^A-Za-z0-9]', '-', s)
 
-    def build(idx, path_parts):
-        if idx == len(parts):
-            p = Path('/' + '/'.join(path_parts))
-            if not p.is_dir():
-                return
-            p_str = str(p)
-            if cwd_str is None or (p_str != cwd_str and p_str.startswith(cwd_str + '/')):
-                yield p
+
+def _key_char_match(k: str, r: str) -> bool:
+    """True if key char k could encode real-path char r under either CC encoding.
+
+    A '-' in a key may stand for '/', '_', '.', a literal '-', or any other
+    non-alphanumeric char (current encoding collapses them all; the legacy
+    '/'-only encoding leaves specials like '_' intact — so those match exactly).
+    Alphanumerics must match exactly.
+    """
+    return r == k or (k == '-' and not r.isalnum())
+
+
+def _reconstruct(key: str, cwd_str: str | None = None) -> Iterator[Path]:
+    """Yield every existing dir whose absolute path encodes to this project key.
+
+    project_key() encodes a path by collapsing non-alphanumeric characters to
+    '-' — '/' separators and any '-', '_', '.', space inside a component alike
+    (the legacy encoding collapsed only '/'). Both are lossy, so a key cannot be
+    decoded by string surgery; it must be disambiguated against the filesystem.
+
+    We walk real directories from the root, matching each candidate's full path
+    string against the key character-by-character via _key_char_match. A '/', '_',
+    '.', or literal '-' in a real name all reconcile against a '-' in the key, so
+    disk decides the interpretation. Every fully-matching directory is yielded;
+    there can legitimately be more than one.
+
+    cwd_str: if given, only yield paths strictly below this dir; if None, yield
+             any existing match (global mode).
+    """
+    klen = len(key)
+
+    def _prefix_ok(cs: str) -> bool:
+        # cs (a real path string) matches the first len(cs) chars of the key.
+        return len(cs) <= klen and all(_key_char_match(key[i], cs[i]) for i in range(len(cs)))
+
+    def walk(current: Path) -> Iterator[Path]:
+        cs = str(current)
+        if not _prefix_ok(cs):
             return
-        part = parts[idx]
-        # Option A: new path component — prune if current path doesn't exist
-        current = Path('/' + '/'.join(path_parts))
-        if current.is_dir():
-            yield from build(idx + 1, path_parts + [part])
-        # Option B: extend current component with hyphen (always try)
-        if path_parts:
-            yield from build(idx + 1, path_parts[:-1] + [path_parts[-1] + '-' + part])
+        if len(cs) == klen:
+            if cwd_str is None or (cs != cwd_str and cs.startswith(cwd_str + '/')):
+                yield current
+            return
+        try:
+            children = list(current.iterdir())
+        except OSError:
+            return  # unreadable dir -> dead branch, fail safe
+        for child in children:
+            if child.is_dir():
+                yield from walk(child)
 
-    yield from build(1, [parts[0]])
+    yield from walk(Path('/'))
 
 
 def resolve_key(key: str, cwd_str: str | None = None) -> Path | None:

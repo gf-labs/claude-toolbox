@@ -51,11 +51,27 @@ def _session(path, *, title=None, first_user=None, last_prompt=None):
 # --------------------------------------------------------------------------
 
 def test_project_display_takes_last_component():
+    # Key that resolves to nothing on disk falls back to the last '-' segment.
     assert server._project_display("-Users-foo-Repos-bar") == "bar"
 
 
 def test_project_display_empty_key():
     assert server._project_display("") == ""
+
+
+def test_project_display_preserves_hyphenated_repo_name(tmp_path):
+    """A repo whose basename contains a hyphen must not be truncated.
+
+    The naive split-on-'-' returns 'toolbox' for a 'claude-toolbox' repo; routing
+    through resolve_key (which probes disk) recovers the real basename.
+    """
+    sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
+    import _scope
+
+    repo = tmp_path / "claude-toolbox"
+    repo.mkdir()
+    key = _scope.project_key(repo)
+    assert server._project_display(key) == "claude-toolbox"
 
 
 def test_session_metadata_string_content(tmp_path):

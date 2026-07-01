@@ -87,6 +87,25 @@ def test_resolve_key_none_when_no_existing_dir(tmp_path):
     assert _scope.resolve_key(_key(ghost)) is None
 
 
+def test_reconstruct_recovers_underscore_component(tmp_path):
+    # The current encoding collapses '_' to '-' just like '/', so the key alone
+    # is ambiguous. Reconstruct must recover the real '_claude-plugins' dir by
+    # probing disk — the legacy '-'-vs-'/' backtracking alone cannot.
+    proj = tmp_path / "business" / "_claude-plugins" / "toolbox"
+    proj.mkdir(parents=True)
+    key = _scope.project_key(proj)  # lossy: '_' and '/' both -> '-'
+    assert proj in list(_scope._reconstruct(key, str(tmp_path)))
+
+
+def test_resolve_key_recovers_underscore_path(tmp_path):
+    # resolve_key over the current (lossy) encoding must invert a path whose
+    # component contains '_' — the real claude-toolbox failure mode.
+    proj = tmp_path / "business" / "_claude-plugins" / "toolbox"
+    proj.mkdir(parents=True)
+    key = _scope.project_key(proj)
+    assert _scope.resolve_key(key) == proj
+
+
 # --------------------------------------------------------------------------
 # project_key — forward encoding (path -> ~/.claude/projects/ dir name)
 # --------------------------------------------------------------------------
