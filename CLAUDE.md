@@ -85,3 +85,17 @@ this published repo.)
 ## Working in this repo
 
 `.claude/settings.json` grants `Bash(gh:*)` for GitHub operations.
+
+## Git workflow
+
+- Start new work on a `feature/*` branch off `develop` — never edit directly on
+  `develop` or `main`.
+- Git is view-only unless the user grants write access this session.
+- Never `push --force`, `reset --hard`, `clean -f`, `branch -D`, or discard uncommitted
+  work (`checkout -- .` / `restore .`) without asking first.
+
+The `git-guard` PreToolUse hook (`scripts/git-guard.py`) enforces the irreversible subset
+of this rule automatically — it denies those destructive commands when Claude runs them via
+the Bash tool. It does NOT fire on the user's `!git` commands, which remain the unguarded
+escape hatch. The workflow habits above (branch-off-develop, ask-first) are prose because
+they are interpretive; the hook only guards the deterministic, irreversible cases.

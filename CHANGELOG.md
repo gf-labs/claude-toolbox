@@ -3,6 +3,11 @@
 All notable changes to the `tools` plugin (`claude-toolbox`) are documented here.
 This project follows [Semantic Versioning](https://semver.org).
 
+## [0.6.0] — 2026-07-01
+
+### Added
+- `git-guard.py` — a fail-open `PreToolUse` (Bash) hook that denies only local, irreversible git operations (`reset --hard`, `clean -f*`, `branch -D`, and `checkout`/`restore` discards) when Claude runs them via the Bash tool. It never fires on the user's `!git` commands, which remain the unguarded escape hatch. Pairs with a new **Git workflow** prose rule in `CLAUDE.md` (branch off `develop`, ask-first) — interpretive habits stay prose, deterministic damage-prevention is the hook. This is the plugin's first `PreToolUse` matcher and the layer-3 (client-side, pre-emptive) complement to the CI/CD and branch-protection layers.
+
 ## [0.5.2] — 2026-06-30
 
 ### Added
