@@ -154,15 +154,22 @@ def base_title(title: str) -> str:
     return STALE_SUFFIX_RE.sub('', title)
 
 
-def scan_title_and_ts(path: Path) -> tuple[str, str]:
-    """Single-pass read returning ``(effective_title, last_event_timestamp)``.
+def scan_session(path: Path) -> tuple[str, str, bool]:
+    """Single-pass read returning ``(effective_title, last_event_timestamp, is_bg)``.
 
     The effective title is the *last* ``custom-title`` record; the timestamp is the
     last ISO ``timestamp`` seen on any event line. One scan instead of two — these
     session files can be tens of MB.
+
+    ``is_bg`` is True when *every* event record carries ``sessionKind: 'bg'`` — the
+    file belongs to a background job, not an interactive session. Presence of some
+    bg records is not enough: an interactive session's file can accumulate bg-kind
+    events mid-stream, so only an all-bg file counts.
     """
     title = ''
     ts = ''
+    saw_event = False
+    saw_non_bg = False
     try:
         for line in path.read_text(encoding='utf-8', errors='replace').splitlines():
             if 'custom-title' in line and '"type"' in line:
@@ -179,10 +186,19 @@ def scan_title_and_ts(path: Path) -> tuple[str, str]:
                     t = obj.get('timestamp')
                     if t:
                         ts = t
+                        saw_event = True
+                        if obj.get('sessionKind') != 'bg':
+                            saw_non_bg = True
                 except json.JSONDecodeError:
                     pass
     except OSError:
         pass
+    return title, ts, saw_event and not saw_non_bg
+
+
+def scan_title_and_ts(path: Path) -> tuple[str, str]:
+    """``scan_session`` without the bg flag — kept for existing callers."""
+    title, ts, _ = scan_session(path)
     return title, ts
 
 
@@ -205,11 +221,11 @@ def plan_fork_relabels(proj_dir: Path) -> list[dict]:
 
     sessions = []
     for f in proj_dir.glob('*.jsonl'):
-        title, ts = scan_title_and_ts(f)
+        title, ts, is_bg = scan_session(f)
         if not title:
             continue  # unnamed sessions are post-save's job, not the relabeler's
         sessions.append({'path': f, 'sid': f.stem, 'title': title,
-                         'base': base_title(title), 'ts': ts})
+                         'base': base_title(title), 'ts': ts, 'bg': is_bg})
 
     groups: dict[str, list] = defaultdict(list)
     for s in sessions:
@@ -219,8 +235,15 @@ def plan_fork_relabels(proj_dir: Path) -> list[dict]:
     for base, members in groups.items():
         if len(members) < 2:
             continue  # no collision → nothing to disambiguate
-        members.sort(key=lambda s: s['ts'], reverse=True)  # newest last-event first
-        live, stale = members[0], members[1:]
+        # Background-job sessions inherit the parent's title and always have
+        # fresh events — they must never claim the clean name (2026-07-02
+        # regression: a bg job demoted the real session to a stale marker).
+        interactive = [s for s in members if not s['bg']]
+        if not interactive:
+            continue  # nothing to protect — leave bg-only groups alone
+        members.sort(key=lambda s: (not s['bg'], s['ts']), reverse=True)
+        live = max(interactive, key=lambda s: s['ts'])
+        stale = [s for s in members if s is not live]
 
         if live['title'] != base:
             actions.append({'path': live['path'], 'sid': live['sid'][:8],
