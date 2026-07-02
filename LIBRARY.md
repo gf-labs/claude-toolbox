@@ -120,6 +120,7 @@ load-bearing ones:
 | `collect-*.py` (≈18) | Data collectors feeding the commands (pin, summarize, tasks, drift, history, memory…) |
 | `collect-git-policy.py` | Deterministic git-policy facts (branches, tags, workflows, dependabot/CHANGELOG, manifest↔tag) for `tools:git-policy-auditor` to render |
 | `check-manifest-tag.py` | Assert a repo's manifest version equals its latest release tag — collector/audit + CI gate (stdlib, exit 0/1/2) |
+| `stamp-git-policy.py` | Stamp git-policy CI files into a target repo — derives per-repo values, dry-run diff by default, `--write` to apply; never touches git |
 | `post-save.py`, `session_naming.py`, `relabel-forks.py`, `name-session.py`, `rename-unnamed.py` | Session naming + fork disambiguation |
 | `update-project-map.py`, `collect-plan-map.py` | Keep `.project-map` current |
 | `session_index.py`, `mark-session-done.py`, `add-tasks.py`, `lint-py.py`, `setup-mcp.py`, `validate-env.py` | Supporting utilities + hook bodies |

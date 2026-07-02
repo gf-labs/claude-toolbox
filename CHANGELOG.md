@@ -3,6 +3,15 @@
 All notable changes to the `tools` plugin (`claude-toolbox`) are documented here.
 This project follows [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Added
+- `scripts/stamp-git-policy.py` — deterministic git-policy adoption transform:
+  derives per-repo CI values, renders the `templates/git-policy/` files, and
+  dry-run-diffs (default) or writes (`--write`) them into a target repo's
+  working tree. Closes the audit's "apply-manual" gap; `test.yml` template
+  gains an explicit Lint step (removed on stamp when the target has no ruff config).
+
 ## [0.6.0] — 2026-07-01
 
 ### Added

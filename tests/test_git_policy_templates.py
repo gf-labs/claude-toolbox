@@ -110,3 +110,31 @@ def test_extract_matches_unbracketed_heading():
 def test_extract_falls_back_when_version_absent():
     # e.g. changes still parked under [Unreleased] at tag time.
     assert _run_extract(_SAMPLE, "v9.9.9") == "Release 9.9.9"
+
+
+# --- stamp seams: scripts/stamp-git-policy.py rewrites exactly these lines ----
+# If one of these fails after a template edit, update the stamp's anchors too.
+
+TEST_YML = WF_DIR / "test.yml"
+
+
+def test_stamp_anchors_in_test_yml():
+    text = TEST_YML.read_text(encoding="utf-8")
+    assert text.count('          python-version: "3.12"') == 2
+    assert text.count("        run: python3 -m pip install -e '.[dev]'") == 1
+    assert text.count("        run: python3 -m pytest tests/ -q") == 1
+    assert text.count("      - name: Lint\n        run: ruff check .\n") == 1
+
+
+def test_stamp_anchors_in_release_yml():
+    text = RELEASE_YML.read_text(encoding="utf-8")
+    assert text.count('          python-version: "3.12"') == 1
+
+
+def test_templates_use_vendored_checker_path():
+    # Stamped repos always vendor to .github/scripts/ — the templates must
+    # already say so verbatim (no checker-path replacement exists in the stamp).
+    for wf in WORKFLOWS:
+        text = wf.read_text(encoding="utf-8")
+        if "check-manifest-tag" in text:
+            assert ".github/scripts/check-manifest-tag.py" in text

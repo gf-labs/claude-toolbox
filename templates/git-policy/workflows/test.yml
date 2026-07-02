@@ -28,6 +28,8 @@ jobs:
       # --- per-repo: adjust install + test/lint to the target on stamp ---
       - name: Install dev deps
         run: python3 -m pip install -e '.[dev]'
+      - name: Lint
+        run: ruff check .
       - name: Test
         run: python3 -m pytest tests/ -q
 
@@ -46,5 +48,5 @@ jobs:
         with:
           python-version: "3.12"
       - name: Assert main's manifest has a matching tag
-        # Adjust the path on stamp (.github/scripts/ when vendored).
+        # Vendored into .github/scripts/ by stamp-git-policy (re-stamp to update).
         run: python3 .github/scripts/check-manifest-tag.py --repo .
