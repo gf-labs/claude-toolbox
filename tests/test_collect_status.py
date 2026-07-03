@@ -61,3 +61,18 @@ def test_container_label_is_nearest_ancestor(tmp_path):
     assert rows["beta"] == "alpha"    # nearest ancestor, not "work" — and not dropped
     assert rows["work"] == "header"   # containers render as headers
     assert rows["alpha"] == "header"  # ...including containers that are themselves nested
+
+
+def test_rows_carry_last_commit_date_column(tmp_path):
+    home = _fixture_home(tmp_path)
+    r = _run_all(home, tmp_path)
+    assert r.returncode == 0, r.stderr
+    lines = r.stdout.splitlines()
+    header = lines[0].split("\t")
+    assert header[-1] == "LAST_COMMIT_DATE"
+    for ln in lines[1:]:
+        if "\t" not in ln:
+            continue
+        assert len(ln.split("\t")) == len(header)
+        # fixture projects aren't git repos -> the date cell is the '—' sentinel
+        assert ln.split("\t")[-1] == "—"

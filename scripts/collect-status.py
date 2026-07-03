@@ -73,14 +73,18 @@ def _emit_row(name, path, group, projects_dir):
         branches = '—'
         changes_str = '—'
         last_hash = '—'
+        last_date = '—'
     else:
         branch = _run(['git', '-C', str(path), 'rev-parse', '--abbrev-ref', 'HEAD']) or '?'
         branches = _local_branch_count(path)
         status_out = _run(['git', '-C', str(path), 'status', '--short']) or ''
         changes = len([ln for ln in status_out.splitlines() if ln.strip()])
         changes_str = str(changes) if changes else '—'
-        last_commit = _run(['git', '-C', str(path), 'log', '--oneline', '-1']) or '?'
-        last_hash = last_commit.split()[0] if last_commit.split() else '?'
+        last_commit = _run(['git', '-C', str(path), 'log', '-1', '--format=%h\t%cs'])
+        if last_commit and '\t' in last_commit:
+            last_hash, last_date = last_commit.split('\t', 1)
+        else:
+            last_hash, last_date = '?', '—'
 
     proj_key = project_key(path, projects_dir)
     proj_dir = projects_dir / proj_key
@@ -107,7 +111,7 @@ def _emit_row(name, path, group, projects_dir):
     last_snap, sessions_since = _snapshot_info(mem_file)
     last_log, log_entries = _log_info(proj_dir)
 
-    print(f'{group}\t{name}\t{branch}\t{branches}\t{sessions}\t{changes_str}\t{last_hash}\t{mem_str}\t{mem_status}\t{backlog_count}\t{last_snap}\t{sessions_since}\t{last_log}\t{log_entries}')
+    print(f'{group}\t{name}\t{branch}\t{branches}\t{sessions}\t{changes_str}\t{last_hash}\t{mem_str}\t{mem_status}\t{backlog_count}\t{last_snap}\t{sessions_since}\t{last_log}\t{log_entries}\t{last_date}')
 
 
 mode, data, cwd = get_scope()
@@ -129,7 +133,7 @@ projects = enumerate_projects(scope=(mode, data, cwd))
 grouped = group(projects)  # container name -> [Project]; None key = top-level
 
 # --- Output ---
-print('GROUP\tPROJECT\tBRANCH\tLOCAL_BRANCHES\tSESSIONS\tCHANGES\tLAST_COMMIT\tMEMORY_LINES\tMEMORY_STATUS\tBACKLOG_ITEMS\tLAST_SNAPSHOT\tSESSIONS_SINCE\tLAST_SESSION_LOG\tLOG_ENTRIES')
+print('GROUP\tPROJECT\tBRANCH\tLOCAL_BRANCHES\tSESSIONS\tCHANGES\tLAST_COMMIT\tMEMORY_LINES\tMEMORY_STATUS\tBACKLOG_ITEMS\tLAST_SNAPSHOT\tSESSIONS_SINCE\tLAST_SESSION_LOG\tLOG_ENTRIES\tLAST_COMMIT_DATE')
 
 _emitted = set()
 

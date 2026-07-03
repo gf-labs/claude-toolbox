@@ -4,11 +4,13 @@
 Dispatch-only — never re-derives enumeration/grouping the collectors and _projects
 already do. All I/O is under __main__ so the pure functions are importable for tests.
 """
+import datetime
 import subprocess
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
+import _atlas_render  # noqa: E402
 from _projects import (  # noqa: E402
     enumerate_projects,
     global_scope,
@@ -18,7 +20,7 @@ from _projects import (  # noqa: E402
 )
 
 SCRIPTS = Path(__file__).parent
-FACETS = ('projects', 'sessions', 'memory', 'plans', 'plugins', 'claude.md')  # closed vocabulary
+FACETS = ('projects', 'sessions', 'memory', 'plans', 'specs', 'plugins', 'claude.md')  # closed vocabulary
 
 # facet -> backing collector script
 COLLECTOR = {
@@ -26,13 +28,15 @@ COLLECTOR = {
     'sessions': 'collect-session-list.py',  # NOT collect-sessions.py (cleanup inventory)
     'memory': 'collect-status.py',       # a projection of the same rows
     'plans': 'collect-plans.py',
+    'specs': 'collect-superpowers-docs.py',
     'plugins': 'collect-plugin-drift.py',
     'claude.md': 'collect-claude-md-map.py',
 }
 
 # Scope-aware collectors that would otherwise inherit the ambient cwd scope;
 # atlas is the cross-project lens, so it forces them global.
-FORCE_GLOBAL = ('collect-status.py', 'collect-claude-md-map.py', 'collect-session-list.py')
+FORCE_GLOBAL = ('collect-status.py', 'collect-claude-md-map.py', 'collect-session-list.py',
+                'collect-superpowers-docs.py')
 
 # Machine-level facets: their lines don't name projects, so scope-narrowing by
 # project name would gut them — always rendered whole.
@@ -43,7 +47,7 @@ def parse_args(argv):
     """argv (no program name) -> request dict. Pure; unknown tokens accumulate in errors."""
     facets, errors = [], []
     project = None
-    depth = 'compact'
+    depth = 'auto'
     stale = False
     all_scope = False
     dir_arg = None
@@ -158,39 +162,41 @@ def _keep_line(ln, names):
 def emit(request):
     out = [render_request(request)]
 
-    proj_name = None
+    proj_key = proj_name = None
     if request['project']:
         proj_key, proj_name = resolve_project(request['project'])
         if proj_key is None:
             out.append('=== ERROR ===')
             out.append(proj_name)  # holds the reason
-            # ERROR is terminal by design (fail-fast on a malformed request):
-            # the command renders the message and stops, so later sections
-            # (facets, STALE) are deliberately not emitted.
+            # ERROR is terminal by design (fail-fast on a malformed request).
             return '\n'.join(out)
 
-    # Scope narrowing (which rows render): --project pins one name; --dir anchors an
-    # arbitrary directory's subtree; otherwise the cwd-subtree default applies unless
-    # --all widens to the whole machine. The dispatched collectors always run global
-    # (--all) — narrowing happens here, on rendered rows.
-    keep_names = {proj_name} if proj_name else None
-    if keep_names is None and request['dir']:
-        projects = enumerate_projects(scope=global_scope())
-        anchor, err = resolve_dir(request['dir'], projects)
+    # Scope resolution -> the in-scope Project list. The nesting IS the
+    # flag-precedence rule: --project > --dir > --all > subtree. Collectors always
+    # run global (--all); narrowing happens here, on the resolved list.
+    projects_all = enumerate_projects(scope=global_scope())
+    if proj_key is not None:
+        scope_projects = [p for p in projects_all if p.key == proj_key]
+    elif request['dir']:
+        anchor, err = resolve_dir(request['dir'], projects_all)
+        scope_projects = []
         if err is None:
-            keep_names = {p.name for p in projects_under(anchor, projects)}
-            if not keep_names:
+            scope_projects = projects_under(anchor, projects_all)
+            if not scope_projects:
                 err = f'--dir "{request["dir"]}": no registered projects under {anchor}'
         if err:
             out.append('=== ERROR ===')
             out.append(err)
             # Same fail-fast contract as an unresolvable --project.
             return '\n'.join(out)
-    if keep_names is None and not request['all']:
-        sub = {p.name for p in subtree_projects()}
-        everything = {p.name for p in enumerate_projects(scope=global_scope())}
-        if sub != everything:
-            keep_names = sub
+    elif request['all']:
+        scope_projects = projects_all
+    else:
+        scope_projects = subtree_projects()
+
+    keep_names = ({p.name for p in scope_projects}
+                  if {p.key for p in scope_projects} != {p.key for p in projects_all}
+                  else None)
 
     status_cache = {}
     def status_out():
@@ -198,18 +204,45 @@ def emit(request):
             status_cache['v'] = _run('collect-status.py')
         return status_cache['v']
 
-    for facet in request['facets']:
+    project_facets = [f for f in request['facets'] if f not in GLOBAL_FACETS]
+    global_facets = [f for f in request['facets'] if f in GLOBAL_FACETS]
+
+    if len(project_facets) >= 2:
+        # Merged mode: parse the collectors' rows and render one ATLAS section.
+        parsed = {}
+        if 'projects' in project_facets or 'memory' in project_facets:
+            parsed['status'] = _atlas_render.parse_status(status_out())
+        if 'sessions' in project_facets:
+            parsed['sessions'] = _atlas_render.parse_sessions(_run(COLLECTOR['sessions']))
+        if 'plans' in project_facets:
+            parsed['plans'] = _atlas_render.parse_plans(_run(COLLECTOR['plans']))
+        if 'specs' in project_facets:
+            parsed['specs'] = _atlas_render.parse_specs(_run(COLLECTOR['specs']))
+        if 'claude.md' in project_facets:
+            parsed['claude_md'] = _atlas_render.parse_claude_md(_run(COLLECTOR['claude.md']))
+        scope_label = ('project' if request['project']
+                       else ('dir' if request['dir'] else ('all' if request['all'] else 'subtree')))
+        out.append('=== ATLAS ===')
+        out.append(_atlas_render.build_atlas(scope_projects, project_facets, parsed,
+                                             request['depth'], datetime.date.today(),
+                                             scope_label))
+    else:
+        # Single-facet mode: the v1 flat section, byte-identical.
+        for facet in project_facets:
+            out.append(f'=== {facet.upper()} ===')
+            text = status_out() if facet in ('projects', 'memory') else _run(COLLECTOR[facet])
+            if keep_names:
+                text = '\n'.join(ln for ln in text.splitlines() if _keep_line(ln, keep_names))
+            out.append(text.rstrip('\n') or '(no data)')
+
+    for facet in global_facets:
         out.append(f'=== {facet.upper()} ===')
-        text = status_out() if facet in ('projects', 'memory') else _run(COLLECTOR[facet])
-        if keep_names and facet not in GLOBAL_FACETS:
-            text = '\n'.join(ln for ln in text.splitlines() if _keep_line(ln, keep_names))
-        out.append(text.rstrip('\n') or '(no data)')
+        out.append(_run(COLLECTOR[facet]).rstrip('\n') or '(no data)')
 
     if request['stale']:
         out.append('=== STALE ===')
         # STALE is machine-level hygiene — always global, never subtree-narrowed.
-        active = {p.key for p in enumerate_projects(scope=global_scope())}
-        orphaned, unscoped = stale_keys(active_keys=active)
+        orphaned, unscoped = stale_keys(active_keys={p.key for p in projects_all})
         if not orphaned and not unscoped:
             out.append('(none)')
         else:

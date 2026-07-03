@@ -18,9 +18,9 @@ def _load():
 
 def test_parse_defaults_to_all_project_facets():
     r = _load().parse_args([])
-    assert r["facets"] == ["projects", "sessions", "memory", "plans", "claude.md"]
+    assert r["facets"] == ["projects", "sessions", "memory", "plans", "specs", "claude.md"]
     assert "plugins" not in r["facets"]  # the one global facet stays opt-in
-    assert r["project"] is None and r["depth"] == "compact"
+    assert r["project"] is None and r["depth"] == "auto"
     assert r["stale"] is False and r["errors"] == []
 
 
@@ -60,12 +60,13 @@ def test_dry_run_echoes_request_only():
     assert "=== PLANS ===" not in result.stdout
 
 
-def test_default_dispatch_emits_projects_section():
+def test_default_dispatch_emits_merged_atlas_section():
     # smoke: real run against the live ~/.claude/projects
     result = subprocess.run([sys.executable, str(SCRIPT)], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     assert "=== REQUEST ===" in result.stdout
-    assert "=== PROJECTS ===" in result.stdout
+    assert "=== ATLAS ===" in result.stdout
+    assert "=== PROJECTS ===" not in result.stdout
 
 
 def test_resolve_project_unknown_name_reports_reason():
@@ -209,3 +210,31 @@ def test_sessions_facet_narrows_to_subtree(tmp_path, monkeypatch):
     assert "beta-sess" not in out
     out_all = mod.emit(mod.parse_args(["sessions", "--all"]))
     assert "alpha-sess" in out_all and "beta-sess" in out_all
+
+
+def test_parse_depth_flags():
+    mod = _load()
+    assert mod.parse_args([])["depth"] == "auto"
+    assert mod.parse_args(["--compact"])["depth"] == "compact"
+    assert mod.parse_args(["--full"])["depth"] == "full"
+
+
+def test_multi_facet_merges_into_atlas(tmp_path, monkeypatch):
+    _two_project_home(tmp_path, monkeypatch)  # cwd -> alpha
+    mod = _load()
+    out = mod.emit(mod.parse_args(["claude.md", "memory"]))
+    assert "=== ATLAS ===" in out
+    assert "=== CLAUDE.MD ===" not in out and "=== MEMORY ===" not in out
+    assert "## Atlas — subtree · 1 project" in out
+    assert "alpha" in out and "beta" not in out
+
+
+def test_specs_single_facet_stays_flat(tmp_path, monkeypatch):
+    _two_project_home(tmp_path, monkeypatch)
+    d = tmp_path / "work" / "alpha" / "docs" / "superpowers" / "specs"
+    d.mkdir(parents=True)
+    (d / "2026-07-02-thing-design.md").write_text("# Thing Design\n", encoding="utf-8")
+    mod = _load()
+    out = mod.emit(mod.parse_args(["specs"]))
+    assert "=== SPECS ===" in out
+    assert "Thing Design" in out

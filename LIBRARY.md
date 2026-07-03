@@ -31,7 +31,7 @@ The map around you — current project + nested children by default, `--dir` to 
 
 | Command | Use when | Model |
 |---------|----------|-------|
-| `/tools:atlas` | Cross-project map — default: current project + children, every facet except plugins; `--dir NAME\|PATH` = the subtree under any directory; `--all` = every project; facets projects · sessions · memory · plans · plugins · claude.md; `--project NAME` inspects any project from anywhere; `--stale` lists orphaned/unscoped keys | haiku |
+| `/tools:atlas` | Cross-project map, adaptive render — ≤4 projects in scope → detail cards, more → aligned digest grouped by domain; default: current project + children, every facet except plugins; facets projects · sessions · memory · plans · specs · plugins · claude.md; `--dir NAME\|PATH` = the subtree under any directory; `--all` = every project; `--project NAME` inspects any project from anywhere; `--full`/`--compact` force cards/digest; `--stale` lists orphaned/unscoped keys | haiku |
 
 ### 🔖 Checkpoints & close-out — the only commands that write session memory
 These append to `session-log.md` / `MEMORY.md`.
