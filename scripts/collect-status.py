@@ -6,7 +6,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _scope import _reconstruct, get_scope, project_key
+from _projects import enumerate_projects, global_scope, group, stale_keys
+from _scope import get_scope, project_key
 
 
 def _run(cmd):
@@ -110,6 +111,8 @@ def _emit_row(name, path, group, projects_dir):
 
 
 mode, data, cwd = get_scope()
+if '--all' in sys.argv[1:]:
+    mode, data, cwd = global_scope()  # force the cross-project walk regardless of cwd
 projects_dir = Path.home() / '.claude' / 'projects'
 
 # --- Single mode ---
@@ -121,62 +124,39 @@ if mode == 'single':
     print(f'LAST_SNAPSHOT\t{last_snap}\tSESSIONS_SINCE\t{sessions_since}')
     sys.exit(0)
 
-# --- Build active project list ---
-if mode == 'parent':
-    active = list(data)  # [(key, path), ...]
-else:
-    seen = set()
-    active = []
-    for proj_key_dir in sorted(projects_dir.iterdir()):
-        if not proj_key_dir.is_dir():
-            continue
-        for path in _reconstruct(proj_key_dir.name, None):
-            if path not in seen and path != Path.home():
-                seen.add(path)
-                active.append((proj_key_dir.name, path))
-
-# --- Group detection: find parent→children relationships within active list ---
-all_paths = {str(p) for _, p in active}
-groups = {}  # str(parent_path) → [(key, path)]
-top_level = []
-for key, path in active:
-    parent_str = next(
-        (ps for ps in all_paths if str(path).startswith(ps + '/') and ps != str(path)),
-        None
-    )
-    if parent_str:
-        groups.setdefault(parent_str, []).append((key, path))
-    else:
-        top_level.append((key, path))
-
-# --- Stale detection (always global — not scoped) ---
-active_keys = {key for key, _ in active}
-all_proj_keys = [p.name for p in sorted(projects_dir.iterdir()) if p.is_dir()]
-with_dash = {k for k in all_proj_keys if k.startswith('-')}
-orphaned_entries = []   # no dir on disk, or duplicate key
-unscoped_entries = []   # dir exists but it's the home dir
-for key in all_proj_keys:
-    if key in active_keys:
-        continue
-    if not key.startswith('-') and ('-' + key) in with_dash:
-        orphaned_entries.append((key, 'duplicate (no leading dash)'))
-        continue
-    candidates = list(_reconstruct(key, None))
-    if not candidates:
-        orphaned_entries.append((key, 'no dir on disk'))
-        continue
-    if candidates[0] == Path.home():
-        unscoped_entries.append((key, 'home dir — unscoped sessions'))
+# --- Active projects (typed; deterministic nearest-ancestor containers via _projects) ---
+projects = enumerate_projects(scope=(mode, data, cwd))
+grouped = group(projects)  # container name -> [Project]; None key = top-level
 
 # --- Output ---
 print('GROUP\tPROJECT\tBRANCH\tLOCAL_BRANCHES\tSESSIONS\tCHANGES\tLAST_COMMIT\tMEMORY_LINES\tMEMORY_STATUS\tBACKLOG_ITEMS\tLAST_SNAPSHOT\tSESSIONS_SINCE\tLAST_SESSION_LOG\tLOG_ENTRIES')
 
-for _key, path in top_level:
-    has_children = str(path) in groups
-    group_tag = 'header' if has_children else ''
-    _emit_row(path.name, path, group_tag, projects_dir)
-    for _child_key, child_path in groups.get(str(path), []):
-        _emit_row(child_path.name, child_path, path.name, projects_dir)
+_emitted = set()
+
+
+def _emit_tree(pr):
+    """Emit pr, then its children depth-first. Guard-first: the _emitted set makes
+    name-collision cycles impossible, and the trailing sweep below guarantees every
+    project renders exactly once (the old one-level render silently dropped rows)."""
+    if str(pr.path) in _emitted:
+        return
+    _emitted.add(str(pr.path))
+    kids = sorted(grouped.get(pr.name, []), key=lambda q: str(q.path))
+    _emit_row(pr.name, pr.path, 'header' if kids else (pr.container or ''), projects_dir)
+    for child in kids:
+        _emit_tree(child)
+
+
+for _pr in sorted(grouped.get(None, []), key=lambda q: str(q.path)):
+    _emit_tree(_pr)
+# Never drop a row: sweep anything not reachable from a top-level root
+# (possible under duplicate project names, where group()'s name keys collide).
+for _pr in sorted(projects, key=lambda q: str(q.path)):
+    _emit_tree(_pr)
+
+# --- Stale detection (always global — not scoped) ---
+orphaned_entries, unscoped_entries = stale_keys(projects_dir=projects_dir,
+                                                active_keys={p.key for p in projects})
 
 if orphaned_entries:
     print('')

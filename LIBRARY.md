@@ -26,6 +26,13 @@ Point-in-time situational awareness. None of these write anything. Pick by how c
 > The narrative-synthesis sibling of this group is the **`/tools:sit-rep`** *skill* (see Skills) —
 > use it for the multi-week arc, not the point-in-time snapshot.
 
+### 🗺️ Inventory — cross-project map
+The map around you — current project + nested children by default, `--dir` to anchor anywhere, `--all` for the whole machine (Orientation is single-project; this is cross-project).
+
+| Command | Use when | Model |
+|---------|----------|-------|
+| `/tools:atlas` | Cross-project map — default: current project + children, every facet except plugins; `--dir NAME\|PATH` = the subtree under any directory; `--all` = every project; facets projects · sessions · memory · plans · plugins · claude.md; `--project NAME` inspects any project from anywhere; `--stale` lists orphaned/unscoped keys | haiku |
+
 ### 🔖 Checkpoints & close-out — the only commands that write session memory
 These append to `session-log.md` / `MEMORY.md`.
 
@@ -110,14 +117,15 @@ Auto-fire handlers registered in `hooks/hooks.json`.
 
 ## Scripts (infrastructure)
 
-~35 files in `scripts/` — called by the commands/hooks above, not invoked directly. The
+~40 files in `scripts/` — called by the commands/hooks above, not invoked directly. The
 load-bearing ones:
 
 | Script(s) | Role |
 |-----------|------|
 | `_scope.py` | Scope detection + project-key encoding — **single source of truth** |
+| `_projects.py` | Typed cross-project enumeration (L2 over `_scope`) — powers atlas; future consumers migrate here |
 | `_slug.py` | Repo path → TaskWarrior project slug — **single source of truth** |
-| `collect-*.py` (≈18) | Data collectors feeding the commands (pin, summarize, tasks, drift, history, memory…) |
+| `collect-*.py` (≈19) | Data collectors feeding the commands (pin, summarize, tasks, drift, history, memory…); `collect-session-list.py` = the atlas sessions facet (distinct from `collect-sessions.py`, the cleanup inventory) |
 | `collect-git-policy.py` | Deterministic git-policy facts (branches, tags, workflows, dependabot/CHANGELOG, manifest↔tag) for `tools:git-policy-auditor` to render |
 | `check-manifest-tag.py` | Assert a repo's manifest version equals its latest release tag — collector/audit + CI gate (stdlib, exit 0/1/2) |
 | `stamp-git-policy.py` | Stamp git-policy CI files into a target repo — derives per-repo values, dry-run diff by default, `--write` to apply; never touches git |
@@ -129,5 +137,5 @@ load-bearing ones:
 
 ## At a glance
 
-**12 commands · 1 skill · 5 agents · 3 MCP tools · 5 hook handlers · ~35 scripts** — all
+**13 commands · 1 skill · 5 agents · 3 MCP tools · 6 hook handlers · ~40 scripts** — all
 user-facing surfaces namespaced `tools:`. Plugin manifest: `.claude-plugin/plugin.json`.

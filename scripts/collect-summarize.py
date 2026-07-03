@@ -12,7 +12,7 @@ mode, data, cwd = get_scope()
 
 if mode == 'single':
     cwd_key = data
-elif cwd is not None:
+elif mode == 'parent':
     cwd_key = project_key(cwd, projects_dir)
 else:
     try:

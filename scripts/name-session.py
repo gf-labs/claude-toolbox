@@ -48,7 +48,7 @@ else:
 
     if mode == 'single':
         cwd_key = data
-    elif cwd:
+    elif mode == 'parent':
         cwd_key = project_key(cwd, projects_dir)
     else:
         print('ERROR: cannot determine project key')

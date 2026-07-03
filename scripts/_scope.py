@@ -104,18 +104,43 @@ def resolve_key(key: str, cwd_str: str | None = None) -> Path | None:
     return next(_reconstruct(key, cwd_str), None)
 
 
-def get_scope(cwd: str | None = None) -> tuple[str, str | list[tuple[str, Path]], Path | None]:
+def all_projects(projects_dir: Path | None = None) -> list[tuple[str, Path]]:
+    """Every reconstructable project (excluding the home dir), as (key, path) pairs.
+
+    The canonical all-projects walk; get_scope's global branch delegates here, and
+    cross-project lenses use it to enumerate regardless of the ambient scope.
+    """
+    pd = Path(projects_dir) if projects_dir is not None else (Path.home() / '.claude' / 'projects')
+    if not pd.exists():
+        return []
+    seen = set()
+    projects = []
+    for proj_dir in sorted(pd.iterdir()):
+        if not proj_dir.is_dir():
+            continue
+        for path in _reconstruct(proj_dir.name, None):
+            if path not in seen and path != Path.home():
+                seen.add(path)
+                projects.append((proj_dir.name, path))
+    return projects
+
+
+def get_scope(cwd: str | None = None) -> tuple[str, list[tuple[str, Path]] | str, Path]:
     """
     Returns one of:
       ('single', project_key: str, cwd: Path)
       ('parent', children: list[tuple[str, Path]], cwd: Path)
-      ('global', None, None)
+      ('global', all_projects: list[tuple[str, Path]], cwd: Path)
+
+    'global' enumerates every reconstructable project (excluding the home dir),
+    same element shape as 'parent', so callers needing all-projects no longer
+    hand-roll the walk. Empty list when no project dirs exist.
     """
     cwd = Path(cwd or os.getcwd())
     projects_dir = Path.home() / '.claude' / 'projects'
 
     if not projects_dir.exists():
-        return ('global', None, None)
+        return ('global', [], cwd)
 
     # Single check first: if cwd is itself a known project, return single regardless
     # of whether it also has descendant projects (running from within a project root).
@@ -138,7 +163,8 @@ def get_scope(cwd: str | None = None) -> tuple[str, str | list[tuple[str, Path]]
     if descendants:
         return ('parent', descendants, cwd)
 
-    return ('global', None, None)
+    # global — enumerate ALL projects (was the ('global', None, None) dead-end).
+    return ('global', all_projects(), cwd)
 
 
 if __name__ == '__main__':
@@ -148,4 +174,4 @@ if __name__ == '__main__':
     elif mode == 'parent':
         print(f'PARENT {cwd} — {len(data)} projects: {[c.name for _, c in data]}')
     else:
-        print('GLOBAL')
+        print(f'GLOBAL — {len(data)} projects: {[c.name for _, c in data]}')
