@@ -17,6 +17,7 @@ model. Sibling collectors with self-contained logic (plans, plugin drift) are
 shelled out so they remain the single source of truth.
 """
 import json
+import os
 import re
 import subprocess
 import sys
@@ -45,6 +46,12 @@ def _run(cmd, cwd=None):
 
 
 # --- Resolve scope, project key, project dir -------------------------------
+# --- Config: pin preferences (emitted first; survives the no-project exit) ---
+print('=== CONFIG ===')
+_yes_all = os.environ.get('CLAUDE_TOOLBOX_PIN_YES_ALL', '').strip().lower()
+print(f'YES_ALL: {"yes" if _yes_all in ("1", "true", "yes") else "no"}')
+print()
+
 mode, data, cwd = get_scope()
 
 git_root = _run(['git', 'rev-parse', '--show-toplevel'])

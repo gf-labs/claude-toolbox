@@ -1,6 +1,7 @@
 ---
 description: Break checkpoint — status display, session log, optional MEMORY.md update
 allowed-tools: Bash, Read, Write, Edit
+argument-hint: [--yes-all] [--save] [--ask]
 # No model override: pin runs at high context by design. A command-level model
 # (e.g. claude-sonnet-4-6) resolves to the 200K-context variant and drops the
 # session's 1M window — collapsing the %-used denominator and triggering an
@@ -40,6 +41,31 @@ Notes:
 
 ---
 
+## Preferences (compute once, before Step 0)
+
+Read the `CONFIG` section's `YES_ALL` value and combine with `$ARGUMENTS`:
+
+- **yes_all** = (`--yes-all` present in `$ARGUMENTS`) OR (`CONFIG.YES_ALL` is `yes`).
+  If `--ask` is present in `$ARGUMENTS`, force **yes_all = false** (one-off override
+  of a saved preference).
+- **save** = `--save` present in `$ARGUMENTS`.
+
+When **save** is true, run this once now and surface its output line:
+
+```bash
+python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/save-pin-config.py
+```
+
+(Placing `--save` here means it persists even if the pin later short-circuits as a
+`REPEAT_PIN` no-op. The env var loads next session start; **yes_all** already governs
+the current run via the flag.)
+
+When **yes_all** is true, the pin runs non-interactively: ramp capture and the
+session-log save happen without confirmation prompts (drafts still print for
+awareness). When false, behavior is exactly as before.
+
+---
+
 ## Your role
 
 Break checkpoint assistant. Work through the steps below. Step 1 is display-only — proceed immediately. Steps 2 and 3 are interactive — wait for the user's reply before proceeding.
@@ -48,7 +74,11 @@ Break checkpoint assistant. Work through the steps below. Step 1 is display-only
 
 ## Step 0 — Ramp
 
-Invoke `/ramp:pin` now using the Skill tool with no arguments. If the Skill tool returns an error or the skill is not found (ramp not installed), skip silently and proceed to Step 1. After ramp:pin completes its full flow, continue with Step 1.
+Invoke `/ramp:pin` now using the Skill tool with no arguments. If the Skill tool returns an error or the skill is not found (ramp not installed), skip silently and proceed to Step 1.
+
+**If yes_all is true:** run `ramp:pin` non-interactively — auto-save any proposed node upgrades and auto-capture the ramp MEMORY snapshot without prompting (still print them for awareness). This orchestration directive overrides `ramp:pin`'s own "Ask:" prompts.
+
+After ramp:pin completes its flow, continue with Step 1.
 
 ---
 
@@ -117,7 +147,9 @@ No questions — display and proceed immediately to Step 2.
    **Resume:** [exact next step to take when picking this up] (omit if nothing in flight)
    **Open threads:** [blocker or deferred item] (omit section entirely if none)
    ```
-2. Show the draft. Ask: "Save to session-log.md? Reply `yes` or edit inline."
+2. Show the draft.
+   - **If yes_all is true:** append it without confirmation (no prompt) — the draft above is for awareness only.
+   - **Otherwise:** ask "Save to session-log.md? Reply `yes` or edit inline." and wait.
 3. On confirm: append to the `SESSION_LOG` `PATH`.
    - If state is MISSING: create with Write tool using `# [REPO] Session Log\n\n` header
    - If exists: append with Edit tool (match the tail of `LAST_ENTRY`, append `\n\n` + entry)

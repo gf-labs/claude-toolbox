@@ -38,7 +38,7 @@ These append to `session-log.md` / `MEMORY.md`.
 
 | Command | Use when |
 |---------|----------|
-| `/tools:pin` | Mid-session checkpoint before a break/compact — status, session log, optional MEMORY.md |
+| `/tools:pin` | Mid-session checkpoint before a break/compact — status, session log, optional MEMORY.md; `--yes-all` runs it non-interactively (`--save` persists, `--ask` overrides) |
 | `/tools:wrap` | End-of-session close-out — session log, git check, plan cleanup, backlog review, done marker |
 
 ### ⏸️ In-flight
