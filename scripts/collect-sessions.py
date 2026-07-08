@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _scope import get_scope
+from _projects import enumerate_projects
 from session_index import read_registry
 from session_naming import read_title
 
@@ -17,14 +17,6 @@ args, _ = parser.parse_known_args()
 
 projects_dir = Path.home() / '.claude' / 'projects'
 cutoff = time.time() - args.days * 86400
-
-_mode, _scope_data, _scope_cwd = get_scope()
-if _mode == 'single':
-    allowed_keys = {_scope_data}
-elif _mode == 'parent':
-    allowed_keys = {k for k, _ in _scope_data}
-else:
-    allowed_keys = None
 
 ARTIFACT_TYPES = {'file-history-snapshot'}
 CONVERSATION_TYPES = {
@@ -50,13 +42,9 @@ def is_artifact_only(path):
 if not projects_dir.exists():
     print('NO PROJECTS DIR')
 else:
-    for proj in sorted(projects_dir.iterdir()):
-        if not proj.is_dir():
-            continue
-        if allowed_keys is not None and proj.name not in allowed_keys:
-            continue
-        registry = read_registry(proj.name)
-        for f in sorted(proj.iterdir()):
+    for p in sorted(enumerate_projects(), key=lambda x: x.key):
+        registry = read_registry(p.key)
+        for f in sorted(p.proj_dir.iterdir()):
             if not f.name.endswith('.jsonl'):
                 continue
             try:
@@ -80,6 +68,6 @@ else:
                     else:
                         status = 'OLD' if stat.st_mtime < cutoff else 'KEEP'
                 label = f'  title={custom_title!r}' if custom_title else ''
-                print(f'{proj.name}  {f.stem}  {age:.0f}d  {stat.st_size // 1024}K  {status}{label}')
+                print(f'{p.key}  {f.stem}  {age:.0f}d  {stat.st_size // 1024}K  {status}{label}')
             except Exception as e:
                 print(f'ERROR: {f} — {e}')

@@ -118,3 +118,26 @@ def test_sole_session_is_skipped_as_current(tmp_path):
     result = _run(home, cwd, "--dry-run")
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "NONE"
+
+
+def test_dry_run_global_scope_across_projects(tmp_path):
+    # cwd is not a project and has no descendants -> global; both projects' older
+    # sessions become proposals (newest-per-project skipped as current).
+    home = tmp_path / "home"
+    alpha = tmp_path / "work" / "alpha"
+    beta = tmp_path / "work" / "beta"
+    projects = home / ".claude" / "projects"
+    projects.mkdir(parents=True)
+    for repo in (alpha, beta):
+        repo.mkdir(parents=True)
+        pd = projects / str(repo).replace("/", "-")
+        pd.mkdir()
+        _session(pd, "old12345-aaaa", [{"type": "user", "message": {"content": f"build {repo.name} thing"}}], mtime=1000)
+        _session(pd, "new67890-bbbb", [{"type": "user", "message": {"content": "current"}}], mtime=2000)
+    outside = tmp_path / "nowhere"
+    outside.mkdir()
+
+    result = _run(home, outside, "--dry-run")
+    assert result.returncode == 0, result.stderr
+    proposals = [ln for ln in result.stdout.splitlines() if ln.startswith("PROPOSAL: ")]
+    assert len(proposals) == 2, result.stdout

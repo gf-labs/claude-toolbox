@@ -18,6 +18,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
+from _projects import enumerate_projects
 from _scope import get_scope
 from session_naming import derive_name, extract_context, read_title, write_title
 
@@ -40,14 +41,8 @@ dry_run = _flag('--dry-run')
 
 # --- Resolve scope ---
 mode, data, cwd = get_scope()
-projects_dir = Path.home() / '.claude' / 'projects'
-
-if mode == 'single':
-    proj_dirs = [projects_dir / data]
-elif mode == 'parent':
-    proj_dirs = [projects_dir / key for key, _ in data]
-else:
-    proj_dirs = sorted(d for d in projects_dir.iterdir() if d.is_dir())
+proj_dirs = sorted((p.proj_dir for p in enumerate_projects((mode, data, cwd))),
+                   key=lambda d: d.name)
 
 results = []
 

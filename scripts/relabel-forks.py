@@ -21,13 +21,12 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _scope import get_scope
+from _projects import enumerate_projects, global_scope
 from session_naming import plan_fork_relabels, write_title
 
 args = sys.argv[1:]
 apply = '--apply' in args
 scan_all = '--all' in args
-projects_dir = Path.home() / '.claude' / 'projects'
 
 if '--path' in args:
     idx = args.index('--path')
@@ -36,15 +35,11 @@ if '--path' in args:
         sys.exit(1)
     dirs = [Path(args[idx + 1])]
 elif scan_all:
-    dirs = sorted(d for d in projects_dir.iterdir() if d.is_dir())
+    dirs = sorted((p.proj_dir for p in enumerate_projects(scope=global_scope())),
+                  key=lambda d: d.name)
 else:
-    mode, data, _ = get_scope()
-    if mode == 'single':
-        dirs = [projects_dir / data]
-    elif mode == 'parent':
-        dirs = [projects_dir / key for key, _ in data]
-    else:
-        dirs = sorted(d for d in projects_dir.iterdir() if d.is_dir())
+    dirs = sorted((p.proj_dir for p in enumerate_projects()),
+                  key=lambda d: d.name)
 
 total = 0
 written = 0
