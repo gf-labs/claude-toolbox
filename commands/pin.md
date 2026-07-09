@@ -1,7 +1,7 @@
 ---
 description: Break checkpoint — status display, session log, optional MEMORY.md update
 allowed-tools: Bash, Read, Write, Edit
-argument-hint: [--yes-all] [--save] [--ask]
+argument-hint: [--yes-all] [--save] [--ask] [--yas]
 # No model override: pin runs at high context by design. A command-level model
 # (e.g. claude-sonnet-4-6) resolves to the 200K-context variant and drops the
 # session's 1M window — collapsing the %-used denominator and triggering an
@@ -45,10 +45,13 @@ Notes:
 
 Read the `CONFIG` section's `YES_ALL` value and combine with `$ARGUMENTS`:
 
-- **yes_all** = (`--yes-all` present in `$ARGUMENTS`) OR (`CONFIG.YES_ALL` is `yes`).
+- **yes_all** = (`--yes-all` or `--yas` present in `$ARGUMENTS`) OR (`CONFIG.YES_ALL` is `yes`).
   If `--ask` is present in `$ARGUMENTS`, force **yes_all = false** (one-off override
   of a saved preference).
-- **save** = `--save` present in `$ARGUMENTS`.
+- **save** = `--save` or `--yas` present in `$ARGUMENTS`.
+
+(`--yas` is shorthand for `--yes-all --save` — run non-interactively now *and*
+persist the preference for future sessions.)
 
 When **save** is true, run this once now and surface its output line:
 
