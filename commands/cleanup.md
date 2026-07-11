@@ -26,24 +26,20 @@ import json, os, sys, shutil
 from pathlib import Path
 
 sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
-try:
-    from _scope import get_scope
-    _m, _d, _ = get_scope()
-    _allowed = {_d} if _m == 'single' else ({k for k, _ in _d} if _m == 'parent' else None)
-except Exception:
-    _allowed = None
+from _projects import iter_session_dirs
 
 pattern = 'PATTERN_PLACEHOLDER'.lower()
-projects_dir = Path.home() / '.claude' / 'projects'
 fh_dir = Path.home() / '.claude' / 'file-history'
 debug_dir = Path.home() / '.claude' / 'debug'
 senv_dir = Path.home() / '.claude' / 'session-env'
 
 results = []
 
-for proj in sorted(projects_dir.iterdir()):
-    if not proj.is_dir(): continue
-    if _allowed is not None and proj.name not in _allowed: continue
+try:
+    _dirs = iter_session_dirs()
+except Exception:
+    _dirs = iter_session_dirs(scope=('global', None, Path.cwd()))
+for _key, proj in _dirs:
     for f in sorted(proj.glob('*.jsonl')):
         try:
             custom_title = ''
@@ -181,15 +177,19 @@ python3 -c "
 import sys, os
 sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
 from pathlib import Path
-from _scope import _reconstruct
+from _projects import stale_keys
 projects_dir = Path.home() / '.claude' / 'projects'
+orphaned, _unscoped = stale_keys()
 found = []
-for d in sorted(projects_dir.iterdir()):
-    if not d.is_dir(): continue
-    if not list(_reconstruct(d.name, None)):
-        sessions = sum(1 for _ in d.glob('*.jsonl'))
-        size_k = sum(f.stat().st_size for f in d.rglob('*') if f.is_file()) // 1024
-        found.append(f'{d.name}\t{sessions} sessions\t{size_k}K')
+for key, reason in orphaned:
+    if reason != 'no dir on disk':
+        continue
+    d = projects_dir / key
+    if not d.is_dir():
+        continue
+    sessions = sum(1 for _ in d.glob('*.jsonl'))
+    size_k = sum(f.stat().st_size for f in d.rglob('*') if f.is_file()) // 1024
+    found.append(f'{key}\t{sessions} sessions\t{size_k}K')
 print('\n'.join(found) if found else 'NONE')
 "
 ```
@@ -528,13 +528,17 @@ python3 -c "
 import sys, os, shutil
 sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
 from pathlib import Path
-from _scope import _reconstruct
+from _projects import stale_keys
 projects_dir = Path.home() / '.claude' / 'projects'
+orphaned, _unscoped = stale_keys()
 deleted = []
-for d in sorted(projects_dir.iterdir()):
-    if d.is_dir() and not list(_reconstruct(d.name, None)):
+for key, reason in orphaned:
+    if reason != 'no dir on disk':
+        continue
+    d = projects_dir / key
+    if d.is_dir():
         shutil.rmtree(d)
-        deleted.append(d.name)
+        deleted.append(key)
 print('Deleted:', deleted)
 "
 ```

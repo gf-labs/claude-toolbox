@@ -104,6 +104,29 @@ def scoped_keys(scope=None):
     return None  # global -> unfiltered (preserves the None-means-all idiom)
 
 
+def iter_session_dirs(scope=None, projects_dir=None):
+    """Storage-space enumeration: (key, proj_dir) for every in-scope key-folder.
+
+    The complement of enumerate_projects (repo-space): keyed on what exists under
+    ~/.claude/projects, NOT on what reconstructs to a live repo. Global scope (scoped_keys
+    -> None) INCLUDES orphaned/moved-repo folders, which session search / cleanup / by-id
+    lookup need. Single/parent scope yields only in-scope keys, so orphans surface only when
+    the caller asks for everything. Pure/injectable for testing.
+    """
+    pd = _default_projects_dir(projects_dir)
+    if not pd.exists():
+        return []
+    keys = scoped_keys(scope)  # {key} | {child keys} | None(=all)
+    out = []
+    for d in sorted(pd.iterdir()):
+        if not d.is_dir():
+            continue
+        if keys is not None and d.name not in keys:
+            continue
+        out.append((d.name, d))
+    return out
+
+
 def current_key(scope=None, git_root=None, projects_dir=None):
     """Collapse scope to one project key. Caller injects git_root (owns the git call)."""
     mode, data, _ = scope if scope is not None else get_scope()

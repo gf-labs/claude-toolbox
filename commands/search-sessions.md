@@ -30,12 +30,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 
 sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
-try:
-    from _scope import get_scope
-    _m, _d, _ = get_scope()
-    _allowed = {_d} if _m == 'single' else ({k for k, _ in _d} if _m == 'parent' else None)
-except Exception:
-    _allowed = None
+from _projects import iter_session_dirs
 
 args = 'ARGUMENTS_PLACEHOLDER'.split()
 pattern = ''
@@ -49,13 +44,14 @@ while i < len(args):
 pattern = pattern.lower()
 cutoff = (datetime.now() - timedelta(days=days)).timestamp() if days else 0
 
-projects_dir = Path.home() / '.claude' / 'projects'
 results = []
 
-for proj in sorted(projects_dir.iterdir()):
-    if not proj.is_dir(): continue
-    if _allowed is not None and proj.name not in _allowed: continue
-    for f in sorted(proj.glob('*.jsonl')):
+try:
+    _dirs = iter_session_dirs()
+except Exception:
+    _dirs = iter_session_dirs(scope=('global', None, Path.cwd()))
+for _key, proj_dir in _dirs:
+    for f in sorted(proj_dir.glob('*.jsonl')):
         if days and f.stat().st_mtime < cutoff: continue
         try:
             custom_title = first_user = last_prompt = ''
@@ -80,7 +76,7 @@ for proj in sorted(projects_dir.iterdir()):
             if pattern in searchable:
                 from datetime import date
                 age_days = (datetime.now().timestamp() - f.stat().st_mtime) / 86400
-                print(f'MATCH|{proj.name}|{f.stem[:8]}|{int(age_days)}d|{f.stat().st_size//1024}K|{custom_title or \"(untitled)\"}|{first_user[:80]}')
+                print(f'MATCH|{_key}|{f.stem[:8]}|{int(age_days)}d|{f.stat().st_size//1024}K|{custom_title or \"(untitled)\"}|{first_user[:80]}')
         except Exception:
             pass
 "
