@@ -124,6 +124,7 @@ load-bearing ones:
 |-----------|------|
 | `_scope.py` | Scope detection + project-key encoding — **single source of truth** |
 | `_projects.py` | L2 project enumeration over `_scope` — repo-space (`enumerate_projects`) *and* storage-space (`iter_session_dirs`, session-key folders incl. orphans); powers atlas + session-history commands |
+| `_session.py` | Current-session JSONL resolution — env-var-first (`CLAUDE_CODE_SESSION_ID`), heuristic fallback; **single source of truth** for "which session is live" |
 | `_slug.py` | Repo path → TaskWarrior project slug — **single source of truth** |
 | `collect-*.py` (≈19) | Data collectors feeding the commands (pin, summarize, tasks, drift, history, memory…); `collect-session-list.py` = the atlas sessions facet (distinct from `collect-sessions.py`, the cleanup inventory) |
 | `collect-git-policy.py` | Deterministic git-policy facts (branches, tags, workflows, dependabot/CHANGELOG, manifest↔tag) for `tools:git-policy-auditor` to render |

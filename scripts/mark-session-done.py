@@ -12,6 +12,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from _scope import get_scope, project_key
+from _session import current_session_jsonl
 from session_index import get_status, set_status
 from session_naming import write_title
 
@@ -45,7 +46,7 @@ if not jsonl_files:
     print(f'ERROR: No session files found in {proj_dir}', file=sys.stderr)
     sys.exit(1)
 
-current = max(jsonl_files, key=lambda f: f.stat().st_mtime)
+current = current_session_jsonl(proj_dir)
 project_key = proj_dir.name
 sid = current.stem
 

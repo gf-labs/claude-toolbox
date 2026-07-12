@@ -15,6 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from _scope import get_scope, project_key
+from _session import current_session_jsonl
 
 mode, data, cwd = get_scope()
 
@@ -44,10 +45,10 @@ if not sys.stdin.isatty():
         session_prefix = None
 
 if session_prefix is None:
-    jsonl_files = list(proj_dir.glob("*.jsonl"))
-    if not jsonl_files:
+    current = current_session_jsonl(proj_dir)
+    if current is None:
         sys.exit(0)  # No sessions — allow compact
-    session_prefix = max(jsonl_files, key=lambda f: f.stat().st_mtime).stem[:8]
+    session_prefix = current.stem[:8]
 
 session_log = proj_dir / "memory" / "session-log.md"
 if session_log.exists() and f"· {session_prefix}" in session_log.read_text(encoding='utf-8'):
