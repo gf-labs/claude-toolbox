@@ -83,24 +83,6 @@ def test_scoped_keys_global_is_none():
     assert _projects.scoped_keys(scope=("global", [("-a", Path("/a"))], Path("/"))) is None
 
 
-# --- current_key ---
-def test_current_key_single_returns_key():
-    assert _projects.current_key(scope=("single", "-k", Path("/x"))) == "-k"
-
-
-def test_current_key_nonsingle_uses_git_root(tmp_path):
-    projects = tmp_path / "projects"
-    projects.mkdir()
-    (projects / "-Users-x-repo").mkdir(parents=True)
-    key = _projects.current_key(scope=("global", [], tmp_path),
-                                git_root="/Users/x/repo", projects_dir=projects)
-    assert key == "-Users-x-repo"
-
-
-def test_current_key_nonsingle_without_git_root_is_none():
-    assert _projects.current_key(scope=("global", [], Path("/"))) is None
-
-
 # --- group ---
 def test_group_nests_by_container():
     root = Project("-r", Path("/mono"), "mono", None, Path("/pd/-r"))

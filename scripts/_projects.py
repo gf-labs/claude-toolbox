@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _scope import _reconstruct, all_projects, get_scope, project_key  # noqa: E402
+from _scope import _reconstruct, all_projects, get_scope  # noqa: E402
 
 
 @dataclass
@@ -125,16 +125,6 @@ def iter_session_dirs(scope=None, projects_dir=None):
             continue
         out.append((d.name, d))
     return out
-
-
-def current_key(scope=None, git_root=None, projects_dir=None):
-    """Collapse scope to one project key. Caller injects git_root (owns the git call)."""
-    mode, data, _ = scope if scope is not None else get_scope()
-    if mode == 'single':
-        return data
-    if git_root is None:
-        return None
-    return project_key(git_root, _default_projects_dir(projects_dir))
 
 
 def group(projects):
