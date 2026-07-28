@@ -1,6 +1,14 @@
 version: 2
 updates:
+  # Keep the SHA-pinned GitHub Actions in .github/workflows/ current.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    # Without this, Dependabot opens against the default branch (main), and
+    # under Git Flow main takes release/hotfix merges only. A bump merged
+    # straight to main leaves an untagged commit there (main's tree stops
+    # matching the release tag), puts main ahead of develop, and is invisible
+    # to check-manifest-tag.py — the manifest is untouched, so the gate passes.
+    # Bumps belong on develop and reach main through a release like anything else.
+    target-branch: "develop"

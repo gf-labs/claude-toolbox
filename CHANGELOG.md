@@ -20,6 +20,12 @@ This project follows [Semantic Versioning](https://semver.org).
 - `tests/test_cli_capability_audit.py` — 23 cases covering both parsers as units and both
   CLIs end to end.
 
+### Fixed
+- Dependabot now targets `develop` (`target-branch`), not the default branch. It had been
+  opening action bumps against `main`, where Git Flow permits release and hotfix merges
+  only — merging one would leave an untagged commit on `main`, put `main` ahead of
+  `develop`, and pass `check-manifest-tag.py` unnoticed because the manifest is untouched.
+
 ## [0.7.0] — 2026-07-28
 
 ### Added
