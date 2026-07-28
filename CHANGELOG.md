@@ -3,6 +3,23 @@
 All notable changes to the `tools` plugin (`claude-toolbox`) are documented here.
 This project follows [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Added
+- `cli-capability-audit` skill — derives a CLI's implemented command surface from its
+  dispatcher source (bash `case` arms and `if`-guards, Python equality chains / argparse /
+  click, Go cobra), diffs it against `--help` and the docs in both directions, and
+  publishes a capability map that records reality rather than intent. Ships two bundled
+  scripts (`extract-surface.py`, `diff-surface.py`), a failure-modes reference, and a map
+  template. No command is ever executed to introspect it; `--help` is the only invocation.
+- `diff-surface.py --strict` — exits 1 on findings so a trusted map can gate CI. The
+  default stays 0: findings are unverified candidates, not build failures.
+- Harness-sanity warnings in `diff-surface.py` — an empty implemented set, an empty
+  advertised set, or zero overlap between them now warns loudly and invalidates the run.
+  Real drift is patchy; a total mismatch is a broken checker, not a broken codebase.
+- `tests/test_cli_capability_audit.py` — 23 cases covering both parsers as units and both
+  CLIs end to end.
+
 ## [0.7.0] — 2026-07-28
 
 ### Added
