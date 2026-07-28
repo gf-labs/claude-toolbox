@@ -1,12 +1,16 @@
 name: test
 
 # Lint + test gate, plus a manifest<->tag drift guard on main. Runs on PRs into
-# main (the consumer-facing boundary) and on pushes to develop/main.
+# main AND develop, and on pushes to develop/main.
 # The repo is ruff-clean; `ruff check .` runs before pytest and fails the gate
 # on any lint regression (config in pyproject.toml [tool.ruff]).
+#
+# develop is in the PR list because integration is where regressions are cheap
+# to catch: gating only main meant feature PRs merged into develop unchecked,
+# and the first CI signal arrived at the release PR.
 on:
   pull_request:
-    branches: [main]
+    branches: [main, develop]
   push:
     branches: [develop, main]
     paths-ignore:

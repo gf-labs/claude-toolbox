@@ -57,13 +57,18 @@ def _extract_changelog_code() -> str:
     return textwrap.dedent("\n".join(lines[start + 1:ends[0]]))
 
 
-def _run_extract(changelog: str, tag: str) -> str:
-    """Run the extracted logic against a CHANGELOG fixture; return its stdout."""
+def _extract(changelog: str, tag: str) -> subprocess.CompletedProcess:
+    """Run the extracted logic against a CHANGELOG fixture; return the result."""
     code = _extract_changelog_code()
     with tempfile.TemporaryDirectory() as d:
         (Path(d) / "CHANGELOG.md").write_text(changelog, encoding="utf-8")
-        r = subprocess.run([sys.executable, "-c", code, tag],
-                           cwd=d, capture_output=True, text=True)
+        return subprocess.run([sys.executable, "-c", code, tag],
+                              cwd=d, capture_output=True, text=True)
+
+
+def _run_extract(changelog: str, tag: str) -> str:
+    """stdout of a run that is expected to succeed."""
+    r = _extract(changelog, tag)
     assert r.returncode == 0, r.stderr
     return r.stdout
 
@@ -107,9 +112,20 @@ def test_extract_matches_unbracketed_heading():
     assert "bare heading" in out
 
 
-def test_extract_falls_back_when_version_absent():
-    # e.g. changes still parked under [Unreleased] at tag time.
-    assert _run_extract(_SAMPLE, "v9.9.9") == "Release 9.9.9"
+def test_extract_hard_fails_when_version_absent():
+    """No matching section is a broken release, not a formatting nicety.
+
+    This previously fell back to the literal string "Release 9.9.9" and shipped
+    it as the entire Release body — e.g. when the changes were still parked
+    under [Unreleased] at tag time. The failure was silent: green workflow,
+    published Release, empty notes. It must fail loudly instead, before the
+    Release is created.
+    """
+    r = _extract(_SAMPLE, "v9.9.9")
+    assert r.returncode != 0
+    assert "Release 9.9.9" not in r.stdout          # no placeholder body emitted
+    assert "::error::" in r.stderr                  # annotated in the GH log
+    assert "## [9.9.9]" in r.stderr                 # names the fix
 
 
 # --- stamp seams: scripts/stamp-git-policy.py rewrites exactly these lines ----
@@ -127,8 +143,31 @@ def test_stamp_anchors_in_test_yml():
 
 
 def test_stamp_anchors_in_release_yml():
+    # release.yml re-runs the gate on the tag, so it carries the same
+    # install/test/lint seams as test.yml — each exactly once.
     text = RELEASE_YML.read_text(encoding="utf-8")
     assert text.count('          python-version: "3.12"') == 1
+    assert text.count("        run: python3 -m pip install -e '.[dev]'") == 1
+    assert text.count("        run: python3 -m pytest tests/ -q") == 1
+    assert text.count("      - name: Lint\n        run: ruff check .\n") == 1
+
+
+def test_release_yml_hard_fails_on_missing_changelog_section():
+    """The placeholder-notes fallback must stay gone.
+
+    `("## " + note) if note else f"Release {ver}"` silently published a Release
+    whose entire body was "Release X.Y.Z" when the CHANGELOG had no matching
+    section — a broken release that looked successful.
+    """
+    text = RELEASE_YML.read_text(encoding="utf-8")
+    assert 'f"Release {ver}"' not in text
+    assert "::error::No CHANGELOG.md section for" in text
+
+
+def test_workflows_gate_prs_into_develop():
+    """Integration PRs must be gated, not just the ones into main."""
+    text = TEST_YML.read_text(encoding="utf-8")
+    assert "branches: [main, develop]" in text
 
 
 def test_templates_use_vendored_checker_path():

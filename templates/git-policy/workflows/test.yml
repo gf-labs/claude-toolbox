@@ -1,11 +1,15 @@
 name: test
 
 # Lint + test gate, plus a manifest<->tag drift guard on main. Runs on PRs into
-# main (the consumer-facing boundary) and on pushes to develop/main. Adjust the
-# install/run lines per repo when stamping (ruff+pytest here; pytest-only elsewhere).
+# main AND develop, and on pushes to develop/main. Adjust the install/run lines
+# per repo when stamping (ruff+pytest here; pytest-only elsewhere).
+#
+# develop is in the PR list because integration is where regressions are cheap
+# to catch: gating only main means feature PRs merge into develop unchecked and
+# the first CI signal arrives at the release PR.
 on:
   pull_request:
-    branches: [main]
+    branches: [main, develop]
   push:
     branches: [develop, main]
     paths-ignore:
