@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
-"""Assert a repo's manifest version matches its latest release tag.
+"""Assert a repo's manifest version matches its release tag.
 
 Shares the genre of gfl-marketplace's validate-marketplace.py (a stdlib CI gate
 that exits non-zero) applied to the manifest<->tag sync rule in git-policy.md.
 Dual-use: the facts collector runs it during audit, and release.yml vendors it
 as a CI gate. stdlib-only.
+
+Three modes, in order of strictness:
+  --tag vX.Y.Z  compare against exactly that tag (release.yml, on a tag push)
+  --nearest     compare against the nearest tag REACHABLE from HEAD, and name
+                the squash-orphan case (release-gate.yml, on a push to main)
+  (default)     compare against the highest stable tag anywhere in the repo —
+                reachability-blind, fine for auditing an arbitrary checkout
+Exit codes: 0 OK, 1 DRIFT, 2 INDETERMINATE.
 """
 from __future__ import annotations
 
@@ -69,11 +77,30 @@ def git_tags(repo: Path) -> list[str]:
     return [ln for ln in out.stdout.splitlines() if ln.strip()]
 
 
+def nearest_reachable_tag(repo: Path) -> str | None:
+    """Nearest tag reachable from HEAD (`git describe`), or None if there is none.
+
+    Differs from latest_stable_tag() in the way that matters on main: this walks
+    history, so a tag that exists in the repo but is NOT an ancestor of HEAD is
+    invisible here. That is the point — see main()'s --nearest branch.
+    """
+    out = subprocess.run(
+        ["git", "-C", str(repo), "describe", "--tags", "--abbrev=0"],
+        capture_output=True, text=True,
+    )
+    return out.stdout.strip() or None
+
+
 def main(argv: list[str]) -> int:
     import argparse
     ap = argparse.ArgumentParser(description="Assert manifest version == latest release tag.")
     ap.add_argument("--repo", default=".", help="repo directory (default: cwd)")
     ap.add_argument("--tag", help="compare against this exact tag instead of the latest")
+    ap.add_argument(
+        "--nearest", action="store_true",
+        help="compare against the nearest tag REACHABLE from HEAD (git describe) "
+             "instead of the highest tag in the repo; use on main",
+    )
     args = ap.parse_args(argv)
     repo = Path(args.repo).resolve()
 
@@ -90,6 +117,35 @@ def main(argv: list[str]) -> int:
             print(f"OK: {manifest} version {version} == tag {args.tag}")
             return 0
         print(f"DRIFT: {manifest} version {version} != tag {args.tag}")
+        return 1
+
+    if args.nearest:
+        want = f"v{version}"
+        try:
+            tags = git_tags(repo)
+        except subprocess.CalledProcessError as e:
+            print(f"INDETERMINATE: not a git repo or git failed ({e})")
+            return 2
+        near = nearest_reachable_tag(repo)
+        if near == want:
+            print(f"OK: {manifest} version {version} == nearest reachable tag {want}")
+            return 0
+        # Separate "never tagged" from "tagged but unreachable". The second is the
+        # squash-merge trap: `git describe` walks history, so squashing release/*
+        # into main orphans the tag on a branch main cannot reach. A reachability-
+        # blind check (the default mode above) passes here and hides it.
+        if want in tags:
+            print(
+                f"DRIFT: {want} exists but is NOT reachable from HEAD "
+                f"(nearest is {near or '(none)'}) — release/* was likely SQUASH-merged, "
+                "which orphans the tag. Re-merge with a merge commit, or move the tag "
+                "onto the tip."
+            )
+        else:
+            print(
+                f"DRIFT: nearest reachable tag {near or '(none)'} != {want} — "
+                "annotated-tag the release tip before merging."
+            )
         return 1
 
     try:

@@ -144,3 +144,60 @@ def test_cli_tag_mode_matches_given_tag(tmp_path):
     _init_repo(repo, "1.2.0")  # no real tag needed in --tag mode
     assert _run("--repo", str(repo), "--tag", "v1.2.0").returncode == 0
     assert _run("--repo", str(repo), "--tag", "v9.9.9").returncode == 1
+
+
+# --- --nearest mode (reachability-aware; used by release-gate.yml on main) ---
+
+
+def _bump_manifest(repo: Path, version: str, message: str) -> None:
+    _write(repo / ".claude-plugin" / "plugin.json", {"name": "x", "version": version})
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", message)
+
+
+def test_nearest_ok_when_tag_is_reachable(tmp_path):
+    repo = tmp_path / "r"
+    _init_repo(repo, "1.2.0", "v1.2.0")
+    result = _run("--repo", str(repo), "--nearest")
+    assert result.returncode == 0, result.stdout
+    assert "OK" in result.stdout and "reachable" in result.stdout
+
+
+def test_nearest_drift_when_never_tagged(tmp_path):
+    repo = tmp_path / "r"
+    _init_repo(repo, "1.2.0")
+    result = _run("--repo", str(repo), "--nearest")
+    assert result.returncode == 1
+    assert "(none)" in result.stdout and "annotated-tag" in result.stdout
+
+
+def test_nearest_detects_orphaned_tag_after_squash(tmp_path):
+    """The case the default mode cannot see.
+
+    Simulates a squash-merge: the release commit is tagged on a side branch,
+    main gets an equivalent commit that is not a descendant of it. The tag still
+    exists in the repo, so the reachability-BLIND default mode passes — while
+    --nearest fails and names the squash.
+    """
+    repo = tmp_path / "r"
+    _init_repo(repo, "1.0.0", "v1.0.0")
+    _git(repo, "checkout", "-q", "-b", "release/1.1.0")
+    _bump_manifest(repo, "1.1.0", "release 1.1.0")
+    _git(repo, "tag", "-a", "v1.1.0", "-m", "v1.1.0")  # tag the release tip
+    _git(repo, "checkout", "-q", "main")
+    _bump_manifest(repo, "1.1.0", "squashed release 1.1.0")  # equivalent, not a descendant
+
+    blind = _run("--repo", str(repo))  # default mode: highest tag anywhere
+    assert blind.returncode == 0, "precondition: the blind check passes on an orphaned tag"
+
+    result = _run("--repo", str(repo), "--nearest")
+    assert result.returncode == 1
+    assert "not reachable" in result.stdout.lower()
+    assert "squash" in result.stdout.lower()
+
+
+def test_nearest_indeterminate_when_not_a_git_repo(tmp_path):
+    _write(tmp_path / ".claude-plugin" / "plugin.json", {"name": "x", "version": "1.0.0"})
+    result = _run("--repo", str(tmp_path), "--nearest")
+    assert result.returncode == 2
+    assert "INDETERMINATE" in result.stdout

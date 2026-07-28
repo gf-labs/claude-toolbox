@@ -41,19 +41,8 @@ jobs:
       - name: Test
         run: python3 -m pytest tests/ -q
 
-  # Guards the "manifest bumped on main with no matching tag" drift (the ramp
-  # failure mode). Presumes releases tag the release-branch tip BEFORE merge so
-  # tag and manifest co-arrive on main (see the policy's manifest<->tag section);
-  # without that it can flap in the post-merge/pre-tag window.
-  manifest-guard:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0  # tags needed for the default-mode comparison
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.11"
-      - name: Assert main's manifest has a matching tag
-        run: python3 scripts/check-manifest-tag.py --repo .
+# The manifest<->tag guard that used to live here moved to release-gate.yml.
+# It was push-to-main-only, so it could never be a required check (a skipped job
+# reports nothing, and a required check that never reports blocks the PR); it
+# also used the reachability-blind default mode, which passes on a squash-orphaned
+# tag. release-gate.yml splits the assertion by event and uses --nearest.

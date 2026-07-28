@@ -5,6 +5,23 @@ This project follows [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Added
+- `.github/workflows/release-gate.yml` — splits the manifest↔tag invariant by event so the
+  half that is knowable at PR time can be a required check. On a PR into `main` it asserts
+  only that `CHANGELOG.md` has a `## [<manifest>]` section; on a push to `main` it also
+  asserts the manifest matches the nearest **reachable** tag. Mirrors ramp's gate of the
+  same name.
+- `check-manifest-tag.py --nearest` — compares against `git describe --tags --abbrev=0`
+  instead of the highest tag anywhere in the repo, and distinguishes "never tagged" from
+  "tagged but unreachable from HEAD". The second is the squash-merge trap: squashing
+  `release/*` into `main` orphans the tag on history `main` cannot reach, which the
+  reachability-blind default mode passes silently.
+
+### Changed
+- The `manifest-guard` job moved out of `test.yml` into `release-gate.yml`. It ran only on
+  pushes to `main`, so it could never be promoted to a required check — a skipped job
+  reports no status, and a required check that never reports blocks the PR indefinitely.
+
 ### Removed
 - `docs/version-history.md` — an unreferenced milestone log, curated only through v0.5.x and
   three minor versions stale. Nothing in the repo linked to it, and `CHANGELOG.md` covers the
