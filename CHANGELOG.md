@@ -3,6 +3,39 @@
 All notable changes to the `tools` plugin (`claude-toolbox`) are documented here.
 This project follows [Semantic Versioning](https://semver.org).
 
+## [0.7.0] — 2026-07-28
+
+### Added
+- `/tools:atlas` — cross-project atlas with an adaptive render: ≤4 in-scope projects
+  get detail cards, more collapse to one aligned digest line each, grouped by domain.
+  Facets projects · sessions · memory · plans · specs · plugins · claude.md; `--dir
+  NAME|PATH` anchors the lens at any subtree, `--all` spans every project, `--project
+  NAME` inspects one from anywhere, `--full`/`--compact` force cards/digest, `--stale`
+  lists orphaned/unscoped keys. Built on a new `_projects.py` enumeration layer.
+- `/tools:pin` non-interactive flow — `--yes-all` runs the pin without prompts
+  (`--save` persists proposed node upgrades + the MEMORY snapshot, `--ask` overrides),
+  and `--yas` is shorthand for `--yes-all --save`. Config-driven via `YES_ALL`.
+- `scripts/stamp-git-policy.py` — deterministic git-policy adoption transform: derives
+  per-repo CI values, renders the `templates/git-policy/` files, and dry-run-diffs
+  (default) or writes (`--write`) them into a target repo. Closes the audit's
+  "apply-manual" gap; the `test.yml` template gains an explicit Lint step.
+
+### Changed
+- Project enumeration single-sourced onto `_projects.py` (`enumerate_projects` for
+  repo-space, `iter_session_dirs` for storage-space) — the hand-rolled enumeration
+  across collectors is gone; storage enumeration is namespace-split for orphan safety.
+- Current-session resolution now reads the `CLAUDE_CODE_SESSION_ID` environment
+  variable instead of inferring the live session from transcript mtimes — the
+  freshest-file heuristic misidentified the session whenever two were open at once.
+- Repo is ruff-clean with a CI lint gate on `test.yml`; `release.yml` now runs the
+  same lint+test bar before cutting a Release, and hard-fails when the pushed tag
+  has no matching `CHANGELOG.md` section (previously it shipped placeholder notes).
+- git-policy docs clarified: the manifest↔tag sync compares **versions, not commits**.
+
+### Fixed
+- Background jobs never claim fork titles in session naming.
+- `_scope._reconstruct` correctly inverts the lossy project-key encoding.
+
 ## [0.6.0] — 2026-07-01
 
 ### Added

@@ -24,7 +24,7 @@
 
 ### Versioning
 - Semantic Versioning. Pre-1.0 (`0.y.z`): a breaking change bumps MINOR, a feature or fix bumps PATCH. `0.x → 1.0.0` is the stability commitment.
-- **Manifest ↔ tag must match on `main`** (CI-gated): the manifest version equals the tag pointing at `main`'s HEAD. No tagless bumps left on `main`. Tag the release-branch tip before merge so tag and manifest arrive together.
+- **Manifest ↔ tag must match on `main`** (CI-gated): `main`'s manifest version equals the latest stable tag (pre-release tags never satisfy the rule). No tagless bumps left on `main`. Tag the release-branch tip before merging so tag and manifest arrive on `main` together; the tag marks the release content, the merge commit marks the boundary — the sync rule compares versions, not commits.
 
 ### Channels
 - Consumers install from the default branch's HEAD. Branch discipline — not the tag — delivers stability; the tag is the release marker of record. Pre-releases ship out-of-band (e.g. a local checkout), not through the default branch.

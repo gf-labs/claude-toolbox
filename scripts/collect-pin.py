@@ -17,6 +17,7 @@ model. Sibling collectors with self-contained logic (plans, plugin drift) are
 shelled out so they remain the single source of truth.
 """
 import json
+import os
 import re
 import subprocess
 import sys
@@ -26,6 +27,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 from _scope import get_scope, project_key  # noqa: E402
+from _session import current_session_jsonl  # noqa: E402
 from _slug import derive_slug  # noqa: E402
 
 HOME = Path.home()
@@ -45,6 +47,12 @@ def _run(cmd, cwd=None):
 
 
 # --- Resolve scope, project key, project dir -------------------------------
+# --- Config: pin preferences (emitted first; survives the no-project exit) ---
+print('=== CONFIG ===')
+_yes_all = os.environ.get('CLAUDE_TOOLBOX_PIN_YES_ALL', '').strip().lower()
+print(f'YES_ALL: {"yes" if _yes_all in ("1", "true", "yes") else "no"}')
+print()
+
 mode, data, cwd = get_scope()
 
 git_root = _run(['git', 'rev-parse', '--show-toplevel'])
@@ -79,30 +87,8 @@ print(f'DATE: {date.today().isoformat()}')
 print()
 
 
-# --- Resolve current-session JSONL (sessions/ metadata, mtime fallback) -----
-def _current_jsonl():
-    jsonl_files = list(proj_meta_dir.glob('*.jsonl'))
-    if not jsonl_files:
-        return None
-    best, best_started = None, -1
-    sessions_dir = HOME / '.claude' / 'sessions'
-    if sessions_dir.exists():
-        for sf in sessions_dir.iterdir():
-            try:
-                obj = json.loads(sf.read_text(encoding='utf-8'))
-            except (OSError, ValueError):
-                continue
-            if obj.get('cwd') == str(project_dir) and obj.get('sessionId'):
-                cand = proj_meta_dir / (obj['sessionId'] + '.jsonl')
-                started = obj.get('startedAt', 0)
-                if cand.exists() and started > best_started:
-                    best, best_started = cand, started
-    if best is None:
-        best = max(jsonl_files, key=lambda f: f.stat().st_mtime)
-    return best
-
-
-current = _current_jsonl()
+# --- Resolve current-session JSONL (env-var authoritative, heuristic fallback) ---
+current = current_session_jsonl(proj_meta_dir, project_cwd=project_dir, home=HOME)
 
 # --- Single pass over the session JSONL: files, cross-project, bash, title ---
 session_id = 'unknown'

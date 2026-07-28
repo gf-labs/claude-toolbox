@@ -6,13 +6,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from _scope import get_scope, project_key, resolve_key
+from _session import current_session_jsonl
 
 projects_dir = Path.home() / '.claude' / 'projects'
 mode, data, cwd = get_scope()
 
 if mode == 'single':
     cwd_key = data
-elif cwd is not None:
+elif mode == 'parent':
     cwd_key = project_key(cwd, projects_dir)
 else:
     try:
@@ -48,27 +49,7 @@ if not jsonl_files:
     print('BASH_COMMANDS: none')
     sys.exit(0)
 
-# Prefer sessions/ directory for accurate current-session detection.
-# mtime-based selection fails when an unrelated JSONL is modified (e.g. title edits).
-current = None
-_best_started = -1
-sessions_dir = Path.home() / '.claude' / 'sessions'
-if sessions_dir.exists():
-    for sf in sessions_dir.iterdir():
-        try:
-            obj = json.loads(sf.read_text(encoding='utf-8'))
-            if obj.get('cwd') == str(cwd) and obj.get('sessionId'):
-                candidate = proj_dir / (obj['sessionId'] + '.jsonl')
-                started = obj.get('startedAt', 0)
-                if candidate.exists() and started > _best_started:
-                    current = candidate
-                    _best_started = started
-        except Exception:
-            pass
-
-if current is None:
-    # Fallback: most recently modified JSONL (may be inaccurate if old files were touched)
-    current = max(jsonl_files, key=lambda f: f.stat().st_mtime)
+current = current_session_jsonl(proj_dir, project_cwd=cwd)
 
 session_id = current.stem
 

@@ -5,7 +5,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _scope import get_scope, project_key, resolve_key
+from _projects import enumerate_projects
+from _scope import get_scope
 
 MAX_ENTRIES = 5
 MAX_ENTRY_LEN = 90
@@ -52,23 +53,13 @@ if mode == 'single':
             print(f'  - {e}')
     sys.exit(0)
 
-if mode == 'parent':
-    projects = [(c.name, c) for _, c in data]
-else:
-    projects = []
-    for proj_key in sorted(projects_dir.iterdir()):
-        if not proj_key.is_dir():
-            continue
-        reconstructed = resolve_key(proj_key.name)
-        if reconstructed is not None:
-            projects.append((reconstructed.name, reconstructed))
+projects = [(p.name, p.proj_dir) for p in enumerate_projects((mode, data, cwd))]
 
 print('PROJECT\tLAST_LOG\tLOG_ENTRIES')
 
 entries_blocks = []
-for name, path in projects:
-    cwd_key = project_key(path, projects_dir)
-    last_log, count, entries = _log_info(projects_dir / cwd_key)
+for name, proj_dir in projects:
+    last_log, count, entries = _log_info(proj_dir)
     print(f'{name}\t{last_log}\t{count}')
     if entries:
         entries_blocks.append((name, last_log, entries))

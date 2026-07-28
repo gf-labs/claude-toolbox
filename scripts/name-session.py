@@ -14,6 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from _scope import get_scope, project_key
+from _session import current_session_jsonl
 from session_naming import read_title, write_title
 
 args = sys.argv[1:]
@@ -48,7 +49,7 @@ else:
 
     if mode == 'single':
         cwd_key = data
-    elif cwd:
+    elif mode == 'parent':
         cwd_key = project_key(cwd, projects_dir)
     else:
         print('ERROR: cannot determine project key')
@@ -60,7 +61,7 @@ else:
         print('ERROR: no session JSONL found')
         sys.exit(1)
 
-    current = max(jsonls, key=lambda f: f.stat().st_mtime)
+    current = current_session_jsonl(proj_dir)
 
 # Check for existing title
 existing = read_title(current)

@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _scope import get_scope
+from _projects import enumerate_projects
 from session_index import get_status, set_status
 from session_naming import read_title
 
@@ -37,14 +37,6 @@ def _is_artifact(path: Path) -> bool:
 
 if __name__ == '__main__':
     projects_dir = Path.home() / '.claude' / 'projects'
-    mode, data, cwd = get_scope()
-
-    if mode == 'single':
-        allowed_keys = {data}
-    elif mode == 'parent':
-        allowed_keys = {k for k, _ in data}
-    else:
-        allowed_keys = None  # global — scan all
 
     done_count = 0
     artifact_count = 0
@@ -54,13 +46,9 @@ if __name__ == '__main__':
         print('No projects directory found.')
         sys.exit(0)
 
-    for proj in sorted(projects_dir.iterdir()):
-        if not proj.is_dir():
-            continue
-        if allowed_keys is not None and proj.name not in allowed_keys:
-            continue
-        project_key = proj.name
-        for f in sorted(proj.glob('*.jsonl')):
+    for p in sorted(enumerate_projects(), key=lambda x: x.key):
+        project_key = p.key
+        for f in sorted(p.proj_dir.glob('*.jsonl')):
             uuid = f.stem
             if get_status(project_key, uuid) is not None:
                 skipped_count += 1

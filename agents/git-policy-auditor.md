@@ -80,6 +80,9 @@ Everything needed to reach compliance, ready for a human to apply:
   lint/test command, python version, manifest path, CHANGELOG heading,
   dependabot ecosystems) from the target's own `pyproject.toml`/`package.json`/
   `requirements*.txt`, and say which ones you set.
+  For the CI-files portion of the migration plan, point the user at
+  `scripts/stamp-git-policy.py --repo <target>` — it computes those files
+  mechanically (dry-run diff first); only the git/GitHub steps remain manual.
 - **Commands to run** — the exact `git`/`gh` sequence, in order.
 - **Decisions for the human** — anything needing judgment, flagged and left
   unresolved. When the manifest↔tag verdict is drift-with-no-tags (a manifest

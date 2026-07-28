@@ -14,22 +14,21 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
+from _projects import enumerate_projects
 from _scope import get_scope
+from _session import current_session_jsonl
 from session_index import get_status as _get_registry_status
 from session_naming import (
-    derive_name, extract_context, plan_fork_relabels, read_title, write_title,
+    derive_name,
+    extract_context,
+    plan_fork_relabels,
+    read_title,
+    write_title,
 )
 
-
 mode, data, cwd = get_scope()
-projects_dir = Path.home() / '.claude' / 'projects'
-
-if mode == 'single':
-    proj_dirs = [projects_dir / data]
-elif mode == 'parent':
-    proj_dirs = [projects_dir / key for key, _ in data]
-else:
-    proj_dirs = sorted(d for d in projects_dir.iterdir() if d.is_dir())
+proj_dirs = sorted((p.proj_dir for p in enumerate_projects((mode, data, cwd))),
+                   key=lambda d: d.name)
 
 named_current = ''
 renamed = []
@@ -42,7 +41,7 @@ for proj_dir in proj_dirs:
     if not jsonls:
         continue
 
-    current = jsonls[-1]  # most recent by mtime = active session
+    current = current_session_jsonl(proj_dir)  # env-var authoritative, mtime fallback
 
     # Name current session if unnamed and not registry-protected
     if not read_title(current):
@@ -54,7 +53,7 @@ for proj_dir in proj_dirs:
                 named_current = name
 
     # Rename other unnamed sessions in this project
-    for f in jsonls[:-1]:
+    for f in [j for j in jsonls if j != current]:
         if read_title(f):
             continue
         if _get_registry_status(proj_dir.name, f.stem) in ('done', 'keep'):

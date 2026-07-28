@@ -26,12 +26,19 @@ Point-in-time situational awareness. None of these write anything. Pick by how c
 > The narrative-synthesis sibling of this group is the **`/tools:sit-rep`** *skill* (see Skills) —
 > use it for the multi-week arc, not the point-in-time snapshot.
 
+### 🗺️ Inventory — cross-project map
+The map around you — current project + nested children by default, `--dir` to anchor anywhere, `--all` for the whole machine (Orientation is single-project; this is cross-project).
+
+| Command | Use when | Model |
+|---------|----------|-------|
+| `/tools:atlas` | Cross-project map, adaptive render — ≤4 projects in scope → detail cards, more → aligned digest grouped by domain; default: current project + children, every facet except plugins; facets projects · sessions · memory · plans · specs · plugins · claude.md; `--dir NAME\|PATH` = the subtree under any directory; `--all` = every project; `--project NAME` inspects any project from anywhere; `--full`/`--compact` force cards/digest; `--stale` lists orphaned/unscoped keys | haiku |
+
 ### 🔖 Checkpoints & close-out — the only commands that write session memory
 These append to `session-log.md` / `MEMORY.md`.
 
 | Command | Use when |
 |---------|----------|
-| `/tools:pin` | Mid-session checkpoint before a break/compact — status, session log, optional MEMORY.md |
+| `/tools:pin` | Mid-session checkpoint before a break/compact — status, session log, optional MEMORY.md; `--yes-all` runs it non-interactively (`--save` persists, `--ask` overrides) |
 | `/tools:wrap` | End-of-session close-out — session log, git check, plan cleanup, backlog review, done marker |
 
 ### ⏸️ In-flight
@@ -110,16 +117,19 @@ Auto-fire handlers registered in `hooks/hooks.json`.
 
 ## Scripts (infrastructure)
 
-~35 files in `scripts/` — called by the commands/hooks above, not invoked directly. The
+~40 files in `scripts/` — called by the commands/hooks above, not invoked directly. The
 load-bearing ones:
 
 | Script(s) | Role |
 |-----------|------|
 | `_scope.py` | Scope detection + project-key encoding — **single source of truth** |
+| `_projects.py` | L2 project enumeration over `_scope` — repo-space (`enumerate_projects`, powers atlas) *and* storage-space (`iter_session_dirs`, session-key folders incl. orphans; powers cleanup · search-sessions · brief) |
+| `_session.py` | Current-session JSONL resolution — env-var-first (`CLAUDE_CODE_SESSION_ID`), heuristic fallback; **single source of truth** for "which session is live" |
 | `_slug.py` | Repo path → TaskWarrior project slug — **single source of truth** |
-| `collect-*.py` (≈18) | Data collectors feeding the commands (pin, summarize, tasks, drift, history, memory…) |
+| `collect-*.py` (≈19) | Data collectors feeding the commands (pin, summarize, tasks, drift, history, memory…); `collect-session-list.py` = the atlas sessions facet (distinct from `collect-sessions.py`, the cleanup inventory) |
 | `collect-git-policy.py` | Deterministic git-policy facts (branches, tags, workflows, dependabot/CHANGELOG, manifest↔tag) for `tools:git-policy-auditor` to render |
 | `check-manifest-tag.py` | Assert a repo's manifest version equals its latest release tag — collector/audit + CI gate (stdlib, exit 0/1/2) |
+| `stamp-git-policy.py` | Stamp git-policy CI files into a target repo — derives per-repo values, dry-run diff by default, `--write` to apply; never touches git |
 | `post-save.py`, `session_naming.py`, `relabel-forks.py`, `name-session.py`, `rename-unnamed.py` | Session naming + fork disambiguation |
 | `update-project-map.py`, `collect-plan-map.py` | Keep `.project-map` current |
 | `session_index.py`, `mark-session-done.py`, `add-tasks.py`, `lint-py.py`, `setup-mcp.py`, `validate-env.py` | Supporting utilities + hook bodies |
@@ -128,5 +138,5 @@ load-bearing ones:
 
 ## At a glance
 
-**12 commands · 1 skill · 5 agents · 3 MCP tools · 5 hook handlers · ~35 scripts** — all
+**13 commands · 1 skill · 5 agents · 3 MCP tools · 6 hook handlers · ~40 scripts** — all
 user-facing surfaces namespaced `tools:`. Plugin manifest: `.claude-plugin/plugin.json`.

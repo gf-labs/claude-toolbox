@@ -156,18 +156,14 @@ python3 -c "
 import json, os, sys
 from pathlib import Path
 sys.path.insert(0, os.environ.get('CLAUDE_TOOLBOX_ROOT', '') + '/scripts')
-try:
-    from _scope import get_scope
-    _m, _d, _ = get_scope()
-    _allowed = {_d} if _m == 'single' else ({k for k, _ in _d} if _m == 'parent' else None)
-except Exception:
-    _allowed = None
+from _projects import iter_session_dirs
 arg = '$ARGUMENTS'.strip().split()[0]
-projects_dir = Path.home() / '.claude' / 'projects'
-for proj in sorted(projects_dir.iterdir()):
-    if not proj.is_dir(): continue
-    if _allowed is not None and proj.name not in _allowed: continue
-    for f in proj.glob('*.jsonl'):
+try:
+    _dirs = iter_session_dirs()
+except Exception:
+    _dirs = iter_session_dirs(scope=('global', None, Path.cwd()))
+for _key, proj_dir in _dirs:
+    for f in proj_dir.glob('*.jsonl'):
         if f.stem.startswith(arg) or f.stem.replace('-','').startswith(arg):
             print(f'FOUND: {f}')
             sys.exit(0)

@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 _SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "check-manifest-tag.py"
@@ -58,10 +60,6 @@ def test_latest_stable_tag_picks_semver_max(tmp_path):
 
 def test_latest_stable_tag_none_when_empty(tmp_path):
     assert cmt.latest_stable_tag(["v1.0.0-rc.1", "garbage"]) is None
-
-
-import subprocess
-import sys
 
 
 def _git(repo: Path, *args: str) -> None:

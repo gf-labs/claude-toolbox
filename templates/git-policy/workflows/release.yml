@@ -21,8 +21,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Assert manifest matches the pushed tag
-        # In claude-toolbox the checker lives at scripts/; elsewhere it is
-        # vendored to .github/scripts/. Adjust this path on stamp.
+        # Vendored into .github/scripts/ by stamp-git-policy (re-stamp to update).
         run: python3 .github/scripts/check-manifest-tag.py --tag "${GITHUB_REF_NAME}"
       - name: Extract release notes from CHANGELOG
         run: |

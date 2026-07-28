@@ -87,6 +87,25 @@ def test_resolve_key_none_when_no_existing_dir(tmp_path):
     assert _scope.resolve_key(_key(ghost)) is None
 
 
+def test_reconstruct_recovers_underscore_component(tmp_path):
+    # The current encoding collapses '_' to '-' just like '/', so the key alone
+    # is ambiguous. Reconstruct must recover the real '_claude-plugins' dir by
+    # probing disk — the legacy '-'-vs-'/' backtracking alone cannot.
+    proj = tmp_path / "business" / "_claude-plugins" / "toolbox"
+    proj.mkdir(parents=True)
+    key = _scope.project_key(proj)  # lossy: '_' and '/' both -> '-'
+    assert proj in list(_scope._reconstruct(key, str(tmp_path)))
+
+
+def test_resolve_key_recovers_underscore_path(tmp_path):
+    # resolve_key over the current (lossy) encoding must invert a path whose
+    # component contains '_' — the real claude-toolbox failure mode.
+    proj = tmp_path / "business" / "_claude-plugins" / "toolbox"
+    proj.mkdir(parents=True)
+    key = _scope.project_key(proj)
+    assert _scope.resolve_key(key) == proj
+
+
 # --------------------------------------------------------------------------
 # project_key — forward encoding (path -> ~/.claude/projects/ dir name)
 # --------------------------------------------------------------------------
@@ -181,17 +200,19 @@ def test_get_scope_global_when_no_projects_dir(tmp_path, monkeypatch):
     cwd = tmp_path / "elsewhere"
     cwd.mkdir()
     monkeypatch.setenv("HOME", str(home))
-    assert _scope.get_scope(str(cwd)) == ("global", None, None)
+    # no projects dir -> global with an empty project list, cwd echoed back
+    assert _scope.get_scope(str(cwd)) == ("global", [], cwd)
 
 
 def test_get_scope_global_when_no_match(tmp_path, monkeypatch):
     home = tmp_path / "home"
-    # projects dir exists but holds an unrelated project
+    # projects dir exists but its only key reconstructs to no real dir
     (home / ".claude" / "projects" / "-somewhere-else").mkdir(parents=True)
     cwd = tmp_path / "Repos"
     cwd.mkdir(parents=True)
     monkeypatch.setenv("HOME", str(home))
-    assert _scope.get_scope(str(cwd)) == ("global", None, None)
+    # unreconstructable key -> empty global list
+    assert _scope.get_scope(str(cwd)) == ("global", [], cwd)
 
 
 def test_get_scope_parent_rolls_up_descendants(tmp_path, monkeypatch):
@@ -220,3 +241,40 @@ def test_get_scope_single_wins_over_parent(tmp_path, monkeypatch):
     mode, data, _ = _scope.get_scope(str(cwd))
     assert mode == "single"
     assert data == _key(cwd)
+
+
+def test_get_scope_global_enumerates_all_projects(tmp_path, monkeypatch):
+    # cwd is neither a project nor an ancestor of one -> global enumerates ALL.
+    home = tmp_path / "home"
+    a = tmp_path / "work" / "alpha"
+    a.mkdir(parents=True)
+    b = tmp_path / "work" / "beta"
+    b.mkdir(parents=True)
+    projects = home / ".claude" / "projects"
+    (projects / _key(a)).mkdir(parents=True)
+    (projects / _key(b)).mkdir(parents=True)
+    monkeypatch.setenv("HOME", str(home))
+    cwd = tmp_path / "unrelated"
+    cwd.mkdir()
+    mode, data, c = _scope.get_scope(str(cwd))
+    assert mode == "global"
+    paths = {p for _, p in data}
+    assert a in paths and b in paths
+    assert c == cwd
+
+
+# --------------------------------------------------------------------------
+# all_projects — the canonical all-projects walk, extracted for reuse
+# --------------------------------------------------------------------------
+
+def test_all_projects_excludes_home(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    a = tmp_path / "work" / "alpha"
+    a.mkdir(parents=True)
+    projects = home / ".claude" / "projects"
+    (projects / _key(a)).mkdir(parents=True)
+    (projects / _key(home)).mkdir(parents=True)  # a key that reconstructs to home itself
+    monkeypatch.setenv("HOME", str(home))
+    pairs = _scope.all_projects()
+    assert (_key(a), a) in pairs
+    assert all(p != home for _, p in pairs)

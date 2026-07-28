@@ -14,7 +14,6 @@ sys.path.insert(0, str(SCRIPTS))
 
 import session_naming  # noqa: E402
 
-
 # --------------------------------------------------------------------------
 # slug
 # --------------------------------------------------------------------------
@@ -242,15 +241,15 @@ def test_write_title_force_appends_even_when_unchanged(tmp_path):
 # --------------------------------------------------------------------------
 
 def test_base_title_strips_date_suffix():
-    assert session_naming.base_title("job-search-main~06-27") == "job-search-main"
+    assert session_naming.base_title("demo-project-main~06-27") == "demo-project-main"
 
 
 def test_base_title_strips_date_and_sid_suffix():
-    assert session_naming.base_title("job-search-main~06-27-1a2b") == "job-search-main"
+    assert session_naming.base_title("demo-project-main~06-27-1a2b") == "demo-project-main"
 
 
 def test_base_title_leaves_clean_name_untouched():
-    assert session_naming.base_title("job-search-main") == "job-search-main"
+    assert session_naming.base_title("demo-project-main") == "demo-project-main"
 
 
 def test_base_title_ignores_non_marker_tilde():
@@ -297,24 +296,24 @@ def _fork_session(proj: Path, stem: str, title: str, last_ts: str) -> None:
 
 
 def test_plan_fork_relabels_demotes_older_collision(tmp_path):
-    _fork_session(tmp_path, "live1111-aaaa", "job-search-main", "2026-06-28T12:00:00Z")
-    _fork_session(tmp_path, "stale222-bbbb", "job-search-main", "2026-06-27T09:00:00Z")
+    _fork_session(tmp_path, "live1111-aaaa", "demo-project-main", "2026-06-28T12:00:00Z")
+    _fork_session(tmp_path, "stale222-bbbb", "demo-project-main", "2026-06-27T09:00:00Z")
     actions = session_naming.plan_fork_relabels(tmp_path)
     # live already has the clean name -> only the stale fork is relabeled
     assert len(actions) == 1
     a = actions[0]
     assert a["sid"] == "stale222"
-    assert a["current"] == "job-search-main"
-    assert a["proposed"] == "job-search-main~06-27"
+    assert a["current"] == "demo-project-main"
+    assert a["proposed"] == "demo-project-main~06-27"
 
 
 def test_plan_fork_relabels_promotes_live_to_clean_name(tmp_path):
     # neither fork holds the clean base name -> the newer one is promoted to it
-    _fork_session(tmp_path, "live1111-aaaa", "job-search-main~06-28", "2026-06-28T12:00:00Z")
-    _fork_session(tmp_path, "stale222-bbbb", "job-search-main~06-27", "2026-06-27T09:00:00Z")
+    _fork_session(tmp_path, "live1111-aaaa", "demo-project-main~06-28", "2026-06-28T12:00:00Z")
+    _fork_session(tmp_path, "stale222-bbbb", "demo-project-main~06-27", "2026-06-27T09:00:00Z")
     actions = session_naming.plan_fork_relabels(tmp_path)
     proposals = {a["sid"]: a["proposed"] for a in actions}
-    assert proposals["live1111"] == "job-search-main"  # promoted
+    assert proposals["live1111"] == "demo-project-main"  # promoted
     assert "stale222" not in proposals  # already correctly marked -> no-op
 
 
@@ -330,19 +329,19 @@ def test_plan_fork_relabels_single_session(tmp_path):
 
 
 def test_plan_fork_relabels_idempotent_when_already_marked(tmp_path):
-    _fork_session(tmp_path, "live1111-aaaa", "job-search-main", "2026-06-28T12:00:00Z")
-    _fork_session(tmp_path, "stale222-bbbb", "job-search-main~06-27", "2026-06-27T09:00:00Z")
+    _fork_session(tmp_path, "live1111-aaaa", "demo-project-main", "2026-06-28T12:00:00Z")
+    _fork_session(tmp_path, "stale222-bbbb", "demo-project-main~06-27", "2026-06-27T09:00:00Z")
     assert session_naming.plan_fork_relabels(tmp_path) == []
 
 
 def test_plan_fork_relabels_same_date_tiebreaker(tmp_path):
     # two stale forks on the same day -> the second gets a sid tiebreaker suffix
-    _fork_session(tmp_path, "live1111-zzzz", "job-search-main", "2026-06-28T12:00:00Z")
-    _fork_session(tmp_path, "aaaa1111-bbbb", "job-search-main", "2026-06-27T09:00:00Z")
-    _fork_session(tmp_path, "cccc2222-dddd", "job-search-main", "2026-06-27T08:00:00Z")
+    _fork_session(tmp_path, "live1111-zzzz", "demo-project-main", "2026-06-28T12:00:00Z")
+    _fork_session(tmp_path, "aaaa1111-bbbb", "demo-project-main", "2026-06-27T09:00:00Z")
+    _fork_session(tmp_path, "cccc2222-dddd", "demo-project-main", "2026-06-27T08:00:00Z")
     proposals = sorted(a["proposed"] for a in session_naming.plan_fork_relabels(tmp_path))
     # newest stale keeps the bare date marker; the next collides and gets its sid appended
-    assert proposals == ["job-search-main~06-27", "job-search-main~06-27-cccc"]
+    assert proposals == ["demo-project-main~06-27", "demo-project-main~06-27-cccc"]
 
 
 def test_plan_fork_relabels_ignores_unnamed_sessions(tmp_path):
@@ -351,4 +350,48 @@ def test_plan_fork_relabels_ignores_unnamed_sessions(tmp_path):
     _write_jsonl(tmp_path / "unnamed2-bbbb.jsonl", [
         {"type": "user", "message": {"content": "hi"}, "timestamp": "2026-06-28T13:00:00Z"},
     ])
+    assert session_naming.plan_fork_relabels(tmp_path) == []
+
+
+def _bg_session(proj: Path, stem: str, title: str, last_ts: str) -> None:
+    """A background-job session: every event record carries sessionKind='bg'."""
+    _write_jsonl(proj / f"{stem}.jsonl", [
+        {"type": "custom-title", "customTitle": title, "sessionId": stem},
+        {"type": "user", "message": {"content": "hi"},
+         "timestamp": "2026-07-01T00:00:00Z", "sessionKind": "bg"},
+        {"type": "assistant", "message": {"content": []},
+         "timestamp": last_ts, "sessionKind": "bg"},
+    ])
+
+
+def test_plan_fork_relabels_bg_session_never_claims_clean_name(tmp_path):
+    # regression 2026-07-02: a bg job inherits the parent's title and has the
+    # newest events — it must NOT demote the real interactive session
+    _bg_session(tmp_path, "bgjob111-aaaa", "demo-project-main", "2026-07-02T15:00:00Z")
+    _fork_session(tmp_path, "live1111-bbbb", "demo-project-main", "2026-06-30T14:00:00Z")
+    actions = session_naming.plan_fork_relabels(tmp_path)
+    proposals = {a["sid"]: a["proposed"] for a in actions}
+    assert "live1111" not in proposals  # interactive fork keeps the clean name
+    assert proposals == {"bgjob111": "demo-project-main~07-02"}  # bg gets the marker
+
+
+def test_plan_fork_relabels_mixed_kind_file_counts_as_interactive(tmp_path):
+    # a file with SOME bg records (bg contamination mid-file) is still interactive
+    _write_jsonl(tmp_path / "mixed111-aaaa.jsonl", [
+        {"type": "custom-title", "customTitle": "demo-project-main", "sessionId": "mixed111-aaaa"},
+        {"type": "user", "message": {"content": "hi"},
+         "timestamp": "2026-06-29T00:00:00Z", "sessionKind": "bg"},
+        {"type": "assistant", "message": {"content": []},
+         "timestamp": "2026-06-30T12:00:00Z"},
+    ])
+    _fork_session(tmp_path, "stale222-bbbb", "demo-project-main", "2026-06-27T09:00:00Z")
+    actions = session_naming.plan_fork_relabels(tmp_path)
+    proposals = {a["sid"]: a["proposed"] for a in actions}
+    assert proposals == {"stale222": "demo-project-main~06-27"}
+
+
+def test_plan_fork_relabels_bg_only_group_untouched(tmp_path):
+    # with no interactive fork in the group there is nothing to protect — leave it
+    _bg_session(tmp_path, "bgjob111-aaaa", "worker-main", "2026-07-02T15:00:00Z")
+    _bg_session(tmp_path, "bgjob222-bbbb", "worker-main", "2026-07-02T14:00:00Z")
     assert session_naming.plan_fork_relabels(tmp_path) == []

@@ -146,3 +146,26 @@ def test_blocks_unpinned_current_even_when_newer_session_is_logged(tmp_path):
     )
     result = _run(home, cwd, session_id="aaaaaaaa-1111-2222-3333-444444444444")
     assert result.returncode == 2, "gate must block when the CURRENT session is unlogged"
+
+
+def test_env_var_resolves_current_when_stdin_absent(tmp_path):
+    # No stdin payload. CLAUDE_CODE_SESSION_ID names the CURRENT (unpinned)
+    # session while an unrelated PINNED session has a newer mtime. The old
+    # mtime fallback would read the pinned session and wrongly ALLOW; resolving
+    # via the env var reads the unpinned current and must BLOCK (exit 2).
+    home = tmp_path / "home"
+    cwd = tmp_path / "work"
+    cwd.mkdir()
+    _setup_two_sessions(
+        home, cwd,
+        current_id="aaaaaaaa", current_pinned=False,
+        other_id="bbbbbbbb", other_pinned=True, other_newer=True,
+    )
+    env = {**os.environ, "HOME": str(home)}
+    env.pop("CLAUDE_CODE_SESSION_ID", None)
+    env["CLAUDE_CODE_SESSION_ID"] = "aaaaaaaa"
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT)], env=env, input="",
+        capture_output=True, text=True, cwd=str(cwd),
+    )
+    assert result.returncode == 2, result.stderr

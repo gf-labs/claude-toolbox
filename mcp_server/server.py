@@ -29,6 +29,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
+from _scope import resolve_key  # noqa: E402  (scripts/ added to sys.path above)
+
 try:
     from mcp.server.fastmcp import FastMCP
 except ImportError:
@@ -100,7 +102,17 @@ def _session_metadata(jsonl_path: Path) -> dict:
 
 
 def _project_display(key: str) -> str:
-    """Convert a project key like -Users-foo-Repos-bar to 'bar'."""
+    """Convert a project key like -Users-foo-Repos-bar to 'bar'.
+
+    Routes through resolve_key so hyphenated repo names survive: a naive split on
+    '-' truncates 'claude-toolbox' to 'toolbox' because the path<->key encoding
+    maps '/' to '-'. resolve_key probes disk to recover the real path; only when
+    the key resolves to nothing (e.g. a stale/synthetic key) do we fall back to
+    the last '-' segment.
+    """
+    path = resolve_key(key)
+    if path is not None:
+        return path.name
     parts = [p for p in key.split("-") if p]
     return parts[-1] if parts else key
 
