@@ -3,7 +3,7 @@
 All notable changes to the `tools` plugin (`claude-toolbox`) are documented here.
 This project follows [Semantic Versioning](https://semver.org).
 
-## [Unreleased]
+## [0.8.0] — 2026-07-28
 
 ### Added
 - `cli-capability-audit` skill — derives a CLI's implemented command surface from its
@@ -25,6 +25,13 @@ This project follows [Semantic Versioning](https://semver.org).
   opening action bumps against `main`, where Git Flow permits release and hotfix merges
   only — merging one would leave an untagged commit on `main`, put `main` ahead of
   `develop`, and pass `check-manifest-tag.py` unnoticed because the manifest is untouched.
+  (Dependabot reads its config from the default branch, so this takes effect from this
+  release onward.)
+- Action pins bumped to `actions/checkout@v7.0.1` and `actions/setup-python@v7.0.0` — the
+  bot's PRs had been open and unmerged since 2026-07-22.
+- `LIBRARY.md` registers `cli-capability-audit` and counts two skills; the README points at
+  it as the complete-surface map, and it had been left listing one. README version badge
+  refreshed (it still read 0.5.1, two releases stale).
 
 ## [0.7.0] — 2026-07-28
 

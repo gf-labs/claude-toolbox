@@ -3,7 +3,7 @@
 <p align="center"><em>Session lifecycle management for Claude Code — orient, checkpoint, close out, and never lose the thread between sessions.</em></p>
 
 <p align="center">
-  <a href="https://github.com/gf-labs/claude-toolbox"><img src="https://img.shields.io/badge/version-0.5.1-3b82f6?style=flat-square" alt="version"></a>
+  <a href="https://github.com/gf-labs/claude-toolbox"><img src="https://img.shields.io/badge/version-0.8.0-3b82f6?style=flat-square" alt="version"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square" alt="license"></a>
   <img src="https://img.shields.io/badge/Claude_Code-plugin-d97757?style=flat-square&logo=anthropic&logoColor=white" alt="Claude Code plugin">
   <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+">
