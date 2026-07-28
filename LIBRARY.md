@@ -69,6 +69,7 @@ language (not just explicit invocation), and use progressive disclosure for thei
 | Skill | Use when |
 |-------|----------|
 | `/tools:sit-rep` | Narrative synthesis across 2+ weeks of work — velocity, milestones, pivots, learnings, risks. The *arc*, not the current task. Bundles `output-template.md`, `signal-extraction.md`, `collect-velocity.sh`. |
+| `/tools:cli-capability-audit` | A CLI's docs have drifted from what it implements, or a repo needs a verified command inventory. Derives the implemented surface from dispatcher source, diffs it against `--help` and the docs **in both directions** (phantom vs undocumented), and publishes a capability map. Bundles `extract-surface.py`, `diff-surface.py`, `failure-modes.md`, `capability-map-template.md`. |
 
 ---
 
@@ -138,5 +139,5 @@ load-bearing ones:
 
 ## At a glance
 
-**13 commands · 1 skill · 5 agents · 3 MCP tools · 6 hook handlers · ~40 scripts** — all
+**13 commands · 2 skills · 5 agents · 3 MCP tools · 6 hook handlers · ~40 scripts** — all
 user-facing surfaces namespaced `tools:`. Plugin manifest: `.claude-plugin/plugin.json`.
