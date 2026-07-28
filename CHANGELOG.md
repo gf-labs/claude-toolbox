@@ -3,6 +3,8 @@
 All notable changes to the `tools` plugin (`claude-toolbox`) are documented here.
 This project follows [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
 ## [0.8.0] — 2026-07-28
 
 ### Added
