@@ -5,6 +5,11 @@ This project follows [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Removed
+- `docs/version-history.md` — an unreferenced milestone log, curated only through v0.5.x and
+  three minor versions stale. Nothing in the repo linked to it, and `CHANGELOG.md` covers the
+  same ground with full coverage. History for it remains in git.
+
 ### Fixed
 - `LIBRARY.md` inventory counts now match the tree: `scripts/` is 44 files (was `~40`) and
   `collect-*.py` is 21 (was `≈19`). The other five counts on the At-a-glance line —
