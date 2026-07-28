@@ -3,7 +3,7 @@
 <p align="center"><em>Session lifecycle management for Claude Code — orient, checkpoint, close out, and never lose the thread between sessions.</em></p>
 
 <p align="center">
-  <a href="https://github.com/gf-labs/claude-toolbox"><img src="https://img.shields.io/badge/version-0.5.1-3b82f6?style=flat-square" alt="version"></a>
+  <a href="https://github.com/gf-labs/claude-toolbox"><img src="https://img.shields.io/badge/version-0.8.0-3b82f6?style=flat-square" alt="version"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square" alt="license"></a>
   <img src="https://img.shields.io/badge/Claude_Code-plugin-d97757?style=flat-square&logo=anthropic&logoColor=white" alt="Claude Code plugin">
   <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+">
@@ -57,17 +57,18 @@ The commands map onto the natural arc of a working session. You rarely need all 
                         → memory health → optional "mark session done"
 
 [ periodic housekeeping ]
-  /tools:cleanup          extract context from old sessions, then delete them
-  /tools:search-sessions  full-text search across session history
-  /tools:sit-rep          narrative situation report — velocity, pivots, learnings, risks
-  /tools:doctor           environment + project health check
+  /tools:cleanup               extract context from old sessions, then delete them
+  /tools:search-sessions       full-text search across session history
+  /tools:sit-rep               narrative situation report — velocity, pivots, learnings, risks
+  /tools:cli-capability-audit  verify a CLI's docs against what it actually implements
+  /tools:doctor                environment + project health check
 ```
 
 ---
 
 ## Commands
 
-Thirteen commands plus one skill, grouped by when you reach for them. Cheap, high-frequency commands run on Haiku; reasoning-heavy ones run on Sonnet.
+Thirteen commands plus two skills, grouped by when you reach for them. Cheap, high-frequency commands run on Haiku; reasoning-heavy ones run on Sonnet.
 
 > For the complete surface in one place — every command, skill, agent, MCP tool, hook, and script — see [`LIBRARY.md`](LIBRARY.md).
 
@@ -112,6 +113,7 @@ Orientation is single-project; this is the cross-project map.
 | `/tools:cleanup`         | Clean up old session artifacts — preview, extract context, then delete |
 | `/tools:doctor`          | Claude Code environment + project health check (scope-aware) |
 | `/tools:search-sessions` | Full-text search across session history by keyword and age |
+| `/tools:cli-capability-audit` | Derive what a CLI actually implements from its dispatcher, diff it against help text and docs, and publish a capability map *(ships as a skill)* |
 
 ---
 
@@ -247,7 +249,7 @@ Restart the session. A SessionStart hook validates your setup; commands are now 
 claude-toolbox/
 ├── commands/    # slash commands, delivered as /tools:*
 ├── agents/      # read-only subagents (explore, plan, review, summarize)
-├── skills/      # multi-step skills (sit-rep)
+├── skills/      # multi-step skills (sit-rep, cli-capability-audit)
 ├── scripts/     # Python collectors called by commands and hooks (stdlib only)
 ├── hooks/       # hooks.json — plugin-registered lifecycle hooks
 ├── mcp_server/  # local MCP server (search_sessions, list_plans, get_session_log)
@@ -263,7 +265,7 @@ claude-toolbox/
 
 - **Slash commands** — 13 commands using `$ARGUMENTS`, `` !`bash` `` output injection, and per-command `model` selection (Haiku for cheap/fast, Sonnet for reasoning)
 - **Subagents** — 4 custom read-only agents in `agents/` for context-isolated work
-- **Skills** — `sit-rep`, a multi-step synthesis skill with bundled scripts and references
+- **Skills** — 2 multi-step skills with bundled scripts and references: `sit-rep` (synthesis) and `cli-capability-audit` (static analysis + a three-way diff)
 - **Hooks** — 5 hooks across `SessionStart`, `PostToolUse`, and `PreCompact`, including a `PreCompact` gate that blocks compaction (exit 2) until you've checkpointed with `/tools:pin`
 - **MCP server** — a local stdio server exposing three session-query tools
 - **Plugin packaging** — a versioned `plugin.json` manifest, distributed through a marketplace catalog

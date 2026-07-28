@@ -1,12 +1,16 @@
 name: test
 
 # Lint + test gate, plus a manifest<->tag drift guard on main. Runs on PRs into
-# main (the consumer-facing boundary) and on pushes to develop/main.
+# main AND develop, and on pushes to develop/main.
 # The repo is ruff-clean; `ruff check .` runs before pytest and fails the gate
 # on any lint regression (config in pyproject.toml [tool.ruff]).
+#
+# develop is in the PR list because integration is where regressions are cheap
+# to catch: gating only main meant feature PRs merged into develop unchecked,
+# and the first CI signal arrived at the release PR.
 on:
   pull_request:
-    branches: [main]
+    branches: [main, develop]
   push:
     branches: [develop, main]
     paths-ignore:
@@ -22,8 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Actions pinned to commit SHAs; Dependabot keeps them current.
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
       # The suite is deliberately stdlib-only (scripts loaded by path via
@@ -45,10 +49,10 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0  # tags needed for the default-mode comparison
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
       - name: Assert main's manifest has a matching tag

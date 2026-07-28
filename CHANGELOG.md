@@ -3,6 +3,36 @@
 All notable changes to the `tools` plugin (`claude-toolbox`) are documented here.
 This project follows [Semantic Versioning](https://semver.org).
 
+## [0.8.0] — 2026-07-28
+
+### Added
+- `cli-capability-audit` skill — derives a CLI's implemented command surface from its
+  dispatcher source (bash `case` arms and `if`-guards, Python equality chains / argparse /
+  click, Go cobra), diffs it against `--help` and the docs in both directions, and
+  publishes a capability map that records reality rather than intent. Ships two bundled
+  scripts (`extract-surface.py`, `diff-surface.py`), a failure-modes reference, and a map
+  template. No command is ever executed to introspect it; `--help` is the only invocation.
+- `diff-surface.py --strict` — exits 1 on findings so a trusted map can gate CI. The
+  default stays 0: findings are unverified candidates, not build failures.
+- Harness-sanity warnings in `diff-surface.py` — an empty implemented set, an empty
+  advertised set, or zero overlap between them now warns loudly and invalidates the run.
+  Real drift is patchy; a total mismatch is a broken checker, not a broken codebase.
+- `tests/test_cli_capability_audit.py` — 23 cases covering both parsers as units and both
+  CLIs end to end.
+
+### Fixed
+- Dependabot now targets `develop` (`target-branch`), not the default branch. It had been
+  opening action bumps against `main`, where Git Flow permits release and hotfix merges
+  only — merging one would leave an untagged commit on `main`, put `main` ahead of
+  `develop`, and pass `check-manifest-tag.py` unnoticed because the manifest is untouched.
+  (Dependabot reads its config from the default branch, so this takes effect from this
+  release onward.)
+- Action pins bumped to `actions/checkout@v7.0.1` and `actions/setup-python@v7.0.0` — the
+  bot's PRs had been open and unmerged since 2026-07-22.
+- `LIBRARY.md` registers `cli-capability-audit` and counts two skills; the README points at
+  it as the complete-surface map, and it had been left listing one. README version badge
+  refreshed (it still read 0.5.1, two releases stale).
+
 ## [0.7.0] — 2026-07-28
 
 ### Added
