@@ -3,7 +3,7 @@
 All notable changes to the `tools` plugin (`claude-toolbox`) are documented here.
 This project follows [Semantic Versioning](https://semver.org).
 
-## [0.7.0] — 2026-07-27
+## [0.7.0] — 2026-07-28
 
 ### Added
 - `/tools:atlas` — cross-project atlas with an adaptive render: ≤4 in-scope projects
