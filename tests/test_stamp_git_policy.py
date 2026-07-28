@@ -120,10 +120,22 @@ def test_render_test_yml_custom_lint_command():
     assert "        run: ruff check .\n" not in out
 
 
-def test_render_release_yml_stamps_python():
-    out = sgp.render_release_yml(_release_yml(), python="3.11")
+def test_render_release_yml_stamps_all_seams():
+    out = sgp.render_release_yml(
+        _release_yml(), python="3.11", install="python3 -m pip install -r req.txt",
+        test="python3 -m pytest tests/ -q", lint="ruff check .")
     assert out.count('python-version: "3.11"') == 1
+    assert "        run: python3 -m pip install -r req.txt\n" in out
+    assert "        run: python3 -m pip install -e '.[dev]'\n" not in out
     assert ".github/scripts/check-manifest-tag.py" in out  # verbatim, untouched
+
+
+def test_render_release_yml_removes_lint_block():
+    """A target with no ruff config must not get a `ruff check .` release gate."""
+    out = sgp.render_release_yml(
+        _release_yml(), python="3.11", install="i", test="t", lint=None)
+    assert "      - name: Lint\n" not in out
+    assert "ruff check ." not in out
 
 
 def test_replace_line_raises_on_anchor_drift():
@@ -280,7 +292,8 @@ def test_golden_bare_target_full_test_yml(tmp_path):
     assert _run_cli("--repo", str(repo), "--write").returncode == 0
     tpl = (Path(__file__).resolve().parents[1]
            / "templates" / "git-policy" / "workflows" / "test.yml")
-    expected = tpl.read_text(encoding="utf-8").replace(
+    expected = sgp.stamped_header(sgp.toolbox_version()) + tpl.read_text(
+        encoding="utf-8").replace(
         "        run: python3 -m pip install -e '.[dev]'",
         "        run: python3 -m pip install 'pytest>=8'",
     ).replace("      - name: Lint\n        run: ruff check .\n", "")
@@ -330,6 +343,74 @@ def test_golden_changelog_never_overwritten(tmp_path):
                                        encoding="utf-8")
     assert _run_cli("--repo", str(repo), "--write").returncode == 0
     assert "real history" in (repo / "CHANGELOG.md").read_text(encoding="utf-8")
+
+
+# --- ownership guard --------------------------------------------------------
+
+def test_is_stamp_owned_classification():
+    assert sgp.is_stamp_owned(None) is True                       # absent
+    assert sgp.is_stamp_owned(b"# stamped by claude-toolbox git-policy v1\nx")
+    assert sgp.is_stamp_owned(b"#!/usr/bin/env python3\n# vendored from claude-toolbox v1\n")
+    assert sgp.is_stamp_owned(b"name: test\njobs:\n  lint:\n") is False  # hand-authored
+
+
+def test_is_stamp_owned_survives_undecodable_bytes():
+    """Must classify, not crash, on a non-UTF-8 file sitting at a stamped path."""
+    assert sgp.is_stamp_owned(b"\xff\xfe binary junk") is False
+
+
+def test_rendered_configs_carry_the_stamp_header(tmp_path):
+    repo = _target(tmp_path)
+    rendered = sgp.render_all(repo, python="3.12", install="i", test="t", lint=None)
+    for rel in (".github/workflows/test.yml", ".github/workflows/release.yml",
+                ".github/dependabot.yml"):
+        assert rendered[rel].startswith(sgp._STAMP_MARKER), rel
+    # The vendored checker keeps its own marker and its shebang-first line.
+    checker = rendered[".github/scripts/check-manifest-tag.py"]
+    assert checker.startswith("#!/usr/bin/env python3\n")
+    assert sgp._VENDOR_MARKER in checker
+
+
+def test_cli_skips_hand_authored_file(tmp_path):
+    """The ramp hazard: a customized test.yml must survive --write untouched."""
+    repo = _target(tmp_path)
+    custom = repo / ".github" / "workflows" / "test.yml"
+    custom.parent.mkdir(parents=True)
+    custom.write_text("name: test\njobs:\n  lint:\n  test:\n    strategy:\n",
+                      encoding="utf-8")
+    r = _run_cli("--repo", str(repo), "--write")
+    assert r.returncode == 0
+    assert custom.read_text(encoding="utf-8") == (
+        "name: test\njobs:\n  lint:\n  test:\n    strategy:\n")   # byte-identical
+    assert "Skipped 1 hand-authored file" in r.stdout
+    assert ".github/workflows/test.yml" in r.stdout
+    assert "--force" in r.stdout
+    # the files it DOES own still land
+    assert (repo / ".github" / "workflows" / "release.yml").is_file()
+
+
+def test_cli_force_overwrites_hand_authored_file(tmp_path):
+    repo = _target(tmp_path)
+    custom = repo / ".github" / "workflows" / "test.yml"
+    custom.parent.mkdir(parents=True)
+    custom.write_text("name: test\njobs:\n  lint:\n", encoding="utf-8")
+    r = _run_cli("--repo", str(repo), "--write", "--force")
+    assert r.returncode == 0
+    assert custom.read_text(encoding="utf-8").startswith(sgp._STAMP_MARKER)
+    assert "Skipped" not in r.stdout
+
+
+def test_cli_dry_run_reports_skips_without_diffing_them(tmp_path):
+    repo = _target(tmp_path)
+    custom = repo / ".github" / "workflows" / "test.yml"
+    custom.parent.mkdir(parents=True)
+    custom.write_text("name: test\njobs:\n  lint:\n", encoding="utf-8")
+    r = _run_cli("--repo", str(repo))
+    assert r.returncode == 0
+    assert "Skipped 1 hand-authored file" in r.stdout
+    # a diff you would not apply must not be shown as if you would
+    assert "+++ b/.github/workflows/test.yml" not in r.stdout
+    assert "+++ b/.github/workflows/release.yml" in r.stdout
 
 
 def test_second_run_is_empty_and_idempotent(tmp_path):

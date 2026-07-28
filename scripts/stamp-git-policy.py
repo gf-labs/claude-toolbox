@@ -29,6 +29,13 @@ _LINT_RUN_LINE = "        run: ruff check .\n"
 
 _REQUIRES_PY = re.compile(r'requires-python\s*=\s*"[^"0-9]*(\d+\.\d+)')
 
+# Ownership markers. A generated file carries _STAMP_MARKER; the vendored
+# checker carries its own long-standing _VENDOR_MARKER. Either means "the stamp
+# wrote this, so the stamp may replace it" — anything else is hand-authored and
+# is skipped unless --force.
+_STAMP_MARKER = "# stamped by claude-toolbox git-policy"
+_VENDOR_MARKER = "# vendored from claude-toolbox"
+
 
 def toolbox_version() -> str:
     return json.loads(_TOOLBOX_MANIFEST.read_text(encoding="utf-8"))["version"]
@@ -92,8 +99,46 @@ def render_test_yml(text: str, *, python: str, install: str, test: str,
     return text
 
 
-def render_release_yml(text: str, *, python: str) -> str:
-    return _replace_line(text, _PY_LINE, f'          python-version: "{python}"', 1)
+def render_release_yml(text: str, *, python: str, install: str, test: str,
+                       lint: str | None) -> str:
+    """Same seams as test.yml — release.yml re-runs the gate on the tag.
+
+    test.yml never fires on tags, so a tag pushed onto a broken tree would cut a
+    release; stamping the install/test/lint lines here keeps the two gates on
+    the same bar instead of leaving release.yml on the template's defaults.
+    """
+    text = _replace_line(text, _PY_LINE, f'          python-version: "{python}"', 1)
+    text = _replace_line(text, _INSTALL_LINE, f"        run: {install}", 1)
+    text = _replace_line(text, _TEST_LINE, f"        run: {test}", 1)
+    if lint is None:
+        text = _replace_line(text, _LINT_BLOCK, "", 1)
+    elif lint != "ruff check .":
+        text = _replace_line(text, _LINT_RUN_LINE, f"        run: {lint}\n", 1)
+    return text
+
+
+def stamped_header(version: str) -> str:
+    """Provenance banner marking a file as stamp-OWNED, so re-stamping may replace it.
+
+    Ownership is opt-out by deletion: a file without this header (hand-authored,
+    or adopted by removing the banner) is skipped rather than overwritten. That
+    is what stops `--write` from silently destroying repo-specific CI — ramp,
+    for instance, needs a 3.8/3.13 matrix and a separate `lint` job that the
+    single-job template does not express, and whose exact job names its branch
+    protection requires by name.
+    """
+    return (f"{_STAMP_MARKER} v{version} — re-stamp to update.\n"
+            "# Edits to this file are overwritten by the next `--write`. To take\n"
+            "# repo-specific ownership, delete these three header lines: the\n"
+            "# stamper then skips the file instead of replacing it.\n")
+
+
+def is_stamp_owned(old: bytes | None) -> bool:
+    """True when the stamp may write this path: absent, or previously stamped."""
+    if old is None:
+        return True
+    text = old.decode("utf-8", "replace")
+    return _STAMP_MARKER in text or _VENDOR_MARKER in text
 
 
 def vendored_checker(src: str, version: str) -> str:
@@ -106,17 +151,21 @@ def vendored_checker(src: str, version: str) -> str:
 def render_all(repo: Path, *, python: str, install: str, test: str,
                lint: str | None) -> dict[str, str]:
     """relpath -> rendered content for every file the stamp owns."""
+    version = toolbox_version()
+    header = stamped_header(version)
     out = {
-        ".github/workflows/test.yml": render_test_yml(
+        ".github/workflows/test.yml": header + render_test_yml(
             (_TEMPLATES / "workflows" / "test.yml").read_text(encoding="utf-8"),
             python=python, install=install, test=test, lint=lint),
-        ".github/workflows/release.yml": render_release_yml(
+        ".github/workflows/release.yml": header + render_release_yml(
             (_TEMPLATES / "workflows" / "release.yml").read_text(encoding="utf-8"),
-            python=python),
-        ".github/dependabot.yml":
+            python=python, install=install, test=test, lint=lint),
+        ".github/dependabot.yml": header +
             (_TEMPLATES / "dependabot.yml").read_text(encoding="utf-8"),
+        # Carries _VENDOR_MARKER instead — its own provenance header predates
+        # the stamp banner and is asserted byte-for-byte by the golden tests.
         ".github/scripts/check-manifest-tag.py": vendored_checker(
-            _CHECKER_SRC.read_text(encoding="utf-8"), toolbox_version()),
+            _CHECKER_SRC.read_text(encoding="utf-8"), version),
     }
     # A CHANGELOG is living content, not a generated artifact: seed-only-if-missing.
     if not (repo / "CHANGELOG.md").is_file():
@@ -176,6 +225,9 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--repo", required=True, help="path to the target repo")
     ap.add_argument("--write", action="store_true",
                     help="write files into the target working tree (default: diff only)")
+    ap.add_argument("--force", action="store_true",
+                    help="also overwrite hand-authored files (those without the stamp "
+                         "header); discards repo-specific CI customization")
     ap.add_argument("--python", help="override the derived python version")
     ap.add_argument("--install", help="override the derived install command")
     ap.add_argument("--test", help="override the derived test command")
@@ -218,17 +270,42 @@ def main(argv: list[str]) -> int:
     if not plan:
         print("Nothing to do — target already matches the stamped output.")
         return 0
+
+    # Split before doing anything: a hand-authored file (no stamp header) is
+    # skipped, not silently replaced. --force opts back into overwriting.
+    if args.force:
+        writable, skipped = plan, []
+    else:
+        writable = [entry for entry in plan if is_stamp_owned(entry[1])]
+        skipped = [rel for rel, old, _new in plan if not is_stamp_owned(old)]
+
     if args.write:
-        for rel, _old, new in plan:
+        for rel, _old, new in writable:
             dest = repo / rel
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(new)
-        print(f"Wrote {len(plan)} file(s) into {repo}.")
-        print(f"Review with `git -C {repo} diff` (+ untracked) and commit.")
+        if writable:
+            print(f"Wrote {len(writable)} file(s) into {repo}.")
+            print(f"Review with `git -C {repo} diff` (+ untracked) and commit.")
+        else:
+            print("Wrote nothing — every changed file is hand-authored (see below).")
     else:
-        for rel, old, new in plan:
+        for rel, old, new in writable:
             sys.stdout.write(unified_diff(rel, old, new))
-        print(f"\nWould write {len(plan)} file(s). Re-run with --write to apply.")
+        if writable:
+            print(f"\nWould write {len(writable)} file(s). Re-run with --write to apply.")
+        else:
+            print("\nNothing writable — every changed file is hand-authored (see below).")
+
+    if skipped:
+        print(f"\nSkipped {len(skipped)} hand-authored file(s) — no "
+              f"'{_STAMP_MARKER}' header, so the stamp does not own them:")
+        for rel in skipped:
+            print(f"  {rel}")
+        print("Re-run with --force to overwrite them. That DISCARDS repo-specific\n"
+              "CI: a customized test.yml may define jobs (e.g. a version matrix, or\n"
+              "a separate `lint` job) whose names branch protection requires — "
+              "replacing it can block every PR.")
     return 0
 
 
