@@ -67,7 +67,7 @@ The commands map onto the natural arc of a working session. You rarely need all 
 
 ## Commands
 
-Twelve commands plus one skill, grouped by when you reach for them. Cheap, high-frequency commands run on Haiku; reasoning-heavy ones run on Sonnet.
+Thirteen commands plus one skill, grouped by when you reach for them. Cheap, high-frequency commands run on Haiku; reasoning-heavy ones run on Sonnet.
 
 > For the complete surface in one place — every command, skill, agent, MCP tool, hook, and script — see [`LIBRARY.md`](LIBRARY.md).
 
@@ -83,6 +83,16 @@ Four commands answer different re-entry questions. Pick by how long you've been 
 | `/tools:overview` | Planning / deciding what's next | "What should I work on next?" |
 
 > See [`docs/design-log.md`](docs/design-log.md) § *Orientation Command Taxonomy* for the full differentiation table — the reasoning behind splitting one "status" command into four.
+
+### Inventory — *"what's around me?"*
+
+Orientation is single-project; this is the cross-project map.
+
+| Command | When | Question it answers |
+|---------|------|---------------------|
+| `/tools:atlas` | Surveying more than the current repo | "What projects exist, and what's in them?" |
+
+> Adaptive render: ≤4 in-scope projects → detail cards, more → one aligned digest line each, grouped by domain. `--dir NAME\|PATH` anchors any subtree, `--all` spans every project, `--project NAME` inspects one from anywhere, `--stale` lists orphaned/unscoped keys.
 
 ### In-session — capture & checkpoint
 
@@ -251,7 +261,7 @@ claude-toolbox/
 
 `claude-toolbox` is itself a tour of Claude Code's extension model — there is no application runtime, only configuration and stdlib Python. If you're learning what a plugin can do, this repo is a worked example of every major surface:
 
-- **Slash commands** — 12 commands using `$ARGUMENTS`, `` !`bash` `` output injection, and per-command `model` selection (Haiku for cheap/fast, Sonnet for reasoning)
+- **Slash commands** — 13 commands using `$ARGUMENTS`, `` !`bash` `` output injection, and per-command `model` selection (Haiku for cheap/fast, Sonnet for reasoning)
 - **Subagents** — 4 custom read-only agents in `agents/` for context-isolated work
 - **Skills** — `sit-rep`, a multi-step synthesis skill with bundled scripts and references
 - **Hooks** — 5 hooks across `SessionStart`, `PostToolUse`, and `PreCompact`, including a `PreCompact` gate that blocks compaction (exit 2) until you've checkpointed with `/tools:pin`
