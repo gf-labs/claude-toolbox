@@ -1,6 +1,6 @@
 {
   "name": "tools",
-  "version": "0.7.0",
+  "version": "0.8.0-dev",
   "description": "Session lifecycle management for Claude Code — orient, checkpoint, close out, and never lose the thread between sessions.",
   "author": {"name": "Bernie Green"},
   "license": "MIT",
