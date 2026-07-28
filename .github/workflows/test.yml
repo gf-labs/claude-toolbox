@@ -28,9 +28,10 @@ jobs:
           python-version: "3.11"
       # The suite is deliberately stdlib-only (scripts loaded by path via
       # importlib); pyproject is tooling config, not an installable package —
-      # so we install pytest directly rather than `pip install -e '.[dev]'`.
+      # so the toolchain comes from requirements-dev.txt rather than an extra.
+      # That file is the single source of the pins, shared with release.yml.
       - name: Install pytest + ruff
-        run: python3 -m pip install 'pytest>=8' 'ruff>=0.6'
+        run: python3 -m pip install -r requirements-dev.txt
       - name: Lint
         run: ruff check .
       - name: Test

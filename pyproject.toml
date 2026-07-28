@@ -1,3 +1,9 @@
+# Tooling config only — claude-toolbox is NOT an installable package: there is
+# no [build-system] and [project] carries no `version`, so `pip install .` and
+# `pip install -e '.[dev]'` both fail (see scripts/stamp-git-policy.py's
+# derive_install, which encodes that lesson). The lint/test pins live in
+# requirements-dev.txt, the single source shared by test.yml and release.yml.
+
 [project]
 name = "claude-toolbox"
 description = "Session lifecycle management for Claude Code"
@@ -16,6 +22,3 @@ ignore = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-
-[project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.6"]
