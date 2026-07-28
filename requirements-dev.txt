@@ -1,0 +1,15 @@
+# Development / CI dependencies. The plugin itself has no runtime deps — the
+# scripts are stdlib-only — so this file is the single source of truth for the
+# lint + test toolchain, consumed by BOTH .github/workflows/test.yml and
+# .github/workflows/release.yml.
+#
+#   python3 -m pip install -r requirements-dev.txt
+#   ruff check . && python3 -m pytest tests/ -q
+
+pytest~=8.4
+
+# Pinned to a minor series on purpose: ruff adds new rules to already-selected
+# prefixes (E/F/W/I/UP/B) on minor releases, so an unpinned floor turns CI red
+# on unrelated PRs — and would fail release.yml *after* the tag is pushed.
+# Bump this deliberately.
+ruff~=0.15.0
