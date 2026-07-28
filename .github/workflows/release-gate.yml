@@ -1,0 +1,63 @@
+name: release-gate
+
+# Git policy: manifest <-> tag must match on main, and a release ships with its
+# CHANGELOG section. Split by event, because the two halves become knowable at
+# different moments:
+#
+#   PR into main -> CHANGELOG only. The tag lands on the release-branch tip and
+#     may be pushed AFTER the PR opens, so asserting it here would fail on open
+#     and only clear after tagging — a required check that flaps red->green
+#     through every release. The CHANGELOG half is true the moment the PR opens.
+#   push to main -> the full invariant, via --nearest (reachability-aware).
+#
+# This is why the CHANGELOG job is the one safe to mark required: it never
+# depends on tag timing. Mirrors ramp's release-gate.yml so both plugins gate
+# the same way.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Least privilege: both jobs only read the checked-out tree.
+permissions:
+  contents: read
+
+jobs:
+  manifest-tag:
+    runs-on: ubuntu-latest
+    steps:
+      # Actions pinned to commit SHAs; Dependabot keeps them current (.github/dependabot.yml).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # git describe needs tags + history
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      # Both events: the release must carry its notes. An [Unreleased] heading
+      # left in place is the common miss, and release.yml would hard-fail on it
+      # later at tag time — catching it here moves that failure before the merge.
+      - name: Assert CHANGELOG has a section for the manifest version
+        run: |
+          python3 - <<'PY'
+          import json, re, sys
+          from pathlib import Path
+          version = json.loads(
+              Path(".claude-plugin/plugin.json").read_text(encoding="utf-8")
+          )["version"]
+          changelog = Path("CHANGELOG.md").read_text(encoding="utf-8")
+          if not re.search(rf"^## \[{re.escape(version)}\]", changelog, re.M):
+              sys.exit(f"::error::CHANGELOG.md has no '## [{version}]' section — "
+                       "move [Unreleased] to a versioned header before releasing")
+          print(f"CHANGELOG OK: [{version}]")
+          PY
+
+      # Push to main only: assert the manifest matches the nearest tag REACHABLE
+      # from HEAD. --nearest (not the default mode) so a squash-merged release,
+      # which orphans its tag off main's history, is caught and named rather than
+      # silently passing a reachability-blind tag-list comparison.
+      - name: Assert main's manifest matches the nearest reachable tag
+        if: github.event_name == 'push'
+        run: python3 scripts/check-manifest-tag.py --repo . --nearest
