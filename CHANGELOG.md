@@ -5,6 +5,12 @@ This project follows [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Fixed
+- `LIBRARY.md` inventory counts now match the tree: `scripts/` is 44 files (was `~40`) and
+  `collect-*.py` is 21 (was `≈19`). The other five counts on the At-a-glance line —
+  13 commands, 2 skills, 5 agents, 3 MCP tools, 6 hook handlers — were each re-verified
+  against the filesystem and `hooks/hooks.json` and were already correct.
+
 ## [0.8.0] — 2026-07-28
 
 ### Added

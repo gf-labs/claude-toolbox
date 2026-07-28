@@ -118,7 +118,7 @@ Auto-fire handlers registered in `hooks/hooks.json`.
 
 ## Scripts (infrastructure)
 
-~40 files in `scripts/` — called by the commands/hooks above, not invoked directly. The
+44 files in `scripts/` — called by the commands/hooks above, not invoked directly. The
 load-bearing ones:
 
 | Script(s) | Role |
@@ -127,7 +127,7 @@ load-bearing ones:
 | `_projects.py` | L2 project enumeration over `_scope` — repo-space (`enumerate_projects`, powers atlas) *and* storage-space (`iter_session_dirs`, session-key folders incl. orphans; powers cleanup · search-sessions · brief) |
 | `_session.py` | Current-session JSONL resolution — env-var-first (`CLAUDE_CODE_SESSION_ID`), heuristic fallback; **single source of truth** for "which session is live" |
 | `_slug.py` | Repo path → TaskWarrior project slug — **single source of truth** |
-| `collect-*.py` (≈19) | Data collectors feeding the commands (pin, summarize, tasks, drift, history, memory…); `collect-session-list.py` = the atlas sessions facet (distinct from `collect-sessions.py`, the cleanup inventory) |
+| `collect-*.py` (21) | Data collectors feeding the commands (pin, summarize, tasks, drift, history, memory…); `collect-session-list.py` = the atlas sessions facet (distinct from `collect-sessions.py`, the cleanup inventory) |
 | `collect-git-policy.py` | Deterministic git-policy facts (branches, tags, workflows, dependabot/CHANGELOG, manifest↔tag) for `tools:git-policy-auditor` to render |
 | `check-manifest-tag.py` | Assert a repo's manifest version equals its latest release tag — collector/audit + CI gate (stdlib, exit 0/1/2) |
 | `stamp-git-policy.py` | Stamp git-policy CI files into a target repo — derives per-repo values, dry-run diff by default, `--write` to apply; never touches git |
@@ -139,5 +139,5 @@ load-bearing ones:
 
 ## At a glance
 
-**13 commands · 2 skills · 5 agents · 3 MCP tools · 6 hook handlers · ~40 scripts** — all
+**13 commands · 2 skills · 5 agents · 3 MCP tools · 6 hook handlers · 44 scripts** — all
 user-facing surfaces namespaced `tools:`. Plugin manifest: `.claude-plugin/plugin.json`.
