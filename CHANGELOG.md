@@ -17,6 +17,8 @@ This project follows [Semantic Versioning](https://semver.org).
   `release/*` into `main` orphans the tag on history `main` cannot reach, which the
   reachability-blind default mode passes silently.
 - `CONTRIBUTING.md`; README "git-policy arc" section; CLAUDE.md CI/CD inventory.
+- `scripts/check-docs.py` — CI gate asserting README agents/hooks tables, LIBRARY.md
+  counts, and links against the tree.
 
 ### Changed
 - The `manifest-guard` job moved out of `test.yml` into `release-gate.yml`. It ran only on
