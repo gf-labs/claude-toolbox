@@ -163,6 +163,24 @@ Hooks are commands Claude Code fires automatically on lifecycle events. The plug
 
 ---
 
+## The git-policy arc
+
+Four pieces that ship together and add up to a policy engine for git hygiene — each one
+useless alone, load-bearing together:
+
+| Piece | Kind | Role |
+|-------|------|------|
+| [`templates/git-policy/`](templates/git-policy/) | Convention | The written policy a repo adopts — default rules + a CHANGELOG seed |
+| [`git-guard.py`](scripts/git-guard.py) | Prevention | `PreToolUse` hook that **denies** the irreversible subset (`reset --hard`, `branch -D`, `clean -f`, forced checkouts) when Claude runs git — deterministic cases only; judgment calls stay prose |
+| [`git-policy-auditor`](agents/git-policy-auditor.md) | Assessment | Read-only agent that audits any repo against the policy and returns a compliance report plus a migration plan |
+| [`release-gate.yml`](.github/workflows/release-gate.yml) | Enforcement | CI that splits the manifest↔tag invariant by event, so the knowable half is a required check at PR time |
+
+The division of labor is the point: the hook blocks only what is *deterministically*
+destructive, the agent reasons about everything interpretive, the CI gate enforces what
+must never regress. Convention, prevention, assessment, enforcement — one arc.
+
+---
+
 ## MCP server
 
 `claude-toolbox` exposes a local [MCP](https://modelcontextprotocol.io) server so any Claude context — not just the current project — can query your session data.
@@ -296,6 +314,12 @@ Bump the version in [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) o
 - **Unified search** across sessions, plans, memory, and backlog from one command
 - **Tighter ramp integration** — a single knowledge-and-session harvest at wrap time
 - **Submission to the official Anthropic plugin marketplace** once stabilized
+
+---
+
+## Contributing
+
+[`CONTRIBUTING.md`](./CONTRIBUTING.md) covers the branch flow, the CI gates, and the docs checker that keeps the tables in this README honest.
 
 ---
 

@@ -65,6 +65,19 @@ Plugin delivers it automatically on next install.
 | `docs/claude-directory-reference.md` | Claude Code directory discovery reference |
 | `agents/git-policy-auditor.md` | Read-only agent auditing a repo against the git policy at `$CLAUDE_TOOLBOX_GIT_POLICY` (unset → bundled default) |
 
+## CI/CD
+
+| Workflow | Trigger | What it gates |
+|----------|---------|---------------|
+| `.github/workflows/test.yml` | PRs + pushes (develop, main) | ruff lint + full pytest suite (3.11); includes the docs-consistency check |
+| `.github/workflows/release-gate.yml` | PRs into main + pushes to main | PR: `CHANGELOG.md` has a `## [<manifest>]` section. Push: manifest matches the nearest **reachable** tag (`check-manifest-tag.py --nearest`) |
+| `.github/workflows/release.yml` | `v*` tag | Gate re-run, then GitHub Release with notes from the CHANGELOG section |
+| `.github/dependabot.yml` | weekly | SHA-pin bumps for Actions (targets develop) |
+
+Release process: bump manifest on `release/*` → tag the release-branch tip → merge-commit
+PR to `main`. Doc-only fixes that change the public page ride the next release —
+github.com renders `main`.
+
 ## Gotchas
 
 - **`${CLAUDE_PLUGIN_ROOT}` is reserved** — only resolves inside a plugin's own `hooks/hooks.json`. Use a plain env var (e.g. `RAMP_ROOT`) in global `~/.claude/settings.json` hooks.
