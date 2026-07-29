@@ -40,6 +40,8 @@ jobs:
         run: ruff check .
       - name: Test
         run: python3 -m pytest tests/ -q
+      - name: Docs consistency
+        run: python3 scripts/check-docs.py
 
 # The manifest<->tag guard that used to live here moved to release-gate.yml.
 # It was push-to-main-only, so it could never be a required check (a skipped job

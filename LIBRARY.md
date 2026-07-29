@@ -118,7 +118,7 @@ Auto-fire handlers registered in `hooks/hooks.json`.
 
 ## Scripts (infrastructure)
 
-44 files in `scripts/` — called by the commands/hooks above, not invoked directly. The
+45 files in `scripts/` — called by the commands/hooks above, not invoked directly. The
 load-bearing ones:
 
 | Script(s) | Role |
@@ -130,6 +130,7 @@ load-bearing ones:
 | `collect-*.py` (21) | Data collectors feeding the commands (pin, summarize, tasks, drift, history, memory…); `collect-session-list.py` = the atlas sessions facet (distinct from `collect-sessions.py`, the cleanup inventory) |
 | `collect-git-policy.py` | Deterministic git-policy facts (branches, tags, workflows, dependabot/CHANGELOG, manifest↔tag) for `tools:git-policy-auditor` to render |
 | `check-manifest-tag.py` | Assert a repo's manifest version equals its latest release tag — collector/audit + CI gate (stdlib, exit 0/1/2) |
+| `check-docs.py` | Docs-consistency gate — README agents/hooks tables, LIBRARY.md counts, links vs the tree (CI step in test.yml) |
 | `stamp-git-policy.py` | Stamp git-policy CI files into a target repo — derives per-repo values, dry-run diff by default, `--write` to apply; never touches git |
 | `post-save.py`, `session_naming.py`, `relabel-forks.py`, `name-session.py`, `rename-unnamed.py` | Session naming + fork disambiguation |
 | `update-project-map.py`, `collect-plan-map.py` | Keep `.project-map` current |
@@ -139,5 +140,5 @@ load-bearing ones:
 
 ## At a glance
 
-**13 commands · 2 skills · 5 agents · 3 MCP tools · 6 hook handlers · 44 scripts** — all
+**13 commands · 2 skills · 5 agents · 3 MCP tools · 6 hook handlers · 45 scripts** — all
 user-facing surfaces namespaced `tools:`. Plugin manifest: `.claude-plugin/plugin.json`.
