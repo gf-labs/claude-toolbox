@@ -78,7 +78,7 @@ def test_library_count_drift_fails(tmp_path):
 
 
 def test_broken_relative_link_fails(tmp_path):
-    repo = make_repo(tmp_path)
-    (repo / "LIBRARY.md").rename(repo / "LIB.md")
-    result = run(repo)
+    repo = make_repo(tmp_path, readme=README + "Also [notes](docs/notes.md).\n")
+    result = run(repo)   # LIBRARY.md intact — the only problem is the dangling link
     assert result.returncode == 1
+    assert "missing path" in result.stdout and "docs/notes.md" in result.stdout
