@@ -32,6 +32,10 @@ This project follows [Semantic Versioning](https://semver.org).
   `collect-*.py` is 21 (was `≈19`). The other five counts on the At-a-glance line —
   13 commands, 2 skills, 5 agents, 3 MCP tools, 6 hook handlers — were each re-verified
   against the filesystem and `hooks/hooks.json` and were already correct.
+- README truth sweep: agents table now lists all five agents (`git-policy-auditor` was
+  missing), hooks table lists all six handlers (`git-guard` was missing), Built-with
+  counts corrected, repo tree gains `templates/` and `.github/`, version badge is dynamic,
+  and a tests badge (main) is added.
 
 ## [0.8.0] — 2026-07-28
 

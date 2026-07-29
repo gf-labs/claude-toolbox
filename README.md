@@ -3,8 +3,9 @@
 <p align="center"><em>Session lifecycle management for Claude Code — orient, checkpoint, close out, and never lose the thread between sessions.</em></p>
 
 <p align="center">
-  <a href="https://github.com/gf-labs/claude-toolbox"><img src="https://img.shields.io/badge/version-0.8.0-3b82f6?style=flat-square" alt="version"></a>
+  <a href="https://github.com/gf-labs/claude-toolbox/releases/latest"><img src="https://img.shields.io/github/v/release/gf-labs/claude-toolbox?style=flat-square&color=3b82f6&label=version" alt="version"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square" alt="license"></a>
+  <a href="https://github.com/gf-labs/claude-toolbox/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/gf-labs/claude-toolbox/test.yml?branch=main&style=flat-square&label=tests" alt="tests"></a>
   <img src="https://img.shields.io/badge/Claude_Code-plugin-d97757?style=flat-square&logo=anthropic&logoColor=white" alt="Claude Code plugin">
   <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/MCP-server-6366f1?style=flat-square" alt="MCP server">
@@ -141,8 +142,9 @@ Agents are subprocesses Claude can spawn during a task. They run in a separate c
 | `plan`      | Sonnet | Implementation planner — reads the codebase, returns a phase-by-phase plan |
 | `review`    | Haiku  | Structured code review — diff analysis, readability, correctness, security |
 | `summarize` | Haiku  | Session summarizer — given a JSONL path, returns a concise account of what happened |
+| `git-policy-auditor` | Sonnet | Audits a repo against the house git policy — compliance report plus a ready-to-apply migration plan |
 
-> All four are **read-only** — none has `Write` or `Edit`, so they can't touch your working tree. Most use `Glob, Grep, Read, Bash`; `summarize` is narrower (`Read, Bash`). They explore and report, nothing more.
+> All five are **read-only** — none has `Write` or `Edit`, so they can't touch your working tree. Most use `Glob, Grep, Read, Bash`; `summarize` is narrower (`Read, Bash`). They explore and report, nothing more.
 
 ---
 
@@ -157,6 +159,7 @@ Hooks are commands Claude Code fires automatically on lifecycle events. The plug
 | `PostToolUse`  | `Write`        | `collect-plan-map.py` | Refreshes the plan-to-project map after file creates |
 | `PostToolUse`  | `Edit \| Write` | `lint-py.py`          | Syntax-checks any Python file that was just edited |
 | `PreCompact`   | — | `check-pin-ran.py`    | **Blocks** compaction unless `/tools:pin` ran this session (so context is never summarized away uncheckpointed) |
+| `PreToolUse`   | `Bash`         | `git-guard.py`        | **Denies** destructive git (`reset --hard`, `branch -D`, `clean -f`, forced checkouts) when Claude runs it — your own terminal stays unguarded |
 
 ---
 
@@ -253,7 +256,9 @@ claude-toolbox/
 ├── scripts/     # Python collectors called by commands and hooks (stdlib only)
 ├── hooks/       # hooks.json — plugin-registered lifecycle hooks
 ├── mcp_server/  # local MCP server (search_sessions, list_plans, get_session_log)
+├── templates/   # git-policy starter pack (default policy + CHANGELOG seed)
 ├── docs/        # context-hygiene reference, design log, directory reference
+├── .github/     # CI (test.yml), release gate, release CD, Dependabot config
 └── tests/       # pytest coverage for the collectors
 ```
 
@@ -264,9 +269,9 @@ claude-toolbox/
 `claude-toolbox` is itself a tour of Claude Code's extension model — there is no application runtime, only configuration and stdlib Python. If you're learning what a plugin can do, this repo is a worked example of every major surface:
 
 - **Slash commands** — 13 commands using `$ARGUMENTS`, `` !`bash` `` output injection, and per-command `model` selection (Haiku for cheap/fast, Sonnet for reasoning)
-- **Subagents** — 4 custom read-only agents in `agents/` for context-isolated work
+- **Subagents** — 5 custom read-only agents in `agents/` for context-isolated work
 - **Skills** — 2 multi-step skills with bundled scripts and references: `sit-rep` (synthesis) and `cli-capability-audit` (static analysis + a three-way diff)
-- **Hooks** — 5 hooks across `SessionStart`, `PostToolUse`, and `PreCompact`, including a `PreCompact` gate that blocks compaction (exit 2) until you've checkpointed with `/tools:pin`
+- **Hooks** — 6 handlers across `SessionStart`, `PostToolUse`, `PreToolUse`, and `PreCompact` — including a `PreCompact` gate that blocks compaction (exit 2) until you've checkpointed with `/tools:pin`, and a `PreToolUse` guard that denies destructive git commands
 - **MCP server** — a local stdio server exposing three session-query tools
 - **Plugin packaging** — a versioned `plugin.json` manifest, distributed through a marketplace catalog
 - **Settings hierarchy** — global / project / local `settings.json`, env vars, and permission scoping
