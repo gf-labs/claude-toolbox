@@ -33,6 +33,24 @@ _CC_PREFIX = re.compile(
 _VERSION_SUFFIX = re.compile(r'\s*\(v[\d.]+\)\s*$')
 _SLASH_COMMAND = re.compile(r'^/\S+\s*')
 
+# A session can open with harness preamble instead of a typed message: the
+# scaffolding a slash command emits, the local-command caveat and its stdout, a
+# system reminder, or the summary that opens a continued session. Naming a
+# session after any of these produces junk (gfl-marketplace once had two named
+# "local-command-caveat-caveat-messages"), so extract_context skips them and
+# uses the first message the user actually wrote.
+_PREAMBLE_PREFIXES = (
+    '<local-command-caveat>', '<command-name>', '<command-message>',
+    '<command-args>', '<local-command-stdout>', '<system-reminder>',
+)
+_CONTINUATION_PREFIX = 'This session is being continued'
+
+
+def _is_preamble(text: str) -> bool:
+    """True when a first-message candidate is harness preamble, not authored."""
+    t = text.lstrip()
+    return t.startswith(_PREAMBLE_PREFIXES) or t.startswith(_CONTINUATION_PREFIX)
+
 
 def slug(text: str) -> str:
     """Slugify free text into at most five hyphen-joined keywords."""
@@ -60,9 +78,12 @@ def derive_name(commit: str, first_user: str) -> str:
 def extract_context(path: Path) -> tuple[str, str]:
     """Return ``(last_commit_subject, first_user_msg)`` from a session JSONL.
 
-    Scans the first 40 lines for the first user message and the last 600
-    lines for the most recent git commit subject — a ``[main ...]`` or
-    ``[master ...]`` line emitted inside a commit tool result.
+    Scans the first 40 lines for the first user-authored message — skipping
+    harness preamble (command scaffolding, the local-command caveat/stdout,
+    system reminders, ``isMeta`` records, and the summary that opens a
+    continued session) — and the last 600 lines for the most recent git commit
+    subject, a ``[main ...]`` or ``[master ...]`` line emitted inside a commit
+    tool result.
     """
     lines = path.read_text(encoding='utf-8', errors='replace').splitlines()
 
@@ -72,17 +93,21 @@ def extract_context(path: Path) -> tuple[str, str]:
             continue
         try:
             obj = json.loads(line)
-            if obj.get('type') == 'user':
-                content = obj.get('message', {}).get('content', '')
-                if isinstance(content, list):
-                    for c in content:
-                        if isinstance(c, dict) and c.get('type') == 'text':
-                            first_user = c.get('text', '')[:150]
-                            break
-                elif isinstance(content, str):
-                    first_user = content[:150]
-                if first_user:
-                    break
+            if obj.get('type') != 'user' or obj.get('isMeta'):
+                continue  # isMeta records are harness preamble, not authored
+            content = obj.get('message', {}).get('content', '')
+            text = ''
+            if isinstance(content, list):
+                for c in content:
+                    if isinstance(c, dict) and c.get('type') == 'text':
+                        text = c.get('text', '')
+                        break
+            elif isinstance(content, str):
+                text = content
+            if not text or _is_preamble(text):
+                continue
+            first_user = text[:150]
+            break
         except (json.JSONDecodeError, AttributeError, TypeError):
             pass
 

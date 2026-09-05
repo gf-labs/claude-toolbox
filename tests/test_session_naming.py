@@ -139,6 +139,74 @@ def test_extract_context_no_user_no_commit(tmp_path):
     assert first_user == ""
 
 
+def _open_records(preamble_texts: list[str], real_text: str) -> list[dict]:
+    """A session that opens with harness preamble lines before the first
+    message the user actually wrote."""
+    recs = [{"type": "user", "message": {"content": t}} for t in preamble_texts]
+    recs.append({"type": "user", "message": {"content": real_text}})
+    return recs
+
+
+def test_extract_context_skips_boilerplate_prefixes(tmp_path):
+    # A session can open with harness scaffolding instead of a typed message —
+    # command wrappers, the local-command caveat/stdout, a system reminder.
+    # Naming the session after it yields junk; use the first real message.
+    for prefix in ("<local-command-caveat>Caveat: the messages below ...</local-command-caveat>",
+                   "<command-name>/tools:pin</command-name>",
+                   "<command-message>pin</command-message>",
+                   "<command-args></command-args>",
+                   "<local-command-stdout>done</local-command-stdout>",
+                   "<system-reminder>context</system-reminder>"):
+        p = tmp_path / "s.jsonl"
+        _write_jsonl(p, _open_records([prefix], "review the parser change"))
+        _, first_user = session_naming.extract_context(p)
+        assert first_user == "review the parser change", prefix
+
+
+def test_extract_context_skips_continuation_summary(tmp_path):
+    # A resumed session opens with a summary of the prior conversation.
+    p = tmp_path / "s.jsonl"
+    _write_jsonl(p, _open_records(
+        ["This session is being continued from a previous conversation that "
+         "ran out of context. The summary below covers the earlier portion."],
+        "add the divergence check"))
+    _, first_user = session_naming.extract_context(p)
+    assert first_user == "add the divergence check"
+
+
+def test_extract_context_skips_meta_preamble(tmp_path):
+    # isMeta records are harness preamble, not authored by the user.
+    p = tmp_path / "s.jsonl"
+    _write_jsonl(p, [
+        {"type": "user", "isMeta": True, "message": {"content": "skill body text"}},
+        {"type": "user", "message": {"content": "the real question"}},
+    ])
+    _, first_user = session_naming.extract_context(p)
+    assert first_user == "the real question"
+
+
+def test_extract_context_first_substantive_after_run_of_preamble(tmp_path):
+    p = tmp_path / "s.jsonl"
+    _write_jsonl(p, _open_records(
+        ["<local-command-caveat>Caveat: ...</local-command-caveat>",
+         "<command-name>/compact</command-name>",
+         "<command-args></command-args>"],
+        "wire up the collector"))
+    _, first_user = session_naming.extract_context(p)
+    assert first_user == "wire up the collector"
+
+
+def test_extract_context_all_preamble_returns_empty(tmp_path):
+    # No authored message in range -> empty, so derive_name uses the commit.
+    p = tmp_path / "s.jsonl"
+    _write_jsonl(p, [
+        {"type": "user", "message": {"content": "<command-name>/tools:pin</command-name>"}},
+        {"type": "user", "isMeta": True, "message": {"content": "reminder body"}},
+    ])
+    _, first_user = session_naming.extract_context(p)
+    assert first_user == ""
+
+
 # --------------------------------------------------------------------------
 # read_title / write_title
 # --------------------------------------------------------------------------
