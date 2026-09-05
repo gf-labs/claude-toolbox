@@ -26,7 +26,11 @@ SKIP_WORDS = frozenset({
     'some', 'my', 'your', 'we', 'i',
 })
 
-_BRANCH_PREFIX = re.compile(r'^\[(?:main|master)[^\]]*\]\s*')
+# A git commit echo is "[<branch> <hash>] <subject>" for any branch, not just
+# main/master (git-flow commits land on feature/*). _BRANCH_PREFIX strips the
+# bracket in derive_name; _COMMIT_ECHO spots the echo line in a tool result.
+_BRANCH_PREFIX = re.compile(r'^\[[^\]]+\]\s*')
+_COMMIT_ECHO = re.compile(r'^\[\S+ [0-9a-f]{7,40}\] +\S')
 _CC_PREFIX = re.compile(
     r'^(feat|fix|chore|docs|refactor|test|style|perf|ci|build)[!]?(\([^)]+\))?:\s*'
 )
@@ -82,8 +86,10 @@ def extract_context(path: Path) -> tuple[str, str]:
     harness preamble (command scaffolding, the local-command caveat/stdout,
     system reminders, ``isMeta`` records, and the summary that opens a
     continued session) — and the last 600 lines for the most recent git commit
-    subject, a ``[main ...]`` or ``[master ...]`` line emitted inside a commit
-    tool result.
+    subject: a ``[<branch> <hash>] <subject>`` echo emitted inside a commit
+    tool result, for any branch (git-flow commits land on feature/*), not just
+    main/master. The echo must carry a subject, so a bare ``[develop <sha>]``
+    git-log listing line is ignored.
     """
     lines = path.read_text(encoding='utf-8', errors='replace').splitlines()
 
@@ -125,7 +131,7 @@ def extract_context(path: Path) -> tuple[str, str]:
                         for inner in block.get('content', []):
                             if isinstance(inner, dict) and inner.get('type') == 'text':
                                 for ln in inner.get('text', '').splitlines():
-                                    if ln.startswith('[main') or ln.startswith('[master'):
+                                    if _COMMIT_ECHO.match(ln):
                                         commit = ln
                                         break
         except (json.JSONDecodeError, AttributeError, TypeError):

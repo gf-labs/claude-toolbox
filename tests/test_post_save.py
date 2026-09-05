@@ -66,6 +66,22 @@ def _titled_session(proj, stem, content, title, mtime):
     return f
 
 
+def _titled_session_with_commit(proj, stem, content, title, commit_subject, mtime,
+                                branch="feature/x", sha="abc1234f"):
+    # like _titled_session but with a git commit echo between the user message
+    # and the title, so extract_context derives the name from the commit
+    f = proj / f"{stem}.jsonl"
+    f.write_text(
+        json.dumps({"type": "user", "message": {"content": content}}) + "\n"
+        + json.dumps({"type": "assistant", "message": {"content": [
+            {"type": "tool_result", "content": [
+                {"type": "text", "text": f"[{branch} {sha}] {commit_subject}"}]}]}}) + "\n"
+        + json.dumps({"type": "custom-title", "customTitle": title, "sessionId": stem}) + "\n",
+        encoding="utf-8")
+    os.utime(f, (mtime, mtime))
+    return f
+
+
 def _titles(f):
     out = []
     for ln in f.read_text(encoding="utf-8").splitlines():
@@ -85,20 +101,39 @@ def _run_current(script, home, cwd, sid, *args):
 
 def test_post_save_rederives_junk_titled_current_session(tmp_path):
     # a real work session whose title latched onto junk ("*-scratch-*") is
-    # re-derived from its content on the next pin — the #661 mis-latch fix
+    # re-derived from its most recent commit on the next pin — the #661 fix.
+    # A junk title heals only from a commit (a trustworthy work artifact).
     home = tmp_path / "home"
     repo = tmp_path / "work" / "proj"
     projects = _register(home, repo)
     pd = projects / str(repo).replace("/", "-")
-    f = _titled_session(pd, "sess-aaaa", "implement the parser widget", "old-scratch-9", 2000)
+    f = _titled_session_with_commit(pd, "sess-aaaa", "implement the parser widget",
+                                    "old-scratch-9", "add the parser widget", 2000)
     outside = tmp_path / "nowhere"
     outside.mkdir()
 
     result = _run_current("post-save.py", home, outside, "sess-aaaa")
     assert result.returncode == 0, result.stderr
     titles = _titles(f)
-    assert titles[0] == "old-scratch-9"              # original kept as history
-    assert titles[-1] == "implement-parser-widget"   # re-derived, appended
+    assert titles[0] == "old-scratch-9"          # original kept as history
+    assert titles[-1] == "add-parser-widget"     # re-derived from the commit
+
+
+def test_post_save_leaves_junk_title_with_no_commit_untouched(tmp_path):
+    # Option A: a junk title heals ONLY from a commit. With a usable first-user
+    # message but NO commit, the junk title is left as-is — never re-derived into
+    # another weak slug (the junk->junk defect). /rename is the durable fix.
+    home = tmp_path / "home"
+    repo = tmp_path / "work" / "proj"
+    projects = _register(home, repo)
+    pd = projects / str(repo).replace("/", "-")
+    f = _titled_session(pd, "sess-dddd", "implement the parser widget", "old-scratch-9", 2000)
+    outside = tmp_path / "nowhere"
+    outside.mkdir()
+
+    result = _run_current("post-save.py", home, outside, "sess-dddd")
+    assert result.returncode == 0, result.stderr
+    assert _titles(f) == ["old-scratch-9"]       # unchanged despite a usable first-user msg
 
 
 def test_post_save_leaves_real_titled_session_untouched(tmp_path):
@@ -141,10 +176,11 @@ def test_post_save_rederives_junk_titled_non_current_session(tmp_path):
     projects = _register(home, repo)
     pd = projects / str(repo).replace("/", "-")
     _titled_session(pd, "curr-zzzz", "current work here", "steady-progress", 3000)  # current, good title
-    old = _titled_session(pd, "old-aaaa", "wire up the collector", "tmp-scratch-4", 1000)
+    old = _titled_session_with_commit(pd, "old-aaaa", "wire up the collector",
+                                      "tmp-scratch-4", "wire up the collector", 1000)
     outside = tmp_path / "nowhere"
     outside.mkdir()
 
     result = _run_current("post-save.py", home, outside, "curr-zzzz")
     assert result.returncode == 0, result.stderr
-    assert _titles(old)[-1] == "wire-up-collector"   # non-current junk healed
+    assert _titles(old)[-1] == "wire-up-collector"   # non-current junk healed from commit

@@ -62,6 +62,14 @@ def test_derive_name_master_branch_and_fix_prefix():
         "resolve-crash"
 
 
+def test_derive_name_strips_feature_branch_prefix():
+    # git-flow work commits on feature/* branches; the echo is
+    # "[feature/x sha] subject". The main/master-only strip left the branch in
+    # the slug — broaden it so the real subject drives the name.
+    commit = "[feature/heal-junk-titles 8a3440f] fix(naming): heal latched titles"
+    assert session_naming.derive_name(commit, "") == "heal-latched-titles"
+
+
 def test_derive_name_falls_back_to_first_user():
     assert session_naming.derive_name("", "implement the parser") == "implement-parser"
 
@@ -129,6 +137,53 @@ def test_extract_context_finds_commit_in_tool_result(tmp_path):
     ])
     commit, _ = session_naming.extract_context(p)
     assert commit == "[main abc1234] feat: do the thing"
+
+
+def test_extract_context_finds_feature_branch_commit(tmp_path):
+    # the #661 refinement: a commit made on a feature/* branch echoes as
+    # "[feature/x sha] subject" — the main/master-only matcher missed it and
+    # forced a weak first-user fallback.
+    p = tmp_path / "s.jsonl"
+    _write_jsonl(p, [
+        {"type": "user", "message": {"content": "do it"}},
+        {"type": "assistant", "message": {"content": [
+            {"type": "tool_result", "content": [
+                {"type": "text", "text": "[feature/heal-junk-titles 8a3440f] fix: heal titles\n 2 files"}
+            ]},
+        ]}},
+    ])
+    commit, _ = session_naming.extract_context(p)
+    assert commit == "[feature/heal-junk-titles 8a3440f] fix: heal titles"
+
+
+def test_extract_context_finds_develop_branch_commit(tmp_path):
+    p = tmp_path / "s.jsonl"
+    _write_jsonl(p, [
+        {"type": "assistant", "message": {"content": [
+            {"type": "tool_result", "content": [
+                {"type": "text", "text": "[develop f81cd8b] add: the collector"}
+            ]},
+        ]}},
+    ])
+    commit, _ = session_naming.extract_context(p)
+    assert commit == "[develop f81cd8b] add: the collector"
+
+
+def test_extract_context_ignores_subjectless_commit_listing(tmp_path):
+    # git-log / branch output lists bare "[develop <sha>]" lines with no
+    # subject; naming a session after one slugs to empty. A commit echo must
+    # carry a subject to count.
+    p = tmp_path / "s.jsonl"
+    _write_jsonl(p, [
+        {"type": "user", "message": {"content": "show the log"}},
+        {"type": "assistant", "message": {"content": [
+            {"type": "tool_result", "content": [
+                {"type": "text", "text": "[develop 2e0b248]\n[develop 2e842dd]\n[develop 5f787a5]"}
+            ]},
+        ]}},
+    ])
+    commit, _ = session_naming.extract_context(p)
+    assert commit == ""
 
 
 def test_extract_context_no_user_no_commit(tmp_path):
