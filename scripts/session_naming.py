@@ -179,6 +179,33 @@ def base_title(title: str) -> str:
     return STALE_SUFFIX_RE.sub('', title)
 
 
+# Titles that read as auto-derived junk rather than a real session name: a
+# throwaway ``*-scratch-*`` name, or — before extract_context learned to skip it
+# — a slug of harness preamble (the local-command caveat, its stdout, a system
+# reminder). post-save may re-derive over one of these; it must never overwrite a
+# real name, so the marker list stays deliberately narrow (distinctive phrases,
+# not generic words like "command").
+_JUNK_TITLE_MARKERS = (
+    'scratch',
+    'local-command-caveat',
+    'local-command-stdout',
+    'caveat-messages',
+    'system-reminder',
+)
+
+
+def is_junk_title(title: str) -> bool:
+    """True when ``title`` looks auto-derived from junk, not real content.
+
+    Matched case-insensitively as a substring of the slug, so a ``~MM-DD``
+    stale-fork suffix can't hide a marker. An empty title is *not* junk — that
+    means unnamed, which callers handle separately. The session registry's
+    ``keep`` status is the escape hatch for an intentional name that happens to
+    match a marker.
+    """
+    return any(marker in title.lower() for marker in _JUNK_TITLE_MARKERS)
+
+
 def scan_session(path: Path) -> tuple[str, str, bool]:
     """Single-pass read returning ``(effective_title, last_event_timestamp, is_bg)``.
 

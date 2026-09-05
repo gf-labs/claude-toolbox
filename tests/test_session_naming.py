@@ -326,6 +326,36 @@ def test_base_title_ignores_non_marker_tilde():
 
 
 # --------------------------------------------------------------------------
+# is_junk_title
+# --------------------------------------------------------------------------
+
+def test_is_junk_title_flags_scratch_names():
+    # the observed latch: a throwaway "*-scratch-N" title on a real work session
+    assert session_naming.is_junk_title("ctb-scratch-2") is True
+    assert session_naming.is_junk_title("myproj-scratch-3") is True
+
+
+def test_is_junk_title_case_insensitive():
+    assert session_naming.is_junk_title("CTB-Scratch-2") is True
+
+
+def test_is_junk_title_flags_harness_preamble_slugs():
+    # slugs of the local-command caveat / a system reminder (pre-#656 junk)
+    assert session_naming.is_junk_title("local-command-caveat-caveat-messages") is True
+    assert session_naming.is_junk_title("system-reminder-context-below") is True
+
+
+def test_is_junk_title_leaves_a_real_name_alone():
+    assert session_naming.is_junk_title("session-name-divergence") is False
+    assert session_naming.is_junk_title("add-user-auth") is False
+
+
+def test_is_junk_title_empty_is_not_junk():
+    # empty means unnamed (handled separately), not junk
+    assert session_naming.is_junk_title("") is False
+
+
+# --------------------------------------------------------------------------
 # scan_title_and_ts
 # --------------------------------------------------------------------------
 
