@@ -118,7 +118,7 @@ Auto-fire handlers registered in `hooks/hooks.json`.
 
 ## Scripts (infrastructure)
 
-45 files in `scripts/` — called by the commands/hooks above, not invoked directly. The
+47 files in `scripts/` — called by the commands/hooks above, not invoked directly. The
 load-bearing ones:
 
 | Script(s) | Role |
@@ -132,7 +132,7 @@ load-bearing ones:
 | `check-manifest-tag.py` | Assert a repo's manifest version equals its latest release tag — collector/audit + CI gate (stdlib, exit 0/1/2) |
 | `check-docs.py` | Docs-consistency gate — README agents/hooks tables, LIBRARY.md counts, links vs the tree (CI step in test.yml) |
 | `stamp-git-policy.py` | Stamp git-policy CI files into a target repo — derives per-repo values, dry-run diff by default, `--write` to apply; never touches git |
-| `post-save.py`, `session_naming.py`, `relabel-forks.py`, `name-session.py`, `rename-unnamed.py` | Session naming + fork disambiguation |
+| `post-save.py`, `session_naming.py`, `session_divergence.py`, `relabel-forks.py`, `session-name-divergence.py`, `name-session.py`, `rename-unnamed.py` | Session naming, fork disambiguation + read-only name-divergence check |
 | `update-project-map.py`, `collect-plan-map.py` | Keep `.project-map` current |
 | `session_index.py`, `mark-session-done.py`, `add-tasks.py`, `lint-py.py`, `setup-mcp.py`, `validate-env.py` | Supporting utilities + hook bodies |
 
@@ -140,5 +140,5 @@ load-bearing ones:
 
 ## At a glance
 
-**13 commands · 2 skills · 5 agents · 3 MCP tools · 6 hook handlers · 45 scripts** — all
+**13 commands · 2 skills · 5 agents · 3 MCP tools · 6 hook handlers · 47 scripts** — all
 user-facing surfaces namespaced `tools:`. Plugin manifest: `.claude-plugin/plugin.json`.
