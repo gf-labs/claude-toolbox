@@ -25,6 +25,22 @@ go through it (the markdown invokes it as `python3 ${CLAUDE_TOOLBOX_ROOT}/script
   - `CLAUDE_TOOLBOX_REPOS_ROOT` — anchor dir repos live under (also the `--discover` default).
   - `CLAUDE_TOOLBOX_SLUG_STRATEGY` — `basename` (default) or `domain.repo` (`<first-component-under-root>.<basename>`, skipping any `_container/` in between).
 
+**Two entry points — pick by what you hold.** `derive_slug` maps a **repo**;
+`derive_scope_slug` maps a **scope**, which is whatever a Claude Code project is
+rooted at and is not always a repo (this toolbox's own sessions root at
+`lib/tools/<tool>/`). A scope below the repo root slugs as
+`<repo basename>.<scope basename>` — `toolbox.workstation`, `toolbox.dot` —
+using the repo's basename, never its full slug, so a sub-scope reads the same
+under either strategy. At the repo root the two are identical.
+
+Handing a sub-repo path to `derive_slug` **fails silently**: under `domain.repo`
+it pairs the domain with a non-repo basename (`…/toolbox/lib/tools/workstation`
+→ `business.workstation`, zero tasks), and an empty backlog reads as "nothing
+queued" rather than a lookup miss. That was live in `collect-pin.py` until
+2026-09-02. Callers holding a session cwd want `derive_scope_slug`; the
+`_slug.py` CLI takes the scope reading, so the `/tools:*` markdown is correct
+from inside a subdirectory.
+
 This keeps the published plugin generic; a personal config (e.g. dot-configs) sets the env
 to restore the `~/Repos/<domain>/<repo>` → `domain.repo` convention. `--discover` walks
 `_name/` containers without spending a depth level and skips `.name/` dormant dirs.

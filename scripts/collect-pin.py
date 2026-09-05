@@ -28,7 +28,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 from _scope import get_scope, project_key  # noqa: E402
 from _session import current_session_jsonl  # noqa: E402
-from _slug import derive_slug  # noqa: E402
+from _slug import derive_scope_slug  # noqa: E402
 
 HOME = Path.home()
 PROJECTS_DIR = HOME / '.claude' / 'projects'
@@ -75,7 +75,11 @@ memory_dir = proj_meta_dir / 'memory'
 repo = project_dir.name
 # TW slug via the shared helper (basename by default; domain.repo when the
 # CLAUDE_TOOLBOX_* env policy is set). Single source of truth = _slug.py.
-tw_project = derive_slug(project_dir)
+# SCOPE slug, not repo slug: in 'single' mode project_dir is the session cwd,
+# which may sit BELOW the repo root (this toolbox's own lib/tools/<tool>/).
+# derive_slug alone would pair the domain with a non-repo basename there and
+# emit a slug matching zero tasks; derive_scope_slug returns <repo>.<tool>.
+tw_project = derive_scope_slug(project_dir, git_root)
 
 print('=== SCOPE ===')
 print(f'MODE: {mode}')
