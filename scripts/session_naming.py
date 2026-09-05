@@ -157,9 +157,20 @@ def base_title(title: str) -> str:
 def scan_session(path: Path) -> tuple[str, str, bool]:
     """Single-pass read returning ``(effective_title, last_event_timestamp, is_bg)``.
 
-    The effective title is the *last* ``custom-title`` record; the timestamp is the
-    last ISO ``timestamp`` seen on any event line. One scan instead of two — these
-    session files can be tens of MB.
+    The effective title is the *last* ``custom-title`` record; the timestamp is
+    the last ISO ``timestamp`` on a non-injected event line. One scan instead of
+    two — these session files can be tens of MB.
+
+    ``isMeta: true`` records never advance the timestamp. They are synthetic
+    turns — skill bodies, command caveats, the post-compact continue prompt, and
+    the rename echo Claude Code writes into *other* sessions of a compact-chain
+    group. That echo lands milliseconds after the rename you typed, in a file
+    you are not in, so counting it as activity made ``plan_fork_relabels`` crown
+    the wrong fork (2026-09-04: a 1 MB leftover out-ranked the live 30 MB
+    session on echoes alone). Genuine human turns carry no ``isMeta`` key at
+    all. The gate applies to every caller on purpose: via ``scan_title_and_ts``
+    it also makes the atlas sessions facet's "last activity" mean last *real*
+    activity.
 
     ``is_bg`` is True when *every* event record carries ``sessionKind: 'bg'`` — the
     file belongs to a background job, not an interactive session. Presence of some
@@ -185,10 +196,11 @@ def scan_session(path: Path) -> tuple[str, str, bool]:
                     obj = json.loads(line)
                     t = obj.get('timestamp')
                     if t:
-                        ts = t
                         saw_event = True
                         if obj.get('sessionKind') != 'bg':
                             saw_non_bg = True
+                        if not obj.get('isMeta'):  # injected turn — not activity
+                            ts = t
                 except json.JSONDecodeError:
                     pass
     except OSError:
@@ -212,8 +224,15 @@ def plan_fork_relabels(proj_dir: Path) -> list[dict]:
 
     The newest session by last-event timestamp (NOT file mtime — any write,
     including a relabel, perturbs mtime) keeps the clean base title; older forks
-    get a ``base~MM-DD`` marker. Only entries whose current title differs from the
+    get a ``base~MM-DD`` marker, or ``base~MM-DD-sid`` when two or more stale
+    forks share a date. Only entries whose current title differs from the
     proposed one are returned, so this is idempotent across runs.
+
+    Every proposed name is a pure function of (base, that session's own date,
+    that session's own sid) — never of a session's *position* among its peers.
+    That is what makes it stable: relative ``ts`` order between two stale forks
+    changes whenever either is touched, so any name derived from that order
+    ping-pongs on every run.
 
     Each action: ``{path, sid, current, proposed, last_event, reason}``.
     """
@@ -251,14 +270,23 @@ def plan_fork_relabels(proj_dir: Path) -> list[dict]:
                             'last_event': live['ts'][:10],
                             'reason': 'live fork (newest activity) → clean name'})
 
-        used = {base}
+        # Same-date stale forks: EVERY member of a colliding date gets the sid
+        # suffix, not just the ones after the first. Giving the bare `~MM-DD` to
+        # "whichever sorted first" made the suffix depend on `ts` ordering
+        # *between two stale forks* — an ordering that flips whenever either one
+        # is touched, swapping their names back and forth on every run for no
+        # reason. Nothing above the group had changed; only their order had.
+        # A whole date group is symmetric, so there is no ordering left to flip.
+        by_date: dict[str, list] = defaultdict(list)
+        for s in stale:
+            by_date[s['ts'][:10] if s['ts'] else ''].append(s)
+
         for s in stale:
             date = s['ts'][:10] if s['ts'] else ''
             mmdd = date[5:] if date else 'old'
             proposed = f'{base}~{mmdd}'
-            if proposed in used:  # two stale forks same date → add a sid tiebreaker
+            if len(by_date[date]) > 1:
                 proposed = f'{base}~{mmdd}-{s["sid"][:4]}'
-            used.add(proposed)
             if s['title'] != proposed:
                 actions.append({'path': s['path'], 'sid': s['sid'][:8],
                                 'current': s['title'], 'proposed': proposed,

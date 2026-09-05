@@ -317,6 +317,51 @@ def test_plan_fork_relabels_promotes_live_to_clean_name(tmp_path):
     assert "stale222" not in proposals  # already correctly marked -> no-op
 
 
+def _rename_echo(title: str, ts: str) -> dict:
+    """The synthetic turn Claude Code injects into *other* sessions of a
+    compact-chain group when one of them is renamed — the only timestamped
+    record the propagation writes."""
+    return {"type": "user", "isMeta": True, "sessionKind": "bg",
+            "message": {"role": "user", "content":
+                        f'<system-reminder>\nThe user named this session "{title}". '
+                        'This may indicate the session\'s focus or intent.\n</system-reminder>'},
+            "timestamp": ts}
+
+
+def test_scan_session_meta_records_do_not_advance_activity_clock(tmp_path):
+    # isMeta:true records are injected (skill bodies, caveats, rename echoes),
+    # never typed — they must not count as activity. isMeta:false records
+    # (slash commands) and plain turns (no isMeta key) must.
+    p = tmp_path / "aaaa1111-bbbb.jsonl"
+    _write_jsonl(p, [
+        {"type": "custom-title", "customTitle": "demo-project-main", "sessionId": "aaaa1111-bbbb"},
+        {"type": "user", "message": {"content": "hi"}, "timestamp": "2026-06-27T09:00:00Z"},
+        {"type": "user", "isMeta": False, "message": {"content": "/compact"},
+         "timestamp": "2026-06-27T10:00:00Z"},
+        _rename_echo("demo-project-main", "2026-06-27T11:00:00Z"),
+    ])
+    title, ts, _ = session_naming.scan_session(p)
+    assert title == "demo-project-main"
+    assert ts == "2026-06-27T10:00:00Z"  # the isMeta:false turn, not the echo
+
+
+def test_plan_fork_relabels_meta_echo_does_not_steal_clean_name(tmp_path):
+    """2026-09-04 regression: renaming the live session writes an echo into the
+    stale fork ~60 ms *later*, so last-any-event crowned the fork the user was
+    not in. The echo must not advance the stale fork past the live one."""
+    _fork_session(tmp_path, "live1111-aaaa", "demo-project-main", "2026-06-28T12:00:00Z")
+    _write_jsonl(tmp_path / "stale222-bbbb.jsonl", [
+        {"type": "user", "message": {"content": "hi"}, "timestamp": "2026-06-27T09:00:00Z"},
+        {"type": "custom-title", "customTitle": "demo-project-main", "sessionId": "stale222-bbbb"},
+        _rename_echo("demo-project-main", "2026-06-28T12:00:01Z"),  # newer than live's last real turn
+    ])
+    actions = session_naming.plan_fork_relabels(tmp_path)
+    # live keeps the clean name untouched; the stale fork is demoted by its
+    # own last REAL activity date (06-27), not the echo's (06-28)
+    assert [(a["sid"], a["proposed"]) for a in actions] == [
+        ("stale222", "demo-project-main~06-27")]
+
+
 def test_plan_fork_relabels_no_collision(tmp_path):
     _fork_session(tmp_path, "a1111111-aaaa", "configs-main", "2026-06-28T12:00:00Z")
     _fork_session(tmp_path, "b2222222-bbbb", "configs-scratch", "2026-06-27T09:00:00Z")
@@ -335,13 +380,58 @@ def test_plan_fork_relabels_idempotent_when_already_marked(tmp_path):
 
 
 def test_plan_fork_relabels_same_date_tiebreaker(tmp_path):
-    # two stale forks on the same day -> the second gets a sid tiebreaker suffix
+    # two stale forks on the same day -> BOTH get a sid suffix, not just the
+    # second. Handing the bare marker to whichever sorted first made the name
+    # depend on ts order between two stale forks (see the flap test below).
     _fork_session(tmp_path, "live1111-zzzz", "demo-project-main", "2026-06-28T12:00:00Z")
     _fork_session(tmp_path, "aaaa1111-bbbb", "demo-project-main", "2026-06-27T09:00:00Z")
     _fork_session(tmp_path, "cccc2222-dddd", "demo-project-main", "2026-06-27T08:00:00Z")
     proposals = sorted(a["proposed"] for a in session_naming.plan_fork_relabels(tmp_path))
-    # newest stale keeps the bare date marker; the next collides and gets its sid appended
-    assert proposals == ["demo-project-main~06-27", "demo-project-main~06-27-cccc"]
+    assert proposals == ["demo-project-main~06-27-aaaa", "demo-project-main~06-27-cccc"]
+
+
+def test_plan_fork_relabels_lone_stale_date_keeps_bare_marker(tmp_path):
+    # a date with only one stale fork needs no tiebreaker
+    _fork_session(tmp_path, "live1111-zzzz", "demo-project-main", "2026-06-28T12:00:00Z")
+    _fork_session(tmp_path, "aaaa1111-bbbb", "demo-project-main", "2026-06-27T09:00:00Z")
+    proposals = [a["proposed"] for a in session_naming.plan_fork_relabels(tmp_path)]
+    assert proposals == ["demo-project-main~06-27"]
+
+
+def test_plan_fork_relabels_stable_when_stale_forks_swap_ts_order(tmp_path):
+    """The flap: two same-date stale forks traded names on every run.
+
+    Their suffixes came from position in a ts-sorted list, so touching either
+    one flipped the order and swapped both names — then touching the other
+    swapped them back, forever. Nothing about the group had changed. The plan
+    must depend only on each session's own date and sid.
+    """
+    def plan(ts_a, ts_b):
+        for f in tmp_path.glob("*.jsonl"):
+            f.unlink()
+        _fork_session(tmp_path, "live1111-zzzz", "demo-project-main", "2026-06-28T12:00:00Z")
+        _fork_session(tmp_path, "aaaa1111-bbbb", "demo-project-main~06-27-aaaa", ts_a)
+        _fork_session(tmp_path, "cccc2222-dddd", "demo-project-main~06-27-cccc", ts_b)
+        return session_naming.plan_fork_relabels(tmp_path)
+
+    assert plan("2026-06-27T09:00:00Z", "2026-06-27T08:00:00Z") == []
+    assert plan("2026-06-27T07:00:00Z", "2026-06-27T08:00:00Z") == []  # order flipped
+
+
+def test_plan_fork_relabels_bare_marker_migrates_once_then_settles(tmp_path):
+    """A colliding date already holding a bare marker migrates to the sid form.
+
+    One rename, not a recurring one — re-planning the migrated state is a no-op.
+    """
+    _fork_session(tmp_path, "live1111-zzzz", "demo-project-main", "2026-06-28T12:00:00Z")
+    _fork_session(tmp_path, "aaaa1111-bbbb", "demo-project-main~06-27", "2026-06-27T09:00:00Z")
+    _fork_session(tmp_path, "cccc2222-dddd", "demo-project-main~06-27-cccc", "2026-06-27T08:00:00Z")
+    actions = session_naming.plan_fork_relabels(tmp_path)
+    assert [(a["current"], a["proposed"]) for a in actions] == [
+        ("demo-project-main~06-27", "demo-project-main~06-27-aaaa")]
+    for a in actions:  # apply, then re-plan
+        session_naming.write_title(a["path"], a["proposed"])
+    assert session_naming.plan_fork_relabels(tmp_path) == []
 
 
 def test_plan_fork_relabels_ignores_unnamed_sessions(tmp_path):
