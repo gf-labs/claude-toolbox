@@ -20,9 +20,15 @@ is the domain, the basename is the repo, and any container dirs between them
 tasks are not orphaned under the container. A repo outside ``repos_root`` falls
 back to its basename.
 
-Importable: ``from _slug import derive_slug``.
+``derive_slug`` maps a **repo**. A Claude Code *scope* is not always a repo —
+projects can be rooted at a subdirectory — so sub-repo scopes go through
+``derive_scope_slug``, which adds one rule on top: a scope inside a repo slugs
+as ``<repo basename>.<scope basename>``.
+
+Importable: ``from _slug import derive_slug, derive_scope_slug``.
 Runnable:   ``python3 _slug.py [path]`` prints the slug for the path (default:
-the git toplevel of the cwd); prints nothing if no path can be resolved.
+the cwd); prints nothing if no path can be resolved. The CLI takes the scope
+reading, so it answers correctly from inside a subdirectory.
 """
 import os
 import subprocess
@@ -60,18 +66,59 @@ def derive_slug(repo_path, repos_root: Path | None = None,
     return repo_path.name
 
 
-def _git_toplevel() -> str | None:
+def _git_toplevel(cwd=None) -> str | None:
     try:
         out = subprocess.check_output(
             ["git", "rev-parse", "--show-toplevel"],
-            stderr=subprocess.DEVNULL, text=True,
+            stderr=subprocess.DEVNULL, text=True, cwd=cwd,
         ).strip()
         return out or None
     except (OSError, subprocess.SubprocessError):
         return None
 
 
+def derive_scope_slug(scope_dir, repo_root=None, repos_root: Path | None = None,
+                      strategy: str | None = None) -> str:
+    """Map a *scope* directory to a slug. ``derive_slug`` plus the sub-repo rule.
+
+    A scope is whatever a Claude Code project is rooted at, which is not always
+    a repo — this toolbox's own sessions root at ``lib/tools/<tool>/``. Handing
+    such a path to ``derive_slug`` yields a slug that matches nothing, silently:
+    under ``domain.repo`` it pairs the DOMAIN with a non-repo basename, so
+    ``~/Repos/business/toolbox/lib/tools/workstation`` slugs ``business.``
+    ``workstation`` while the tasks live under ``toolbox.workstation``. Nothing
+    errors; the backlog just reads empty.
+
+    Rules:
+      scope is the repo root, or is in no repo -> ``derive_slug`` unchanged
+      scope is inside a repo                   -> ``<repo basename>.<scope basename>``
+
+    The sub-scope form uses the repo's **basename**, never its full slug: the
+    convention in use is ``toolbox.workstation`` / ``toolbox.dot``, not
+    ``business.toolbox.workstation``. Only the repo-root half varies by
+    strategy, so a sub-scope reads the same under either one.
+
+    ``repo_root`` is accepted so a caller that already resolved it (collect-pin
+    runs ``git rev-parse`` for other reasons) does not pay for a second
+    subprocess; omitted, it is resolved from ``scope_dir``.
+    """
+    scope = Path(scope_dir)
+    if repo_root is None:
+        repo_root = _git_toplevel(scope if scope.is_dir() else None)
+    if repo_root is None:
+        return derive_slug(scope, repos_root, strategy)
+    repo_root = Path(repo_root)
+    try:
+        rel = scope.resolve().relative_to(repo_root.resolve())
+    except (ValueError, OSError):
+        # Scope is not under the repo we were handed — trust the scope, not it.
+        return derive_slug(scope, repos_root, strategy)
+    if not rel.parts:
+        return derive_slug(repo_root, repos_root, strategy)
+    return f"{repo_root.name}.{scope.name}"
+
+
 if __name__ == "__main__":
-    arg = sys.argv[1] if len(sys.argv) > 1 else _git_toplevel()
+    arg = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
     if arg:
-        print(derive_slug(arg))
+        print(derive_scope_slug(arg))
