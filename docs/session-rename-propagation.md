@@ -16,7 +16,7 @@ approaches that were tested and rejected.
 
 ## Symptom
 
-Two sessions in `~/.claude/projects/-Users-berniegreen-Repos-projects-job-search/`:
+Two sessions in `~/.claude/projects/-Users-you-Repos-job-search/`:
 
 | session | size | role |
 |---|---|---|
@@ -335,7 +335,7 @@ and holding an address the bug handed it.
 When a session title moves on its own:
 
 ```bash
-PROJECT_KEY=-Users-berniegreen-Repos-projects-job-search   # adjust
+PROJECT_KEY=-Users-you-Repos-job-search   # adjust
 
 # 1. What is each session actually called, and how big is it?
 python3 - "$PROJECT_KEY" <<'PY'

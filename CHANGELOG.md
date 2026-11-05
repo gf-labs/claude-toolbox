@@ -16,11 +16,15 @@ This project follows [Semantic Versioning](https://semver.org).
   "tagged but unreachable from HEAD". The second is the squash-merge trap: squashing
   `release/*` into `main` orphans the tag on history `main` cannot reach, which the
   reachability-blind default mode passes silently.
-- `CONTRIBUTING.md`; README "git-policy arc" section; CLAUDE.md CI/CD inventory.
+- `CONTRIBUTING.md` (branch flow, the CI gates, release CD); README "git-policy arc" section.
 - `scripts/check-docs.py` — CI gate asserting README agents/hooks tables, LIBRARY.md
   counts, and links against the tree.
 
 ### Changed
+- `CLAUDE.md` slimmed to agent guidance — a where-things-are-documented index, environment
+  wiring, gotchas, and the working rules. The slug-derivation section moved to
+  `docs/slug-derivation.md`, the frontmatter contracts to README § Extending, and the
+  CI/CD inventory to `CONTRIBUTING.md`.
 - The `manifest-guard` job moved out of `test.yml` into `release-gate.yml`. It ran only on
   pushes to `main`, so it could never be promoted to a required check — a skipped job
   reports no status, and a required check that never reports blocks the PR indefinitely.
@@ -31,6 +35,12 @@ This project follows [Semantic Versioning](https://semver.org).
   same ground with full coverage. History for it remains in git.
 
 ### Fixed
+- Docs accuracy: `LIBRARY.md` now says the `PreCompact` hook blocks compaction (it exits 2,
+  as README already said); the `${CLAUDE_PLUGIN_ROOT}` gotcha matches the plugin reference
+  (substituted in hooks, MCP config, and command bodies — never in the Bash environment);
+  the MEMORY.md load limit reads as the first 200 lines / 25 KB with a loud over-limit
+  error, not silent truncation; README's Roadmap points at `BACKLOG.md`; a worked example
+  in `docs/session-rename-propagation.md` uses a neutral project key.
 - `LIBRARY.md` inventory counts now match the tree: `scripts/` is 44 files (was `~40`) and
   `collect-*.py` is 21 (was `≈19`). The other five counts on the At-a-glance line —
   13 commands, 2 skills, 5 agents, 3 MCP tools, 6 hook handlers — were each re-verified

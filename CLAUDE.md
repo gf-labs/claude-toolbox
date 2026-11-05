@@ -2,129 +2,62 @@
 
 ## What this is
 
-claude-toolbox — versioned personal Claude Code commands, scripts, and agents. Delivered as the
-`tools` plugin (gfl-marketplace). Commands are namespaced `/tools:*`.
+claude-toolbox — versioned personal Claude Code commands, scripts, and agents. Delivered as
+the `tools` plugin (gfl-marketplace). Commands are namespaced `/tools:*`.
 
-## How scripts are called
+## Where things are documented
 
-Commands call scripts via `!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/foo.py`. The env var
-`CLAUDE_TOOLBOX_ROOT` must be set in `~/.claude/settings.json`. It points to this repo's
-absolute path.
+- What each command, skill, agent, MCP tool, hook, and load-bearing script does —
+  [`LIBRARY.md`](LIBRARY.md)
+- How to add a command, script, agent, or hook, with the frontmatter each one needs —
+  [`README.md`](README.md#extending)
+- Branches, PRs, CI gates, and the release sequence — [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- Repo layout, the state stores this plugin reads and writes, install and first run —
+  [`README.md`](README.md)
+- Slug derivation (`_slug.py`): strategies, the two entry points, and the silent-failure
+  mode — [`docs/slug-derivation.md`](docs/slug-derivation.md)
+- Claude Code directory discovery —
+  [`docs/claude-directory-reference.md`](docs/claude-directory-reference.md)
 
-The `git-policy-auditor` agent reads the policy path from `CLAUDE_TOOLBOX_GIT_POLICY` (set in
-`~/.claude/settings.json` `env`); unset falls back to `templates/git-policy/default-policy.md`.
+## Environment wiring
 
-## TaskWarrior project slug (`scripts/_slug.py`)
+Commands call scripts via `!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/foo.py`, so
+`CLAUDE_TOOLBOX_ROOT` must be set in `~/.claude/settings.json` to this repo's absolute path.
+`scripts/validate-env.py` is the SessionStart hook that checks it.
 
-`scripts/_slug.py` is the single source of truth for mapping a repo path → TaskWarrior
-project slug. `collect-pin.py`, `collect-tasks.py`, and the `/tools:*` command markdown all
-go through it (the markdown invokes it as `python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/_slug.py`).
+The `git-policy-auditor` agent reads its policy path from `CLAUDE_TOOLBOX_GIT_POLICY` (same
+`env` block); unset falls back to `templates/git-policy/default-policy.md`.
 
-- **Default (mechanism): `slug = repo basename`** — no assumption about where repos live.
-- **Opt-in (policy), via `~/.claude/settings.json` `env`:**
-  - `CLAUDE_TOOLBOX_REPOS_ROOT` — anchor dir repos live under (also the `--discover` default).
-  - `CLAUDE_TOOLBOX_SLUG_STRATEGY` — `basename` (default) or `domain.repo` (`<first-component-under-root>.<basename>`, skipping any `_container/` in between).
+## Gotchas — do not relearn these
 
-**Two entry points — pick by what you hold.** `derive_slug` maps a **repo**;
-`derive_scope_slug` maps a **scope**, which is whatever a Claude Code project is
-rooted at and is not always a repo (this toolbox's own sessions root at
-`lib/tools/<tool>/`). A scope below the repo root slugs as
-`<repo basename>.<scope basename>` — `toolbox.workstation`, `toolbox.dot` —
-using the repo's basename, never its full slug, so a sub-scope reads the same
-under either strategy. At the repo root the two are identical.
+- **`${CLAUDE_PLUGIN_ROOT}` is plugin-scoped.** Claude Code documents it as substituted
+  in a plugin's own `hooks/hooks.json`, `.mcp.json`, and command/skill/agent bodies —
+  never in global `~/.claude/settings.json` hooks (use a plain env var there, e.g.
+  `RAMP_ROOT`) and never in the Bash tool's environment. The command-body substitution
+  is unproven here on a marketplace install, so command bash lines use
+  `CLAUDE_TOOLBOX_ROOT`.
+- **`/compact` cannot be invoked programmatically** — it is a CLI built-in; no skill or hook
+  can trigger it.
+- **Use `shutil.which()`, not `command -v`** — macOS shell builtins have no standalone
+  binary, so a `command -v` check in a script lies.
+- **Scripts are stdlib-only Python 3.11+.** No third-party imports, ever — the plugin ships
+  with no install step.
+- **Pass a session cwd to `derive_scope_slug`, never `derive_slug`.** The wrong one
+  returns a plausible slug that matches zero tasks instead of erroring.
+- **Doc-only fixes still ride a release** — github.com renders `main`, and `main` only moves
+  through the release PR.
+- **After renaming or adding a plan**, refresh `.project-map` so it resolves in `/tools:*`
+  output: `python3 $CLAUDE_TOOLBOX_ROOT/scripts/collect-plan-map.py > /dev/null`.
+  (The plan-file *naming* convention is a personal workflow and lives in the global
+  `~/.claude/CLAUDE.md`, not in this published repo.)
 
-Handing a sub-repo path to `derive_slug` **fails silently**: under `domain.repo`
-it pairs the domain with a non-repo basename (`…/toolbox/lib/tools/workstation`
-→ `business.workstation`, zero tasks), and an empty backlog reads as "nothing
-queued" rather than a lookup miss. That was live in `collect-pin.py` until
-2026-09-02. Callers holding a session cwd want `derive_scope_slug`; the
-`_slug.py` CLI takes the scope reading, so the `/tools:*` markdown is correct
-from inside a subdirectory.
-
-This keeps the published plugin generic; a personal config (e.g. dot-configs) sets the env
-to restore the `~/Repos/<domain>/<repo>` → `domain.repo` convention. `--discover` walks
-`_name/` containers without spending a depth level and skips `.name/` dormant dirs.
-
-## How to add a new command
-
-1. Create `commands/[name].md` with standard frontmatter
-2. If it needs a script: add `scripts/collect-[name].py` or `scripts/[name].py`
-3. Bump version in `.claude-plugin/plugin.json`
-4. Changes take effect automatically on next session start (plugin loads via `--plugin-dir`)
-
-## Command frontmatter fields
-
-| Field | Required | Notes |
-|-------|----------|-------|
-| `description` | Yes | Shown in `/skills` list |
-| `allowed-tools` | Yes | e.g. `Bash, Read, Write, Edit` |
-| `model` | No | Defaults to session model; use `claude-haiku-4-5-20251001` for fast/cheap commands |
-| `argument-hint` | No | Hint shown in autocomplete, e.g. `[--dry-run]` |
-
-Use `$ARGUMENTS` in the command body to pass user-provided args to scripts.
-
-## How to add a new agent
-
-Create `agents/[name].md` with `name`, `description`, `tools`, `model`, and `color` frontmatter.
-Plugin delivers it automatically on next install.
-
-## Key files
-
-| File | Role |
-|------|------|
-| `.claude-plugin/plugin.json` | Plugin manifest — bump version on every release |
-| `hooks/hooks.json` | Plugin-registered hooks (SessionStart, PostToolUse, PreCompact) |
-| `scripts/collect-*.py` | Data collection scripts called by commands |
-| `scripts/validate-env.py` | SessionStart hook — validates CLAUDE_TOOLBOX_ROOT |
-| `scripts/_scope.py` | Scope detection — returns `single`, `parent`, or `global` mode |
-| `scripts/post-save.py` | Names current session + renames unnamed sessions in scope |
-| `docs/claude-directory-reference.md` | Claude Code directory discovery reference |
-| `agents/git-policy-auditor.md` | Read-only agent auditing a repo against the git policy at `$CLAUDE_TOOLBOX_GIT_POLICY` (unset → bundled default) |
-
-## CI/CD
-
-| Workflow | Trigger | What it gates |
-|----------|---------|---------------|
-| `.github/workflows/test.yml` | PRs + pushes (develop, main) | ruff lint + full pytest suite (3.11); includes the docs-consistency check |
-| `.github/workflows/release-gate.yml` | PRs into main + pushes to main | PR: `CHANGELOG.md` has a `## [<manifest>]` section. Push: manifest matches the nearest **reachable** tag (`check-manifest-tag.py --nearest`) |
-| `.github/workflows/release.yml` | `v*` tag | Gate re-run, then GitHub Release with notes from the CHANGELOG section |
-| `.github/dependabot.yml` | weekly | SHA-pin bumps for Actions (targets develop) |
-
-Release process: bump manifest on `release/*` → tag the release-branch tip → merge-commit
-PR to `main`. Doc-only fixes that change the public page ride the next release —
-github.com renders `main`.
-
-## Gotchas
-
-- **`${CLAUDE_PLUGIN_ROOT}` is reserved** — only resolves inside a plugin's own `hooks/hooks.json`. Use a plain env var (e.g. `RAMP_ROOT`) in global `~/.claude/settings.json` hooks.
-- **`/compact` cannot be programmatically invoked** — it's a CLI built-in; skills and hooks cannot trigger it.
-- **`shutil.which()` not `command -v`** — macOS shell builtins have no standalone binary; use Python's `shutil.which()` to check tool availability in scripts.
-- **Session scope key**: `~/.claude/projects/` uses path-based keys (slashes → hyphens). `_scope.py` handles derivation.
-
-## Plan file tracking
-
-`scripts/collect-plan-map.py` refreshes `.project-map` so renamed or newly-added plans in
-`~/.claude/plans/` resolve in `/tools:*` output:
-`python3 $CLAUDE_TOOLBOX_ROOT/scripts/collect-plan-map.py > /dev/null`
-
-(The plan-file *naming* convention — renaming random three-word slugs to a title-derived
-kebab-case name — is a personal workflow and lives in the global `~/.claude/CLAUDE.md`, not in
-this published repo.)
-
-## Working in this repo
+## Working here
 
 `.claude/settings.json` grants `Bash(gh:*)` for GitHub operations.
 
-## Git workflow
-
-- Start new work on a `feature/*` branch off `develop` — never edit directly on
-  `develop` or `main`.
-- Git is view-only unless the user grants write access this session.
-- Never `push --force`, `reset --hard`, `clean -f`, `branch -D`, or discard uncommitted
-  work (`checkout -- .` / `restore .`) without asking first.
-
-The `git-guard` PreToolUse hook (`scripts/git-guard.py`) enforces the irreversible subset
-of this rule automatically — it denies those destructive commands when Claude runs them via
-the Bash tool. It does NOT fire on the user's `!git` commands, which remain the unguarded
-escape hatch. The workflow habits above (branch-off-develop, ask-first) are prose because
-they are interpretive; the hook only guards the deterministic, irreversible cases.
+Distributed tier: start new work on a `feature/*` branch off `develop`, never directly on
+`develop` or `main`. The `git-guard` PreToolUse hook (`scripts/git-guard.py`) enforces the
+irreversible subset of that rule automatically — it denies those destructive commands when
+Claude runs them via the Bash tool. It does **not** fire on the user's own `!git` commands,
+which remain the unguarded escape hatch. The habits above (branch off `develop`, ask first)
+stay prose because they are interpretive; the hook guards only the deterministic cases.
