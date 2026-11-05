@@ -124,7 +124,7 @@ Orientation is single-project; this is the cross-project map.
 
 | Store | Location | Auto-loaded? | Written by |
 |-------|----------|--------------|------------|
-| `MEMORY.md`      | `~/.claude/projects/[key]/memory/MEMORY.md`      | Yes — auto-memory, 200-line budget | `/tools:pin` |
+| `MEMORY.md`      | `~/.claude/projects/[key]/memory/MEMORY.md`      | Yes — auto-memory; the first 200 lines / 25 KB load | `/tools:pin` |
 | `session-log.md` | `~/.claude/projects/[key]/memory/session-log.md` | No | `/tools:pin`, `/tools:wrap`, `/tools:cleanup` |
 | `CLAUDE.md`      | `[repo]/CLAUDE.md` or `~/.claude/CLAUDE.md`      | Yes — every session | Manual |
 | Plans            | `~/.claude/plans/[name].md`                      | No — read on demand | Manual / agents |
@@ -269,13 +269,13 @@ Restart the session. A SessionStart hook validates your setup; commands are now 
 ```
 claude-toolbox/
 ├── commands/    # slash commands, delivered as /tools:*
-├── agents/      # read-only subagents (explore, plan, review, summarize)
+├── agents/      # read-only subagents (explore, plan, review, summarize, git-policy-auditor)
 ├── skills/      # multi-step skills (sit-rep, cli-capability-audit)
 ├── scripts/     # Python collectors called by commands and hooks (stdlib only)
 ├── hooks/       # hooks.json — plugin-registered lifecycle hooks
 ├── mcp_server/  # local MCP server (search_sessions, list_plans, get_session_log)
 ├── templates/   # git-policy starter pack (default policy + CHANGELOG seed)
-├── docs/        # context-hygiene reference, design log, directory reference
+├── docs/        # context-hygiene, slug derivation, design log, directory reference
 ├── .github/     # CI (test.yml), release gate, release CD, Dependabot config
 └── tests/       # pytest coverage for the collectors
 ```
@@ -300,7 +300,7 @@ claude-toolbox/
 
 | Add a… | Steps |
 |--------|-------|
-| **Command** | Create `commands/[name].md` with frontmatter (`description`, `allowed-tools`, optional `model`, `argument-hint`). Bump the version, restart. |
+| **Command** | Create `commands/[name].md` with frontmatter (`description`, `allowed-tools`, optional `model`, `argument-hint`). Use `$ARGUMENTS` in the body to pass user args through; set `model` to a Haiku id for cheap/fast commands. Bump the version, restart. |
 | **Script**  | Add `scripts/[name].py` (stdlib only). Call it from a command with `!python3 ${CLAUDE_TOOLBOX_ROOT}/scripts/[name].py`. |
 | **Agent**   | Create `agents/[name].md` with frontmatter (`name`, `description`, `tools`, `model`, `color`). Bump the version, restart. |
 | **Hook**    | Add an entry to `hooks/hooks.json` under the event key (`SessionStart`, `PostToolUse`, `PreCompact`, `Stop`, …). Bump the version, restart. |
@@ -310,6 +310,8 @@ Bump the version in [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) o
 ---
 
 ## Roadmap
+
+The curated public backlog lives in [`BACKLOG.md`](BACKLOG.md). The headline directions:
 
 - **Unified search** across sessions, plans, memory, and backlog from one command
 - **Tighter ramp integration** — a single knowledge-and-session harvest at wrap time

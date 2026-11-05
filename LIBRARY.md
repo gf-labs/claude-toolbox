@@ -112,7 +112,7 @@ Auto-fire handlers registered in `hooks/hooks.json`.
 | SessionStart | `setup-mcp.py` | Idempotently registers the MCP server (`claude mcp add -s user`) |
 | PostToolUse | `collect-plan-map.py` | Refreshes `.project-map` plan index |
 | PostToolUse | `lint-py.py` | Lints touched Python |
-| PreCompact | `check-pin-ran.py` | Warns if you didn't `/tools:pin` before compacting |
+| PreCompact | `check-pin-ran.py` | Blocks compaction (exit 2) until `/tools:pin` has run this session |
 
 ---
 
@@ -126,7 +126,7 @@ load-bearing ones:
 | `_scope.py` | Scope detection + project-key encoding — **single source of truth** |
 | `_projects.py` | L2 project enumeration over `_scope` — repo-space (`enumerate_projects`, powers atlas) *and* storage-space (`iter_session_dirs`, session-key folders incl. orphans; powers cleanup · search-sessions · brief) |
 | `_session.py` | Current-session JSONL resolution — env-var-first (`CLAUDE_CODE_SESSION_ID`), heuristic fallback; **single source of truth** for "which session is live" |
-| `_slug.py` | Repo path → TaskWarrior project slug — **single source of truth**. `derive_slug` for a repo, `derive_scope_slug` for a session scope (adds `<repo>.<subdir>` below the root) |
+| `_slug.py` | Repo path → TaskWarrior project slug — **single source of truth**. `derive_slug` for a repo, `derive_scope_slug` for a session scope (adds `<repo>.<subdir>` below the root). Mechanism, strategies, and the silent-failure mode: [`docs/slug-derivation.md`](docs/slug-derivation.md) |
 | `collect-*.py` (21) | Data collectors feeding the commands (pin, summarize, tasks, drift, history, memory…); `collect-session-list.py` = the atlas sessions facet (distinct from `collect-sessions.py`, the cleanup inventory) |
 | `collect-git-policy.py` | Deterministic git-policy facts (branches, tags, workflows, dependabot/CHANGELOG, manifest↔tag) for `tools:git-policy-auditor` to render |
 | `check-manifest-tag.py` | Assert a repo's manifest version equals its latest release tag — collector/audit + CI gate (stdlib, exit 0/1/2) |

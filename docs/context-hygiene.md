@@ -72,7 +72,7 @@ When a tangential issue comes up mid-session:
 
 ## MEMORY.md management
 
-- **200-line truncation:** MEMORY.md is loaded at session start but truncated at 200 lines. Content after line 200 is silently dropped. The most recently appended content gets cut off first.
+- **Load limit:** Claude Code loads only the first 200 lines (or 25 KB) of MEMORY.md at session start, so the most recently appended content is what falls outside the window. A write that pushes the file over the limit still succeeds, but Claude Code returns an error telling Claude to rewrite the index — the cap is loud at write time, not silent.
 - **Rule:** Keep MEMORY.md under 150 lines. Archive verbose or resolved sections to topic files.
 - **Structure:** Stable facts at the top (architecture, patterns, preferences), recent snapshots at the bottom.
 - When a project goes dormant: extract key decisions to MEMORY.md, delete all sessions.
