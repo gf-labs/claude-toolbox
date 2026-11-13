@@ -159,7 +159,7 @@ Hooks are commands Claude Code fires automatically on lifecycle events. The plug
 | `PostToolUse`  | `Write`        | `collect-plan-map.py` | Refreshes the plan-to-project map after file creates |
 | `PostToolUse`  | `Edit \| Write` | `lint-py.py`          | Syntax-checks any Python file that was just edited |
 | `PreCompact`   | — | `check-pin-ran.py`    | **Blocks** compaction unless `/tools:pin` ran this session (so context is never summarized away uncheckpointed) |
-| `PreToolUse`   | `Bash`         | `git-guard.py`        | **Denies** destructive git (`reset --hard`, `branch -D`, `clean -f`, forced checkouts) when Claude runs it — your own terminal stays unguarded |
+| `PreToolUse`   | `Bash`         | `git-guard.py`        | **Denies** destructive git (`reset --hard`, `clean -f`, forced checkouts) and **asks** before `branch -D` when Claude runs it — your own terminal stays unguarded |
 
 ---
 
@@ -171,7 +171,7 @@ useless alone, load-bearing together:
 | Piece | Kind | Role |
 |-------|------|------|
 | [`templates/git-policy/`](templates/git-policy/) | Convention | The written policy a repo adopts — default rules + a CHANGELOG seed |
-| [`git-guard.py`](scripts/git-guard.py) | Prevention | `PreToolUse` hook that **denies** the irreversible subset (`reset --hard`, `branch -D`, `clean -f`, forced checkouts) when Claude runs git — deterministic cases only; judgment calls stay prose |
+| [`git-guard.py`](scripts/git-guard.py) | Prevention | `PreToolUse` hook that **denies** the irreversible subset (`reset --hard`, `clean -f`, forced checkouts) and **asks** before `branch -D` when Claude runs git — deterministic cases only; judgment calls stay prose |
 | [`git-policy-auditor`](agents/git-policy-auditor.md) | Assessment | Read-only agent that audits any repo against the policy and returns a compliance report plus a migration plan |
 | [`release-gate.yml`](.github/workflows/release-gate.yml) | Enforcement | CI that splits the manifest↔tag invariant by event, so the knowable half is a required check at PR time |
 

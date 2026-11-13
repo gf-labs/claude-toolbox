@@ -20,14 +20,25 @@ DENY = [
     ("git clean -xdf", "clean-force"),
     ("git clean --force", "clean-force"),
     ("git -C /repo clean -fd", "clean-force"),
-    ("git branch -D feature/x", "branch-delete-force"),
-    ("git branch --delete --force feature/x", "branch-delete-force"),
     ("git checkout .", "checkout-discard"),
     ("git checkout -- src/foo.py", "checkout-discard"),
     ("git checkout -f main", "checkout-discard"),
     ("git restore .", "restore-discard"),
     ("git restore src/foo.py", "restore-discard"),
     ("git add . && git reset --hard", "reset-hard"),
+]
+
+ASK = [
+    ("git branch -D feature/x", "branch-delete-force"),
+    ("git branch --delete --force feature/x", "branch-delete-force"),
+    ("git -C /repo branch -D a b", "branch-delete-force"),
+    ("git status && git branch -D feature/x", "branch-delete-force"),
+]
+
+# A deny rule anywhere in a compound command wins over an ask rule.
+DENY_BEATS_ASK = [
+    ("git branch -D feature/x && git reset --hard", "reset-hard"),
+    ("git reset --hard; git branch -D feature/x", "reset-hard"),
 ]
 
 ALLOW = [
@@ -57,6 +68,21 @@ def test_deny_cases():
         assert v["action"] == "deny", f"expected deny for {cmd!r}, got {v}"
         assert v["rule"] == rule, f"expected {rule} for {cmd!r}, got {v['rule']}"
         assert v["reason"], f"deny for {cmd!r} must carry a reason"
+
+
+def test_ask_cases():
+    for cmd, rule in ASK:
+        v = classify(cmd)
+        assert v["action"] == "ask", f"expected ask for {cmd!r}, got {v}"
+        assert v["rule"] == rule, f"expected {rule} for {cmd!r}, got {v['rule']}"
+        assert v["reason"], f"ask for {cmd!r} must carry a reason"
+
+
+def test_deny_beats_ask():
+    for cmd, rule in DENY_BEATS_ASK:
+        v = classify(cmd)
+        assert v["action"] == "deny", f"expected deny for {cmd!r}, got {v}"
+        assert v["rule"] == rule, f"expected {rule} for {cmd!r}, got {v['rule']}"
 
 
 def test_allow_cases():
@@ -89,6 +115,19 @@ def test_smoke_deny_reset_hard():
     assert hso["permissionDecision"] == "deny"
     assert "reset --hard" in hso["permissionDecisionReason"]
     assert "!git" in hso["permissionDecisionReason"]
+
+
+def test_smoke_ask_branch_delete_force():
+    rc, out = _run(json.dumps({
+        "session_id": "abc", "tool_name": "Bash",
+        "tool_input": {"command": "git branch -D feature/x"},
+    }))
+    assert rc == 0
+    hso = json.loads(out)["hookSpecificOutput"]
+    assert hso["hookEventName"] == "PreToolUse"
+    assert hso["permissionDecision"] == "ask"
+    assert "branch -D" in hso["permissionDecisionReason"]
+    assert "!git" not in hso["permissionDecisionReason"]
 
 
 def test_smoke_allow_push():
