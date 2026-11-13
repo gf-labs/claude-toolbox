@@ -58,6 +58,7 @@ The `git-policy-auditor` agent reads its policy path from `CLAUDE_TOOLBOX_GIT_PO
 Distributed tier: start new work on a `feature/*` branch off `develop`, never directly on
 `develop` or `main`. The `git-guard` PreToolUse hook (`scripts/git-guard.py`) enforces the
 irreversible subset of that rule automatically — it denies those destructive commands when
-Claude runs them via the Bash tool. It does **not** fire on the user's own `!git` commands,
+Claude runs them via the Bash tool, except a forced branch delete (`branch -D`), which raises
+a permission prompt instead. It does **not** fire on the user's own `!git` commands,
 which remain the unguarded escape hatch. The habits above (branch off `develop`, ask first)
 stay prose because they are interpretive; the hook guards only the deterministic cases.

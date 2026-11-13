@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""PreToolUse hook: deny local, irreversible git ops on Claude's Bash calls.
+"""PreToolUse hook: deny or ask on local, irreversible git ops on Claude's Bash calls.
 
 Guards Claude only — PreToolUse never fires on the user's ``!git`` commands, so
 the user always keeps an unguarded path. Fail-open on any parse error: a rail
 that crashed closed would block all of Claude's git on a single bug.
 
 Deny set (see docs/superpowers/specs/2026-07-01-git-guard-hook-design.md):
-  reset --hard · clean -f* · branch -D · checkout discard · restore discard
+  reset --hard · clean -f* · checkout discard · restore discard
+Ask set (the user gets a permission prompt and may approve the call):
+  branch -D
 Everything else, including push (any form), is allowed.
 """
 import json
@@ -14,6 +16,10 @@ import shlex
 import sys
 
 _SPLIT_OPS = ("&&", "||", ";", "|")
+
+# Rules that prompt the user instead of blocking outright. A forced branch
+# delete is recoverable from the reflog, so the user may approve it in place.
+_ASK_RULES = frozenset({"branch-delete-force"})
 
 
 def _git_segments(command):
@@ -108,11 +114,19 @@ def _classify_tokens(tokens):
 def classify(command):
     """Pure verdict. Never raises — returns allow on any surprise (fail-open)."""
     try:
+        ask = None
         for tokens in _git_segments(command or ""):
             hit = _classify_tokens(tokens)
-            if hit:
-                rule, reason = hit
+            if not hit:
+                continue
+            rule, reason = hit
+            if rule not in _ASK_RULES:
+                # A deny anywhere in a compound command wins over an ask.
                 return {"action": "deny", "rule": rule, "reason": reason}
+            if ask is None:
+                ask = {"action": "ask", "rule": rule, "reason": reason}
+        if ask:
+            return ask
     except Exception:
         return {"action": "allow"}
     return {"action": "allow"}
@@ -129,14 +143,17 @@ def main():
 
     command = (payload.get("tool_input") or {}).get("command", "")
     verdict = classify(command)
-    if verdict["action"] != "deny":
+    if verdict["action"] not in ("deny", "ask"):
         sys.exit(0)
 
-    reason = f"{verdict['reason']} Run it via !git if you mean it."
+    if verdict["action"] == "ask":
+        reason = f"{verdict['reason']} Approve only if you mean it."
+    else:
+        reason = f"{verdict['reason']} Run it via !git if you mean it."
     print(json.dumps({
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
-            "permissionDecision": "deny",
+            "permissionDecision": verdict["action"],
             "permissionDecisionReason": reason,
         }
     }))

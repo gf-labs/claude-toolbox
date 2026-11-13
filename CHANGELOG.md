@@ -21,6 +21,10 @@ This project follows [Semantic Versioning](https://semver.org).
   counts, and links against the tree.
 
 ### Changed
+- `git-guard.py` asks instead of denying on a forced branch delete (`branch -D`,
+  `--delete --force`): the user gets a permission prompt and may approve the call in place.
+  The other rules (`reset --hard`, `clean -f*`, `checkout`/`restore` discards) still deny,
+  and a deny anywhere in a compound command wins over an ask.
 - `CLAUDE.md` slimmed to agent guidance — a where-things-are-documented index, environment
   wiring, gotchas, and the working rules. The slug-derivation section moved to
   `docs/slug-derivation.md`, the frontmatter contracts to README § Extending, and the
